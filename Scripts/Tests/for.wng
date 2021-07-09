@@ -1,0 +1,98 @@
+
+
+#test
+	@a : dim
+		1;2;3
+	@b : 0
+	for a
+		b : b + it
+	$assert(b = 6)
+	
+#test
+	@a : dim
+		1;2;3
+	@b : 0
+	for @c : a
+		b : b + c
+	$assert(b = 6)
+
+#test
+	@a : dim
+		1;2;3
+	@b : 0
+	for @c of a // values
+		b : b + c
+	$assert(b = 6)
+	
+#test
+	@a : dim
+		1;2;3
+	@b : 0
+	for @c in a // keys
+		b : b + c
+	$assert(b = 3)
+	
+#test
+	@a : dim
+		1;2;3
+	@b : 0
+	for @c : 0 to 3
+		b : b + a[c]
+	$assert(b = 6)
+	
+#test
+	@a : dim
+		1;2;3
+	@b : 0
+	for @c : 0 to 3 by 2
+		b : b + a[c]
+	$assert(b = 4)
+
+#test
+	@b : 0
+	for 1 to 3
+		b : b + it
+	$assert(b = 3)
+
+#test
+	@b : 0
+	for 1 to 4 by 2
+		b : b + it
+	$assert(b = 4)
+	
+#test
+	@a : -2
+	@b : 0
+	for 4 to 1 by a
+		b : b + it
+	$assert(b = 6)
+
+#test
+	@a : dim
+		1;2;3
+	@b : 0
+	@e : 0
+	for @c of a at @d // values at key
+		b : b + c
+		e : e + d
+	$assert(b = 6)
+	$assert(e = 3)
+	
+::Copy(list => dup)
+	return copy list
+	
+#test
+	@a : dim
+		1;2;3
+	@b : 0
+	for $Copy(a)
+		b : b + it
+	$assert(b = 6)
+	
+#test
+	@a : dim
+		a:1; b:2; c:3
+	@b : 0
+	for @k in a
+		b : b + a[k]
+	$assert(b = 6)

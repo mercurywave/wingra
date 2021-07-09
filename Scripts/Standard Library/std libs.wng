@@ -1,0 +1,130 @@
+#def #suggest(code => out)
+	if !$Compiler.IsSuggestion
+		return dim
+	$MacroHelp.UnindentAll(code)
+	return code
+
+#def #if(code => out)
+	if !$Compiler.Eval(code[0])
+		return dim
+	code[0] : ""
+	$MacroHelp.UnindentAll(code)
+	return code
+	
+#def #guard(code => code)
+	if !$Compiler.IsDebug
+		return dim
+	$MacroHelp.UnindentAll(code)
+	code[0] : "if !(" + code[0] + ") \ $Debug.Break()"
+	return code
+	
+#def #mock(code => out)
+	if !$Compiler.IsSuggestion & !$Compiler.IsIDE
+		return dim
+	$MacroHelp.UnindentAll(code)
+	return code
+	
+
+#suggest
+	library IO
+		::Write(text)
+		::Log(var)
+		::DebugLog(obj)
+			
+	library Obj
+		::.NextKey(?key => key)
+		::.PrevKey(?key => key)
+		::.Count(=> count)
+		::.Keys(=> keyList)
+		::.ShallowCopy(=> dup)
+		::.HasChildren(=> bool)
+			
+	library Map
+		::.Has(key => exists)
+			
+	library List
+		::.Add(elem => ref)
+		::.Contains(elem => bool)
+		::.Any(lamb => bool)
+		::.RemoveAll(where)
+	
+	library Stack
+		::.Push(value => ref)
+		::.Pop( => obj)
+			
+	library Queue
+		::.Enqueue(val)
+		::.Dequeue(=> val)
+		::New(=> obj)
+	
+	library Str
+		::.Replace(toRemove, ?replace => clean)
+		::.Piece(delim, ?pc => sub)
+		::.SubStr(start, ?len => sub)
+		::.Len(=> len)
+		::.Contains(search => bool)
+		::.Split(delim => arr)
+		::.ToUpper(=> upper) // uses locale rules
+		::.ToLower(=> lower) // uses locale rules
+		::.Trim(=> trimmed) // strip all white space from begining and end
+		
+	library Math
+		::Mod(value, div => mod)
+		::Div(value, div => result)
+		::Floor(val => val)
+		::Ceiling(val => val)
+		::Round(float => int)
+		::RoundToNearest(float, near => val)
+		::RoundToNearestFloat(float, near => val)
+		::Atan2(y, x => rad)
+	
+	library Scratch
+		::Alloc(=> obj)
+		::Free(obj)
+		::Hoist(&obj => obj)
+			
+	library Job
+		::.Wait(=> async)
+		::.IsComplete(=> complete)
+		::Yield(=> async)
+		::Pause(ms => async)
+	
+	library Promise
+		::Create(=> id)
+		::.Wait(=> async)
+		::.Resolve()
+			
+	// only available for macros
+	library Compiler
+		$IsTest : false
+		$IsDebug : false
+		$IsSuggestion : false
+		$IsIDE : false
+		$IsBootstrap : false
+		::GetFileLine(=> line)
+		::GetFileName(=> name)
+		::Eval(code => eval)
+		
+	// only available for macros
+	library MacroHelp
+		::UnindentAll(codeArr)
+		::Unindent(code => code)
+		::Escape(str => clean)
+	
+	library Debug
+		::Break()
+		::ObjDebug(obj => str)
+		::TypeName(obj => str)
+			
+
+// Methods that don't really need to be mocked, but make sense for completness
+library List
+	::New( => list) => dim
+		
+library Map
+	::New( => map) => dim
+	::.Add(key)
+		this[key] : true
+		
+library Stack
+	::New( => stack) => dim

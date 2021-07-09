@@ -1,0 +1,61 @@
+
+#test
+	if true
+		$assert(true)
+	else
+		$assert(false)
+
+#test
+	if false
+		$assert(false)
+	else
+		$assert(true)
+
+#test
+	if false
+		$assert(false)
+	else if true
+		$assert(true)
+	else
+		$assert(false)
+		
+::Never(bool => bool)
+	#if $Compiler.IsTest
+		$assert(false)
+	
+#test
+	if false & $Never(false)
+		$assert(false)
+	if false & $Never(true)
+		$assert(false)
+	if true & false
+		$assert(false)
+	if true & true
+		$assert(true)
+	
+#test
+	if false | false
+		$assert(false)
+	if false | true
+		$assert(true)
+	if true | $Never(false)
+		$assert(true)
+	if true | $Never(true)
+		$assert(true)
+		
+// test shortcutting statements
+// note: only works for if/else, not switch
+#test
+	if true \ $assert(true)
+	else if false \ $NOOP() // doesn't exist
+	else \ $NOOP()
+
+#test
+	if !true \ $NOOP()
+	else if !false \ $assert(true)
+	else \ $NOOP()
+
+#test
+	if !true \ $NOOP()
+	else if false \ $NOOP()
+	else \ $assert(true)

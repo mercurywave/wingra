@@ -1,0 +1,21 @@
+
+
+#test
+	@a : dim
+		a: 1
+	$assert(a has a)
+	$assert(a has "a")
+	$assert(a.a = 1)
+	$assert(a["a"] = 1)
+	$assert(a.?b = null)
+	$assert(a?.a = 1)
+	
+#test
+	@a
+	a?.$List.Add(1)
+	$assert(a?.a = null)
+	
+#test
+	@a : $Map.New()
+	a.$Map.Add(5)
+	$assert(a.$Map.Has(5))

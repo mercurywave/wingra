@@ -1,0 +1,47 @@
+
+::Foo(a => b)
+	return a + 1
+	
+::Bar(a => b)
+	b : a + 1
+
+::Car(a => b)
+	b : $Bar(a + 1)
+	
+::.GetChild(a => b)
+	b : this[a]
+
+::.GetBob()
+	return this.$GetChild("Bob")
+
+::.AddChild(a => b)
+	b : 1 + this[a]
+
+#test
+	$assert($Foo(1) = 2)
+	
+#test
+	$assert($Bar(1) = 2)
+
+#test
+	$assert($Car(1) = 3)
+	
+#test
+	@a : dim
+		Bob : 3
+	$assert(a.$GetBob() = 3)
+	$assert(a.$GetChild("Bob") = 3)
+	$assert(a.$AddChild("Bob") = 4)
+	
+::A(a)
+	a()
+
+::B(b)
+	$A(b)
+	
+::.C()
+	$B(this)
+	
+#test
+	@d : `$assert(true)`
+	d.$C()

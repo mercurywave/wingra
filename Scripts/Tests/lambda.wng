@@ -1,0 +1,26 @@
+
+#test
+	@a : dim(1, 2, 3)
+	@b : lambda
+		return a[1] = 2
+	$assert($(b))
+	
+#test
+	@a : dim(1, 2, 3)
+	@b : lambda(i => bool)
+		return a[i] = 2
+	@i : 1
+	$assert($(b, i))
+	
+#test
+	@a : dim(1, 2, 3)
+	@b : lambda[free a]
+		return a[1] = 2
+	$assert($(b))
+	
+#test
+	@a : dim(1, 2, 3)
+	@b : lambda(i)[free a]
+		return a[i] = 2
+	@i : 1
+	$assert($(b, i))

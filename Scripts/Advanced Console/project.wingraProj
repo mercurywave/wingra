@@ -1,0 +1,7 @@
+version=1
+
+requires ..\Standard Library\
+
+; comment test
+
+plugin=..\..\WingraAdvancedConsole\bin\Debug\netstandard2.0\WingraAdvancedConsole.dll

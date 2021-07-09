@@ -1,0 +1,66 @@
+
+::Foo(a,b)
+	a[0] : true
+	
+#test
+	@a : dim
+	$Foo(a, dim)
+	$assert(a[0])
+	
+::Bar(a, b[] => a)
+	for b
+		a : a + it
+
+#test
+	$assert($Bar(0, 1, 2, 3) = 6)
+	
+::Car(a, b => c, d)
+	c : a + 1
+	d : b + 1
+	
+::Dar(?a => b)
+	if a = null
+	a ?: true
+	b : a
+	
+#test
+	@a, @b : $Car(1,2)
+	$assert(a = 2)
+	$assert(b = 3)
+	
+::.Where(lamb => list)
+	list : dim
+	for @it of this at @key
+		if $(lamb, it)
+			list[key] : it
+
+#test
+	@a : dim
+		a : 1
+		b : 2
+		c : 3
+	@b : a.$Where(`it > 2`)
+	$assert(b.$Obj.Count() = 1)
+	$assert(b.c = 3)
+	
+#test
+	@a : dim
+		Bar : true
+		::.Foo()
+			$assert(this.Bar)
+	a.Foo()
+	
+#test
+	$assert($Dar())
+	
+
+#if $Compiler.IsTest
+	::Inline() => $assert(true)
+	::InlineReturn(=> a) => true
+	::InlineReturn2(=> a)
+		=> true
+	
+#test
+	$Inline()
+	$assert($InlineReturn())
+	$assert($InlineReturn2())

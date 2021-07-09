@@ -1,0 +1,23 @@
+using Job
+
+#test
+	await $Pause(1)
+	$assert(true)
+	
+::Foo(=> async bool)
+	await $Yield()
+	return true
+	
+#test
+	@id : arun $Foo()
+	await id.$Wait()
+	$assert(true)
+	
+#test
+	@a : await $Foo()
+	$assert(a)
+	
+#test capture feeds through
+	@a : 5
+	await (arun lambda).$Wait()
+		$assert(a = 5)

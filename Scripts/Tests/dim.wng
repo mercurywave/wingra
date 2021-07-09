@@ -1,0 +1,49 @@
+
+using List
+
+registry DimGlo
+::Foo(name => obj)
+	return ^DimGlo.$Add(dim)
+		Name : name
+
+#test
+	@a : dim $Foo("A")
+		Bob : "B"
+	@b : dim $Foo("C")
+	$assert(a.Bob = "B")
+	$assert(a has Name)
+	$assert(a.Name = "A")
+	$assert(^DimGlo.$Contains(a))
+	$assert(^DimGlo.$Contains(b))
+	
+#test
+	@a : dim
+		1;2;3
+	$assert(a[1] = 2)
+	
+#test
+	@a : dim
+		a : 1; b : 2
+	$assert(a.a = 1)
+	$assert(a["b"] = 2)
+	
+#test
+	@a : dim(1,2,3)
+	$assert(a[1] = 2)
+	
+#test
+	@a : dim(a:1, b:2, c:3)
+	$assert(a.b = 2)
+
+#test
+	@a : dim("a":1, "b":2, c:3)
+	$assert(a.b = 2)
+
+#test
+	@a : dim(dim(),dim,3)
+		4
+	$assert(a[1,0] = 4)
+	
+#test
+	@a : dim(true: 1, false: 0)
+	$assert(a[true] > 0)

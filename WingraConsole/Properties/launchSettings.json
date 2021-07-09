@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "WingraConsole": {
+      "commandName": "Project",
+      "workingDirectory": "$(SolutionDir)/Scripts/scratch"
+    }
+  }
+}

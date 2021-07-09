@@ -1,0 +1,11 @@
+
+#test
+	$assert($Math.Ceiling(3.1) = 4)
+	$assert($Math.Div(13,10) = 1)
+	$assert($Math.Floor(4.9) = 4)
+	$assert($Math.Mod(13,10) = 3)
+	$assert($Math.Round(3.6) = 4)
+	$assert($Math.RoundToNearest(17, 10) = 20)
+	
+	//$assert(3 / 2 = 1) // these have issues in js :(
+	//$assert(3 / 2.1 > 1)

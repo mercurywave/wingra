@@ -1,0 +1,17 @@
+
+registry Foo
+scratch Bar
+
+#test
+	^Bar : 5
+	$assert(^Bar = 5)
+	
+#test
+	^Foo[1,2,3] : "asdf"
+	$assert(^Foo[1,2,3] = "asdf")
+	
+#test
+	@a : $Scratch.Alloc()
+	a[1] : 4
+	$Scratch.Free(a)
+	$assert(true)

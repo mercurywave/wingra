@@ -1,0 +1,16 @@
+
+#test
+	@a : 4
+	if true
+		@a : 5
+	$assert(a = 4)
+	
+#test
+	@a : 4
+	@b
+	if true
+		@a : 5
+		b : lambda
+			$assert(a = 5)
+	$(b)
+		

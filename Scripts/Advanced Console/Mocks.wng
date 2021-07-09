@@ -1,0 +1,7 @@
+
+#suggest
+	library Console
+		::Clear()
+		::Write(str)
+		::SetBufferSize(w, h)
+		::SetCursorPosition(x, y)

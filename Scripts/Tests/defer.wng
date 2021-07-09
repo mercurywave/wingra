@@ -1,0 +1,47 @@
+
+::Foo( => a)
+	@a : false
+	defer \ a : true
+
+#test
+	$assert($Foo())
+	
+::Bar( => a)
+	@a : false
+	for 1 to 5
+		if it = 4
+			return a
+		if it = 3
+			a : false
+		if it = 2
+			defer a : true
+	
+#test
+	$assert($Bar())
+	
+#test
+	@a : dim(false)
+	// can't use a local because capture doesn't write back
+	$(lambda)
+		defer \ a[0] : true
+		a[0] : false
+	$assert(a[0])
+	
+#test
+	@a : dim(false)
+	// can't use a local because capture doesn't write back
+	$(lambda)
+		defer \ a[0] : true
+		a[0] : false
+		if !a[0]
+			quit
+		a[0] : false
+	$assert(a[0])
+	
+::Throws(fail, doDefer => throw)
+	defer \ $(doDefer)
+	if fail
+		throw
+		
+#test
+	trap $Throws(true, `$assert(true)`)

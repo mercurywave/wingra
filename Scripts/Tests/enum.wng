@@ -1,0 +1,42 @@
+
+enum eFile
+	num : 5
+	obj : dim(1,2,3)
+	
+library EnumTypes
+	enum eLib
+		num : 4
+		obj : dim
+			Name : "test"
+		string : "str"
+		raw
+
+using EnumTypes
+#test
+	$assert($eFile = $eFile)
+	$assert($eLib.raw = $eLib.raw)
+	
+#test
+	$assert($eLib.num = ~4)
+	$assert(~$eLib.num = 4)
+	$assert(~$eLib.string = "str")
+	if $Compiler.IsIDE // fail in js, but it really doesn't matter
+		$assert($eLib.num != 4)
+	
+#test
+	$assert(~$eLib.num + 1 = ~$eFile.num)
+	$assert($eLib.raw != $eFile)
+	
+#test
+	$assert($eLib.obj.Name = "test")
+	$assert($eLib.obj has Name)
+	$assert($eLib.obj.$Obj.NextKey() = "Name")
+	$assert($eLib.obj.$Obj.PrevKey() = "Name")
+	$assert($eLib.obj.$Obj.NextKey("Name") = null)
+	$assert($eLib.obj.$Obj.PrevKey("Name") = null)
+	
+#test
+	@a : dim
+		$eFile.num : 4
+		$eLib.num : 5
+	$assert(a[$eFile.num] = 4)

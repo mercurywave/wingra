@@ -1,0 +1,16 @@
+
+
+#test textdata
+	@a : textdata
+		a b c
+			d e f
+		g	h i
+	$assert(a[0] = "a b c")
+	$assert(a[1] = "d e f")
+	$assert(a[2] = "g	h i")
+	
+#test
+	$assert("aBc".$Str.ToUpper() = "ABC")
+	$assert("aBc".$Str.ToLower() = "abc")
+	$assert("abc".$Str.Trim() = "abc")
+	$assert("    abc ".$Str.Trim() = "abc")

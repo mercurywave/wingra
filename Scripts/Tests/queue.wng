@@ -1,0 +1,29 @@
+
+using Queue
+
+#test
+	@a : $New()
+	a.$Enqueue(4)
+	$assert(a[0] = 4)
+	$assert(a.$Dequeue() = 4)
+	
+#test
+	@a : $New()
+	a.$Enqueue(4)
+	a.$Enqueue(5)
+	a.$Enqueue(6)
+	a.$Enqueue(7)
+	a.$Enqueue(8)
+	
+	a.$Dequeue()
+	a.$Dequeue()
+	a.$Dequeue()
+	a.$Dequeue()
+	
+	$assert(a.$Dequeue() = 8)
+	
+#test
+	@a : dim
+		3;4;5
+	$assert(a.$Dequeue() = 3)
+	$assert(a.$Dequeue() = 4)

@@ -1,0 +1,52 @@
+
+::Fails( => throw)
+	throw
+	
+::FailReturn(a => throw val)
+	if a
+		throw a
+	val : 5
+	
+::Chain(=> throw)
+	try $Fails()
+	
+::JustFine(a => throw b)
+	if !a \ throw
+	b : a
+	
+::Switch(a => throw b)
+	b : switch a
+		true: a
+		false: throw "str"
+		else: throw
+	
+#test
+	trap $Fails()
+		$assert(true)
+
+#test
+	trap @a : $FailReturn(true)
+		a : true
+	$assert(a)
+	
+#test
+	trap $Chain()
+		$assert(true)
+		
+#test
+	@a : try $JustFine(true) catch false
+	$assert(a)
+	
+#test
+	@a : try $FailReturn(true) catch true
+	$assert(a)
+	
+#test
+	$assert(avow $JustFine(true))
+	
+#test
+	$assert(avow $Switch(true))
+	trap $Switch(false)
+		$assert(error = "str")
+	trap $Switch(null)
+		$assert(true)

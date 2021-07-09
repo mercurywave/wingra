@@ -1,0 +1,9 @@
+
+#test
+	$assert(2 = ~"2")
+	$assert(~"2" = 2)
+	//$assert(~true = "true") // TODO: this+1 fail in js
+	//$assert("true" = ~true) // these seem like use cases that don't matter
+	$assert(1 + 2.5 = 3.5)
+	$assert(1 = 1.0)
+	$assert(~1 = ~"1.0")

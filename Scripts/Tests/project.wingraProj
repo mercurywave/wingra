@@ -1,0 +1,9 @@
+version=1
+
+requires ..\Standard Library\
+requires ..\Test Harness\
+
+; export to javascript
+;jsExport=..\Scratch\web\code.js
+jsFunc=GAME1
+jsHideReview=true

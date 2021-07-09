@@ -1,0 +1,47 @@
+
+
+#test
+	switch 3
+		case 1 \ $assert(false)
+		case 3 \ $assert(true)
+		else \ $assert(false)
+		
+#test
+	switch
+		false \ $assert(false)
+		true \ $assert(true)
+		else \ $assert(false)
+		
+#test
+	@a : 4
+	switch a
+		case 4 \ $assert(true)
+		else \ $assert(false)
+#test
+	switch 3
+		case 4 \ $assert(false)
+		else \ $assert(true)
+			
+#test
+	@a : switch
+		true : true
+		else : false
+	$assert(a)
+	
+#test
+	@a : switch
+		false : false
+		else : true
+	$assert(a)
+	
+#test
+	@a : switch 4
+		3 : false
+		else : true
+	$assert(a)
+	
+#test
+	@a : switch 3
+		3 : true
+		else : false
+	$assert(a)
