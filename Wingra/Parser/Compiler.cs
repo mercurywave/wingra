@@ -27,6 +27,10 @@ namespace Wingra.Parser
 			_isAsmDebug = isAsmDebug;
 			_ResetMacroRuntime();
 		}
+		// primarily for building the static map prior to export, where symbols won't be resolved during the compile
+		public Compiler(WingraProject proj, StaticMapping mapping, bool isSuggestion) : this(mapping, false, proj.DoRunTests, isSuggestion, false) { }
+		public Compiler(WingraProject proj, StaticMapping mapping) : this(proj, mapping, false) { }
+		public Compiler(WingraProject proj) : this(proj, new StaticMapping()) { }
 		Compiler(StaticMapping mapping, Compiler parent)
 		{
 			// this should only be used for the macro compiler

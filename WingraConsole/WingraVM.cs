@@ -12,30 +12,9 @@ namespace WingraConsole
 {
 	class WingraVM
 	{
-		string _path;
 		internal ORuntime _runtime = new ORuntime();
-		WingraProject _proj; // only populated in editor integrated mode!
 
 		public ORuntime Runtime => _runtime;
-		internal bool _isDebug;
-		internal bool _isTest;
-		internal bool _isIDE;
-		internal bool _isAsmDebug;
-
-		WingraVM(bool isDebug, bool isTest, bool isIDE, bool isAsmDebug = false)
-		{
-			_isDebug = isDebug;
-			_runtime.Debug = isDebug;
-			_isTest = isTest;
-			_isIDE = isIDE;
-			_isAsmDebug = isAsmDebug;
-			//_runtime.hookException = DoDebug;
-		}
-
-		public WingraVM(string folder, bool isDebug = false, bool isTest = false, bool isIDE = false, bool isAsmDebug = false) : this(isDebug, isTest, isIDE, isAsmDebug)
-		{
-			_path = folder;
-		}
 
 		public bool HasOpenJobs => _runtime.HasOpenJobs;
 		public int OpenJobs => _runtime.OpenJobs;
@@ -51,25 +30,13 @@ namespace WingraConsole
 		//	STraceViewer.Show(trace, symbols);
 		//}
 
-		public async Task<Compiler> CompileAllAsync(WingraSymbols symbols = null)
-		{
-			var prj = await GetProject();
-			return CompileNow(prj, symbols);
-		}
-		public async Task<WingraProject> InitializeAsync(WingraSymbols symbols = null)
-		{
-			var prj = await GetProject();
-			InitializeNow(prj, symbols);
-			return prj;
-		}
-
 		public async Task RunMain(WingraProject prj, WingraSymbols symbols = null)
 		{
 			var start = Stopwatch.GetTimestamp();
 			await _runtime.RunMain();
 			var complTime = Stopwatch.GetTimestamp();
 			WriteToConsole("Run (" + DurationMs(start, complTime) + " ms)");
-			if (prj.CheckConfigFlag("runTests"))
+			if (prj.DoRunTests)
 				await RunTests(symbols);
 		}
 
@@ -81,73 +48,26 @@ namespace WingraConsole
 			WriteToConsole("Run Tests (" + DurationMs(start, complTime) + " ms)");
 		}
 
-		public async Task<WingraProject> GetProject()
+		internal Compiler CompileNow(WingraProject prj, WingraSymbols symbols = null)
 		{
-			if (_proj != null)
-			{
-				await _proj.LoadAllFiles(); // may not be laoded by the editor earlier
-				return _proj;
-			}
-			if (_path != "")
-			{
-				var cache = new Dictionary<string, WingraProject>();
-				var prj = await LoadProject(_path, cache);
-				return prj;
-			}
-			throw new NotImplementedException();
-		}
-
-		async Task<WingraProject> LoadProject(string path, Dictionary<string, WingraProject> cache)
-		{
-			if (cache.ContainsKey(path))
-				return cache[path];
-
-			var prj = new WingraProject(path, new CodeFileServer());
-			cache.Add(path, prj);
-			fileUtils.PreLoadDirectory(path, prj);
-			await LoadDependentProjects(prj, path, cache);
-			await prj.LoadAllFiles();
-			return prj;
-		}
-
-		async Task LoadDependentProjects(WingraProject prj, string dir, Dictionary<string, WingraProject> cache)
-		{
-			var file = fileUtils.CombinePath(dir, "project." + prj.ProjExtension);
-			if (!fileUtils.FileExists(file))
-				return;
-			await prj.LoadConfigProject(file);
-			foreach (var path in prj.RequiredPaths)
-			{
-				var child = await LoadProject(path, cache);
-				prj.RequiredProjects.Add(child);
-			}
-		}
-
-		Compiler CompileNow(WingraProject prj, WingraSymbols symbols = null)
-		{
-			if (_isTest && symbols == null) symbols = new WingraSymbols();
+			if (prj.DoRunTests && symbols == null) symbols = new WingraSymbols();
 			_runtime.InjectDynamicLibrary(new IO(this), "IO");
 			_runtime.LoadPlugins(prj);
-			var compiler = new Compiler(_runtime.StaticMap
-				, _isDebug
-				, _isTest || prj.CheckConfigFlag("runTests")
-				, false
-				, _isIDE
-				, _isAsmDebug);
+			var compiler = new Compiler(prj, _runtime.StaticMap);
 			var compl = prj.CompileAll(compiler, symbols);
 			//NOTE: add functions to completion match as well
 			_runtime.RegisterFiles(compl);
 			return compiler;
 		}
 
-		void InitializeNow(WingraProject prj, WingraSymbols symbols = null)
+		internal void InitializeNow(WingraProject prj, WingraSymbols symbols = null)
 		{
 			WriteToConsole("Booting...");
 			var start = Stopwatch.GetTimestamp();
 			var comp = CompileNow(prj, symbols);
 			var complTime = Stopwatch.GetTimestamp();
 
-			if (!prj.CompileErrors.Errors.Any())
+			if (!prj.CheckForErrors())
 			{
 				WriteToConsole("Compiled! (" + DurationMs(start, complTime) + " ms)");
 				start = Stopwatch.GetTimestamp();

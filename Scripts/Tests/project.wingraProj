@@ -4,6 +4,6 @@ requires ..\Standard Library\
 requires ..\Test Harness\
 
 ; export to javascript
-;jsExport=..\Scratch\web\code.js
-jsFunc=GAME1
+;jsExport=..\Scratch Web\code.js
+jsFunc=SETUP
 jsHideReview=true

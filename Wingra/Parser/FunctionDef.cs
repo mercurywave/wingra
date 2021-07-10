@@ -16,8 +16,9 @@ namespace Wingra.Parser
 		internal bool _isMethod;
 		internal bool _isAsync;
 		internal bool _isThrow;
+		internal bool _isExtern = false;
 		bool _oneLiner = false;
-		public _SfunctionDef(int fileline, RelativeTokenReference identifier, List<SParameter> parameters, List<SIdentifier> returnParams, bool doesYield, bool isMethod, bool isAsync, bool isThrow, SExpressionComponent oneLiner) : base(fileline)
+		public _SfunctionDef(int fileline, RelativeTokenReference identifier, List<SParameter> parameters, List<SIdentifier> returnParams, bool doesYield, bool isMethod, bool isAsync, bool isThrow, bool isExtern, SExpressionComponent oneLiner) : base(fileline)
 		{
 			_identifier = identifier;
 			_parameters = parameters;
@@ -26,6 +27,7 @@ namespace Wingra.Parser
 			_isMethod = isMethod;
 			_isAsync = isAsync;
 			_isThrow = isThrow;
+			_isExtern = isExtern;
 			if (oneLiner != null)
 			{
 				if (returnParams.Count > 1)
@@ -50,11 +52,11 @@ namespace Wingra.Parser
 		{
 			if (_oneLiner)
 				throw new ParserException("=> functions cannot have child scope");
-			if(node is SArrowReturnStatement)
+			if (node is SArrowReturnStatement)
 			{
 				if (Children.Any())
 					throw new ParserException("=> returns must be the first line of the function");
-				if(_returnParams.Count != 1)
+				if (_returnParams.Count != 1)
 					throw new ParserException("=> returns require a function with a single return value");
 				_oneLiner = true;
 			}
@@ -63,8 +65,11 @@ namespace Wingra.Parser
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			var lamb = EmitBody(compiler, file, func, asmStackLevel, errors);
-			EmitRegister(compiler, file, func, lamb, asmStackLevel, errors, parent);
+			if (!_isExtern)
+			{
+				var lamb = EmitBody(compiler, file, func, asmStackLevel, errors);
+				EmitRegister(compiler, file, func, lamb, asmStackLevel, errors, parent);
+			}
 		}
 		internal FunctionFactory EmitBody(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors)
 		{
@@ -97,6 +102,7 @@ namespace Wingra.Parser
 
 		internal bool CanBeInlined(int passingParams)
 		{
+			if (_isExtern) return false;
 			if (passingParams > _parameters.Count) return false;
 			if (Children.Count() != 1) return false;
 			var inner = Children.First();
@@ -156,7 +162,7 @@ namespace Wingra.Parser
 					// there's a chance this has side effects because of that
 					inner.TryEmitInline(compiler, file, temp, asmStackLevel, logger, this);
 				}
-				catch (Exception ) { return null; }
+				catch (Exception) { return null; }
 			// MAYBE: if you call a global function and that function just uses a local function,
 			// the global function can't be inlined because the caller can't access the local in another file
 			// might not be worth the overhead? maybe we could detect this sooner?
@@ -181,8 +187,9 @@ namespace Wingra.Parser
 			, bool isMethod
 			, bool isAsync
 			, bool isThrow
+			, bool isExtern
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, isExtern, oneLiner)
 		{ }
 
 		internal override void OnAddedToTree(ParseContext context)
@@ -214,7 +221,7 @@ namespace Wingra.Parser
 			, bool isAsync
 			, bool isThrow
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, false, oneLiner)
 		{
 		}
 
@@ -243,8 +250,9 @@ namespace Wingra.Parser
 			, bool isMethod
 			, bool isAsync
 			, bool isThrow
+			, bool isExtern
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, isExtern, oneLiner)
 		{
 			_declaredPath = declaredPath;
 		}
@@ -273,7 +281,7 @@ namespace Wingra.Parser
 			, bool isAsync
 			, bool isThrow
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, false, oneLiner)
 		{ }
 
 		protected override void EmitRegister(Compiler compiler, FileAssembler file, FunctionFactory func, FunctionFactory lamb, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
@@ -294,7 +302,7 @@ namespace Wingra.Parser
 			, bool isAsync
 			, bool isThrow
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, true, isAsync, isThrow, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, true, isAsync, isThrow, false, oneLiner)
 		{ }
 
 		protected override void EmitRegister(Compiler compiler, FileAssembler file, FunctionFactory func, FunctionFactory lamb, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)

@@ -9,6 +9,41 @@ using Wingra;
 
 namespace WingraConsole
 {
+	static class Loader
+	{
+		public static async Task<WingraProject> LoadProject(string path)
+		{
+			var cache = new Dictionary<string, WingraProject>();
+			var prj = await LoadProject(path, cache);
+			return prj;
+		}
+
+		static async Task<WingraProject> LoadProject(string path, Dictionary<string, WingraProject> cache)
+		{
+			if (cache.ContainsKey(path))
+				return cache[path];
+
+			var prj = new WingraProject(path, new CodeFileServer());
+			cache.Add(path, prj);
+			fileUtils.PreLoadDirectory(path, prj);
+			await LoadDependentProjects(prj, path, cache);
+			await prj.LoadAllFiles();
+			return prj;
+		}
+
+		static async Task LoadDependentProjects(WingraProject prj, string dir, Dictionary<string, WingraProject> cache)
+		{
+			var file = fileUtils.CombinePath(dir, "project." + prj.ProjExtension);
+			if (!fileUtils.FileExists(file))
+				return;
+			await prj.LoadConfigProject(file);
+			foreach (var path in prj.RequiredPaths)
+			{
+				var child = await LoadProject(path, cache);
+				prj.RequiredProjects.Add(child);
+			}
+		}
+	}
 	class fileUtils
 	{
 		public static async Task LoadFileAsync(string filename, ITextBuffer buffer)
@@ -85,6 +120,23 @@ namespace WingraConsole
 		public Task AsyncSaveFile(string filename, ITextBuffer buffer)
 		{
 			throw new NotImplementedException();
+		}
+
+		public static async Task AsyncSaveFile(string filename, StringBuilder sb)
+		{
+			try
+			{
+				var fi = new FileInfo(filename);
+				if (!fi.Exists)
+				{
+					var temp = File.CreateText(filename);
+					temp.Close(); // la-zy
+				}
+				using (var stream = File.Open(filename, FileMode.Truncate, FileAccess.Write))
+				using (var writer = new StreamWriter(stream))
+					await writer.WriteAsync(sb.ToString());
+			}
+			catch (Exception e) { throw new Exception("Error writing file " + filename + "\n" + e.ToString()); }
 		}
 
 		public string GetFileDirectoryDisplay(string key)

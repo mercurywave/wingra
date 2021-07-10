@@ -3,48 +3,39 @@ using System.Linq;
 using System.Threading.Tasks;
 using Wingra;
 using Wingra.Interpreter;
+using Wingra.Parser;
 
 namespace WingraConsole
 {
 	class Program
 	{
-		internal ORuntime _runtime = new ORuntime();
 		static async Task Main(string[] args)
 		{
+			try
+			{
+				var prj = await Loader.LoadProject(Environment.CurrentDirectory);
+				if (prj.IsJsExport)
+					await ExportJs(prj);
+				else
+					await RunInterpretted(prj);
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine("Unexpected Panic");
+				Console.WriteLine(e.ToString());
+			}
+		}
+
+		static async Task RunInterpretted(WingraProject prj)
+		{
+			var vm = new WingraVM();
 			WingraSymbols symbols = new WingraSymbols();
 			try
 			{
 				Console.WriteLine("Load " + Environment.CurrentDirectory);
-				var vm = new WingraVM(Environment.CurrentDirectory);
-				var prj = await vm.InitializeAsync(symbols);
-				if (prj.CompileErrors.Errors.Any())
-				{
-					Console.WriteLine();
-					foreach (var err in prj.CompileErrors.Errors)
-					{
-						if (err.Buffer != null)
-							Console.WriteLine(err.Buffer.ShortFileName + " line " + err.Line);
-						if (err.Line >= 0)
-						{
-							var lines = err.Buffer.GetCompleteLine(err.Line, out _);
-							for (int i = 0; i < lines.Count; i++)
-							{
-								var text = err.Buffer.TextAtLine(err.Line + i);
-								Console.WriteLine(" " + text.Replace("\t", RepeatString(" ", WingraBuffer.SpacesToIndent)));
-								if (err.Token.HasValue && err.Token.Value.SubLine == i)
-								{
-									var off = VisualOffset(text, err.Token.Value.Token.LineOffset, WingraBuffer.SpacesToIndent);
-									Console.WriteLine(" " + RepeatString(" ", off) + "^");
-								}
-							}
-						}
-						Console.WriteLine(err.Text);
-						//if (!string.IsNullOrEmpty(err.ExtraText))
-							//Console.WriteLine(err.ExtraText);
-						Console.WriteLine();
-					}
-					Console.WriteLine(prj.CompileErrors.Errors.Count() + " errors");
-				}
+				vm.InitializeNow(prj, symbols);
+				if (prj.CheckForErrors())
+					PrintCompilerErrors(prj);
 				else
 				{
 					await vm.RunMain(prj);
@@ -63,11 +54,60 @@ namespace WingraConsole
 				}
 				Console.WriteLine(e.ToString());
 			}
-			catch (Exception e)
+
+		}
+
+		static async Task ExportJs(WingraProject prj)
+		{
+			WingraSymbols symbols = new WingraSymbols();
+			var compiler = new Compiler(prj);
+			var result = prj.CompileAll(compiler, symbols);
+			if (prj.CheckForErrors())
+				PrintCompilerErrors(prj);
+			else
 			{
-				Console.WriteLine("Unexpected Panic");
-				Console.WriteLine(e.ToString());
+				var file = prj.CheckConfigString("jsExport");
+				var fnName = prj.CheckConfigString("jsFunc", "SETUP");
+				var trans = new Wingra.Transpilers.Javascript(result, symbols);
+				var sb = trans.Output(fnName);
+				if (file == "")
+					Console.Write(sb);
+				else
+				{
+					await CodeFileServer.AsyncSaveFile(file, sb);
+					Console.WriteLine("Successfully wrote js file: " + file);
+				}
 			}
+		}
+
+		static void PrintCompilerErrors(WingraProject prj)
+		{
+			Console.WriteLine();
+			var errs = prj.GetAllErrors();
+			foreach (var err in errs)
+			{
+				if (err.Buffer != null)
+					Console.WriteLine(err.Buffer.ShortFileName + " line " + err.Line);
+				if (err.Line >= 0)
+				{
+					var lines = err.Buffer.GetCompleteLine(err.Line, out _);
+					for (int i = 0; i < lines.Count; i++)
+					{
+						var text = err.Buffer.TextAtLine(err.Line + i);
+						Console.WriteLine(" " + text.Replace("\t", RepeatString(" ", WingraBuffer.SpacesToIndent)));
+						if (err.Token.HasValue && err.Token.Value.SubLine == i)
+						{
+							var off = VisualOffset(text, err.Token.Value.Token.LineOffset, WingraBuffer.SpacesToIndent);
+							Console.WriteLine(" " + RepeatString(" ", off) + "^");
+						}
+					}
+				}
+				Console.WriteLine(err.Text);
+				//if (!string.IsNullOrEmpty(err.ExtraText))
+				//Console.WriteLine(err.ExtraText);
+				Console.WriteLine();
+			}
+			Console.WriteLine(errs.Count() + " errors");
 		}
 
 		static string RepeatString(string str, int count, string delimiter = "")

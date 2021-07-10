@@ -190,15 +190,15 @@ namespace Wingra.Parser
 						, plist.Item1, plist.Item2, plist.Item3, true, plist.Item4, plist.Item5, exp);
 				}),
 
-			// global ::name(namelist) {{ => func }}
-			mp( Token(eToken.Global) + Token(eToken.FunctionDef) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
+			// {extern} global ::name(namelist) {{ => func }}
+			mp( OptionalToken(eToken.Extern, "extern") + Token(eToken.Global) + Token(eToken.FunctionDef) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
 				res => {
 					var plist = ParseParameterDefs(res.GetTokens("params"), out _);
 					SExpressionComponent exp = null;
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
 					return new SGlobalFunctionDef(res.FileLine, res.GetToken("name")
-						, plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, exp);
+						, plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, res.KeyMatched("extern"), exp);
 				}),
 
 			// global scratch Name : value
@@ -263,8 +263,8 @@ namespace Wingra.Parser
 
 		static List<SyntaxPattern> LibraryChain = new List<SyntaxPattern>()
 		{
-			// ::name(namelist) {{ => func }}
-			mp( Token(eToken.FunctionDef) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
+			// {extern} ::name(namelist) {{ => func }}
+			mp(OptionalToken(eToken.Extern, "extern") + Token(eToken.FunctionDef) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
 				res => {
 					var plist = ParseParameterDefs(res.GetTokens("params"), out _);
 					SExpressionComponent exp = null;
@@ -272,11 +272,11 @@ namespace Wingra.Parser
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
 					return new SLibFunctionDef(res.Context.Comp, res.FileLine
 						, new SStaticDeclaredPath(eStaticType.Function, res.GetTokens("name"), res.GetDeclaringNamespace())
-						, res.GetToken("name"), plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, exp);
+						, res.GetToken("name"), plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, res.KeyMatched("extern"), exp);
 				}),
 			
-			// ::.name(namelist) {{ => func }}
-			mp( Token(eToken.FunctionDef) + Token(eToken.Dot) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
+			// {extern} ::.name(namelist) {{ => func }}
+			mp(OptionalToken(eToken.Extern, "extern") + Token(eToken.FunctionDef) + Token(eToken.Dot) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
 				res => {
 					var plist = ParseParameterDefs(res.GetTokens("params"), out _);
 					SExpressionComponent exp = null;
@@ -284,7 +284,7 @@ namespace Wingra.Parser
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
 					return new SLibFunctionDef(res.Context.Comp, res.FileLine
 						, new SStaticDeclaredPath(eStaticType.Function, res.GetTokens("name"), res.GetDeclaringNamespace())
-						, res.GetToken("name"), plist.Item1, plist.Item2, plist.Item3, true, plist.Item4, plist.Item5, exp);
+						, res.GetToken("name"), plist.Item1, plist.Item2, plist.Item3, true, plist.Item4, plist.Item5, res.KeyMatched("extern"), exp);
 				}),
 			
 			// data Path : value
@@ -309,8 +309,15 @@ namespace Wingra.Parser
 					, new SStaticDeclaredPath(eStaticType.Constant, res.GetCleanedPath(), res.GetDeclaringNamespace())
 					, ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("value")))
 				),
+			
+			// extern $path : value
+			mp( Token(eToken.Extern) + Path(true) + Token(eToken.Colon) + SimpleExpression(),
+				res => new SConst(res.FileLine
+					, new SStaticDeclaredPath(eStaticType.External, res.GetCleanedPath(), res.GetDeclaringNamespace())
+					, ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("value")))
+				),
 
-			// library $path
+			// library path
 			mp( Token(eToken.Library) + Path(false),
 				res => new SLibrary(res.FileLine
 					, new SStaticDeclaredPath(eStaticType.Library, res.GetCleanedPath(), res.GetDeclaringNamespace()))
@@ -418,6 +425,17 @@ namespace Wingra.Parser
 				var t = tokens[begin].Token.Type;
 				bool r = (t == token);
 				return new MatchResult(r, begin, begin, key);
+			});
+		}
+		static ChainList OptionalToken(eToken token, string key = "")
+		{
+			return new SingleMatch((context, tokens, begin) =>
+			{
+				var t = tokens[begin].Token.Type;
+				if (t == token)
+					return new MatchResult(true, begin, begin, key);
+				else
+					return new MatchResult(true, begin, begin - 1);
 			});
 		}
 		static ChainList Identifier(string key = "ident")

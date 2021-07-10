@@ -123,11 +123,17 @@ namespace Wingra.Parser
 		}
 		public void Reserve(Compiler compiler, string fileKey, int fileLine, _SfunctionDef funcDef, bool isMethod)
 		{
-			compiler.StaticMap.ReserveNamespace(fileKey, fileLine, _path, _declaringPath, eStaticType.Function, funcDef);
+			if (_type == eStaticType.External)
+				Reserve(compiler, fileKey, fileLine);
+			else
+				compiler.StaticMap.ReserveNamespace(fileKey, fileLine, _path, _declaringPath, eStaticType.Function, funcDef);
 		}
 		public void Reserve(Compiler compiler, string fileKey, int fileLine, SExpressionComponent exp)
 		{
-			compiler.StaticMap.ReserveNamespace(fileKey, fileLine, _path, _declaringPath, eStaticType.Constant, null, exp);
+			if (_type == eStaticType.External)
+				Reserve(compiler, fileKey, fileLine);
+			else
+				compiler.StaticMap.ReserveNamespace(fileKey, fileLine, _path, _declaringPath, eStaticType.Constant, null, exp);
 		}
 
 		void Resolve(Compiler compiler, FileAssembler file, int fileLine, out string type, out string path)
@@ -231,7 +237,7 @@ namespace Wingra.Parser
 				if (!asMethod && fn._isMethod)
 					throw new CompilerException("function is a method", func.CurrentFileLine);
 
-				if(fn._isThrow && !func.IsInErrorTrap())
+				if (fn._isThrow && !func.IsInErrorTrap())
 					throw new CompilerException("function which throws is not trapped by caller", func.CurrentFileLine);
 			}
 
@@ -338,7 +344,7 @@ namespace Wingra.Parser
 
 			// rename any temp variables, so as not to conflict in weird ways
 			// mostly just matters for nested inlining
-			foreach(var vari in inline._declaredVars)
+			foreach (var vari in inline._declaredVars)
 			{
 				if (mapper.ContainsKey(vari)) continue;
 				var temp = func.GetReserveUniqueTemp(vari);

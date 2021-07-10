@@ -48,7 +48,7 @@ namespace Wingra.Parser
 		BootStrap, // #bootstrap
 		Declare, Require, // #declares, #requires
 		LineContinuation,
-		Import, Namespace, Mixin, Global, Scratch, Registry,
+		Import, Namespace, Mixin, Global, Scratch, Registry, Extern,
 		OneLiner, Lambda, //`
 	}
 	public struct BaseToken
@@ -123,6 +123,7 @@ namespace Wingra.Parser
 				case eToken.Await:
 				case eToken.Arun:
 				case eToken.Defer:
+				case eToken.Extern:
 					return true;
 			}
 			return false;

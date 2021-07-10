@@ -77,6 +77,8 @@ namespace Wingra
 		}
 		public override string ProjExtension => "wingraProj";
 
+		public bool DoRunTests => CheckConfigFlag("runTests");
+		public bool IsJsExport => CheckConfigString("jsExport") != "";
 		public bool CheckConfigFlag(string key)
 		{
 			if (Config == null) return false;
@@ -152,31 +154,42 @@ namespace Wingra
 		public static bool IsFileWingra(string file) => file.ToLower().EndsWith(".wng");
 		public override string FileExtension => "wng";
 
-		public Parser.ErrorList CompileErrors = new Parser.ErrorList();
+		internal Parser.ErrorList CompileErrors = new Parser.ErrorList();
+
+		public bool CheckForErrors()
+		{
+			foreach (var prj in GetProjectLoadOrder())
+				if (prj.CompileErrors.Errors.Any())
+					return true;
+			return false;
+		}
+
+		public List<SyntaxError> GetAllErrors()
+			=> GetProjectLoadOrder().SelectMany(prj => prj.CompileErrors.Errors).ToList();
 
 		public IEnumerable<WingraBuffer> IterAllFiles() => _wingraFiles.Select(p => p.Value);
 
 		public WingraCompile CompileAll(StaticMapping mapping, bool isDebug, bool isTest, bool isIDE, WingraSymbols symbols = null, Compiler compiler = null)
 			=> CompileAll(new Compiler(mapping, isDebug, isTest, false, isIDE), symbols);
-		public WingraCompile CompileAll(Compiler compiler, WingraSymbols symbols = null, bool forExport = false)
+
+		public WingraCompile CompileAll(Compiler compiler, WingraSymbols symbols = null)
 		{
 			CompileErrors.Clear();
 			var comp = new WingraCompile();
 
 			foreach (var child in GetProjectLoadOrder())
-				child._CompileAll(comp, compiler, symbols, forExport);
+				child._CompileAll(comp, compiler, symbols);
 
 			comp.SortLoadOrder();
 			return comp;
 		}
 
-		void _CompileAll(WingraCompile comp, Compiler compiler, WingraSymbols symbols = null, bool forExport = false)
+		void _CompileAll(WingraCompile comp, Compiler compiler, WingraSymbols symbols = null)
 		{
 			var files = IterAllFiles().ToArray();
 			foreach (var file in files)
 			{
-				if (!forExport)
-					compiler.StaticMap.FlushFile(file.Key);
+				compiler.StaticMap.FlushFile(file.Key);
 				PreCompileFile(compiler, file);
 			}
 			compiler.Bootstrap(CompileErrors.GetLogger());

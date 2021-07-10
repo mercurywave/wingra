@@ -239,6 +239,7 @@ namespace Wingra.Parser
 			{ "scratch", eToken.Scratch },
 			{ "registry", eToken.Registry },
 			{ "namespace", eToken.Namespace },
+			{ "extern", eToken.Extern },
 			{ "trap", eToken.Trap },
 			{ "try", eToken.Try },
 			{ "catch", eToken.Catch },

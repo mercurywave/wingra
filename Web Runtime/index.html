@@ -1,0 +1,18 @@
+<html>
+<head>
+	<title>Example Wingra Export</title>
+	<script type="text/javascript" src="interpreter.js"></script>
+	<script type="text/javascript" src="code.js"></script> <!-- file generated via compiler -->
+	<style>
+		body {margin:0}
+	</style>
+	<script>
+		function WingraLaunch() {
+			var RT = new ORuntime();
+			RT.InitByteCode(SETUP);  <!-- SETUP is function name defined in wingraProj file -->
+		}
+	</script>
+</head>
+<body onload="WingraLaunch();" >  
+</body>
+</html>
