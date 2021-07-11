@@ -389,6 +389,23 @@ FodyWeavers.xsd
 
 
 
+# js/ts package stuff
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+#for some reason yarn has a bunch of cached files that seem to override gitignore for some reason
+install-state.gz
+*.zip
+
+node_modules
+
+
+
 
 #Wingra specifc
 Scripts/Scratch/*

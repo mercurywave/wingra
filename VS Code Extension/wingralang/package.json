@@ -9,28 +9,72 @@
     "categories": [
         "Programming Languages"
     ],
+    "activationEvents": [
+        "onCommand:extension.sayHello",
+        "onLanguage:wingra"
+    ],
+    "main": "./out/src/extension",
+    "configuration": {
+        "type": "object",
+        "title": "WingraLang configuration",
+        "properties": {
+            "languageServerExample.maxNumberOfProblems": {
+                "type": "number",
+                "default": 100,
+                "description": "Controls the maximum number of problems produced by the server."
+            }
+        }
+    },
     "contributes": {
-        "languages": [{
-            "id": "wingra",
-            "aliases": ["Wingra", "wingra"],
-            "extensions": [".wng"],
-            "configuration": "./language-configuration.json"
-        },
-        {
-            "id": "wingraProj",
-            "aliases": ["WingraProj", "wingra proj"],
-            "extensions": [".wingraProj"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "wingra",
-            "scopeName": "source.wng",
-            "path": "./syntaxes/wingra.tmLanguage.json"
-        },
-        {
-            "language": "wingraProj",
-            "scopeName": "source.wingraProj",
-            "path": "./syntaxes/wingraProj.tmLanguage.json"
-        }]
+        "languages": [
+            {
+                "id": "wingra",
+                "aliases": [
+                    "Wingra",
+                    "wingra"
+                ],
+                "extensions": [
+                    ".wng"
+                ],
+                "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "wingraProj",
+                "aliases": [
+                    "WingraProj",
+                    "wingra proj"
+                ],
+                "extensions": [
+                    ".wingraProj"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "wingra",
+                "scopeName": "source.wng",
+                "path": "./syntaxes/wingra.tmLanguage.json"
+            },
+            {
+                "language": "wingraProj",
+                "scopeName": "source.wingraProj",
+                "path": "./syntaxes/wingraProj.tmLanguage.json"
+            }
+        ]
+    },
+    "extensionDependencies": [],
+    "scripts": {
+        "compile": "tsc -b",
+        "watch": "tsc -b -w"
+    },
+    "devDependencies": {
+        "@types/node": "^14.17.5",
+        "@types/vscode": "^1.58.0",
+        "tslint": "^6.1.0",
+        "typescript": "^4.3.5"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^7.0.0"
     }
 }
