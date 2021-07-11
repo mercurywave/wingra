@@ -1,0 +1,126 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Wingra",
+	"patterns": [
+		{ "include": "#comments" },
+		{ "include": "#macros" },
+		{ "include": "#functions" },
+		{ "include": "#statements" },
+		{ "include": "#strings" }
+	],
+	"repository": {
+		"statements": {
+			"name": "statement.wingra",
+			"patterns": [
+				{ "include": "#keywords" },
+				{ "include": "#expressions" }
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.double-slash.wingra",
+					"begin": "//",
+					"end": "$",
+					"beginCaptures": {
+						"0": { }
+					}
+				}
+			]
+		},
+		"macros": {
+			"patterns": [
+				{
+					"name": "support.function.wingra",
+					"begin": "#",
+					"end": "$",
+					"beginCaptures": {
+						"0": { }
+					}
+				}
+			]
+		},
+		"functions": {
+			"patterns": [
+				{
+					"name": "meta.function.wingra",
+					"begin": "::",
+					"end": "($|\\()",
+					"beginCaptures": {
+						"0": { }
+					}
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.wingra",
+				"match": "\\b(if|while|for|return|to|by|switch|select|else|case|at|in|of|has|copy|free|while|until|break|continue|yield|quit|new|dim|mixin|using|template|use|extern|trap|try|catch|throw|avow|async|await|arun|defer)\\b"
+			},
+			{
+				"name": "support.function.wingra",
+				"match": "\\b(lambda)\\b"
+			},
+			{
+				"name": "storage.type.wingra",
+				"match": "\\b(library|data|enum|global|scratch|registry|namespace)\\b"
+			},
+			{
+				"name": "keyword.constant.wingra",
+				"match": "\\b(true|false|null)\\b"
+			},
+			{
+				"name": "variable.language.wingra",
+				"match": "\\b(this|it)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.wingra",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.wingra",
+					"match": "\\\\."
+				}
+			]
+		},
+		"expressions":{
+			"name": "expression.wingra",
+			"patterns": [
+				{ "include": "#operators" },
+				{ "include": "#statics" }
+			]
+		},
+		"statics": {
+			"patterns": [
+				{
+					"name": "entity.name.function.wingra",
+					"match": "\\$(\\w|\\.)+(\\b|\\()"
+				}
+			]
+		},
+		"operators": {
+			"name": "keyword.operator.wingra",
+			"patterns": [
+				{
+				  "name": "keyword.operator.comparison.wingra",
+				  "match": "(&|\\|=|!=)+"
+				},
+				{
+				  "name": "keyword.operator.arithmetic.wingra",
+				  "match": "(-|\\+|\\*|/)+"
+				},
+				{
+				  "name": "keyword.operator.wingra",
+				  "match": "(@|~|!|\\?|\\.|:|=>|`)+"
+				},
+				{
+					"name": "keyword.operator.separators.wingra",
+					"match": "(,|;|\\\\|_)+"
+				}
+			]
+		}
+	},
+	"scopeName": "source.wng"
+}

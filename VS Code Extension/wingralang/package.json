@@ -1,0 +1,36 @@
+{
+    "name": "wingralang",
+    "displayName": "wingraLang",
+    "description": "langauge support for Wingra programming language",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.58.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "wingra",
+            "aliases": ["Wingra", "wingra"],
+            "extensions": [".wng"],
+            "configuration": "./language-configuration.json"
+        },
+        {
+            "id": "wingraProj",
+            "aliases": ["WingraProj", "wingra proj"],
+            "extensions": [".wingraProj"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "wingra",
+            "scopeName": "source.wng",
+            "path": "./syntaxes/wingra.tmLanguage.json"
+        },
+        {
+            "language": "wingraProj",
+            "scopeName": "source.wingraProj",
+            "path": "./syntaxes/wingraProj.tmLanguage.json"
+        }]
+    }
+}

@@ -1,0 +1,49 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "WingraProj",
+	"patterns": [
+		{ "include": "#comments" },
+		{ "include": "#statements" },
+		{ "include": "#consts" },
+		{ "include": "#strings" }
+	],
+	"repository": {
+		"statements": {
+			"patterns": [{
+				"name": "keyword.control.wingraProj",
+				"match": "\\b(requires)\\b"
+			}]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.double-slash.wingraProj",
+					"begin": ";",
+					"end": "$",
+					"beginCaptures": {
+						"0": { }
+					}
+				}
+			]
+		},
+		"consts": {
+			"patterns": [
+			{
+				"name": "keyword.constant.wingraProj",
+				"match": "\\b(true|false|null)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.wingraProj",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.wingraProj",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.wingraProj"
+}
