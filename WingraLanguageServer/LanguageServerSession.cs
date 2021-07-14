@@ -1,4 +1,5 @@
-﻿using JsonRpc.Client;
+﻿using ILanguage;
+using JsonRpc.Client;
 using JsonRpc.Contracts;
 using JsonRpc.DynamicProxy.Client;
 using LanguageServer.VsCode.Contracts;
@@ -11,104 +12,163 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Wingra;
+using Wingra.Parser;
 
 namespace WingraLanguageServer
 {
-    public class LanguageServerSession
-    {
-        private readonly CancellationTokenSource cts = new CancellationTokenSource();
+	public class LanguageServerSession
+	{
+		private readonly CancellationTokenSource cts = new CancellationTokenSource();
 
-        public LanguageServerSession(JsonRpcClient rpcClient, IJsonRpcContractResolver contractResolver)
-        {
-            RpcClient = rpcClient ?? throw new ArgumentNullException(nameof(rpcClient));
-            var builder = new JsonRpcProxyBuilder { ContractResolver = contractResolver };
-            Client = new ClientProxy(builder, rpcClient);
-            Documents = new ConcurrentDictionary<Uri, SessionDocument>();
-            DiagnosticProvider = new DiagnosticProvider();
-        }
+		internal WingraProject Prj = null;
+		internal Compiler Cmplr => Prj.IncrementalDebugCompiler;
+		internal DocFileServer FileServer = new DocFileServer();
+		internal string _folderPath;
+		internal Dictionary<WingraBuffer, STopOfFile> _parsedFiles = new Dictionary<WingraBuffer, STopOfFile>();
+		internal Dictionary<WingraBuffer, FileScopeTracker> _scopeTracker = new Dictionary<WingraBuffer, FileScopeTracker>();
+		internal StaticMapping _staticMap = new StaticMapping();
 
-        public CancellationToken CancellationToken => cts.Token;
+		internal List<CompletionItem> StaticSuggestions = new List<CompletionItem>();
+		public LanguageServerSession(JsonRpcClient rpcClient, IJsonRpcContractResolver contractResolver)
+		{
+			RpcClient = rpcClient ?? throw new ArgumentNullException(nameof(rpcClient));
+			var builder = new JsonRpcProxyBuilder { ContractResolver = contractResolver };
+			Client = new ClientProxy(builder, rpcClient);
+			Documents = new ConcurrentDictionary<Uri, SessionDocument>();
+			DiagnosticProvider = new DiagnosticProvider();
+		}
 
-        public JsonRpcClient RpcClient { get; }
+		public CancellationToken CancellationToken => cts.Token;
 
-        public ClientProxy Client { get; }
+		public JsonRpcClient RpcClient { get; }
 
-        public ConcurrentDictionary<Uri, SessionDocument> Documents { get; }
+		public ClientProxy Client { get; }
 
-        public DiagnosticProvider DiagnosticProvider { get; }
+		public ConcurrentDictionary<Uri, SessionDocument> Documents { get; }
 
-        public LanguageServerSettings Settings { get; set; } = new LanguageServerSettings();
+		public DiagnosticProvider DiagnosticProvider { get; }
 
-        public void StopServer()
-        {
-            cts.Cancel();
-        }
+		public LanguageServerSettings Settings { get; set; } = new LanguageServerSettings();
 
-    }
+		public void StopServer()
+		{
+			cts.Cancel();
+		}
 
-    public class SessionDocument
-    {
-        /// <summary>
-        /// Actually makes the changes to the inner document per this milliseconds.
-        /// </summary>
-        private const int RenderChangesDelay = 100;
+		internal async Task InitializeAsync()
+		{
+			Prj = await Loader.LoadProject(_folderPath, FileServer);
+			Prj.IncrementalDebugCompiler = new Compiler(_staticMap, false, false, true, true);
+			Prj.IncrementalErrorList = new ErrorList();
+			foreach (var sug in Suggestion.GetBuiltIns(_staticMap))
+			{
+				if (sug.Type == eSuggestionType.Keyword)
+					StaticSuggestions.Add(new CompletionItem(sug.Function, CompletionItemKind.Keyword, null));
+			}
+			BuildCache();
+		}
+		void BuildCache()
+		{
+			MinimalErrorLogger log = new MinimalErrorLogger();
+			// pre-parse to get all macros up front before attempting to fully compile anything
+			foreach (var file in Prj.IterAllFilesRecursive().ToList())
+			{
+				Cmplr.PreParse(file, log);
+			}
+			foreach (var file in Prj.IterAllFilesRecursive().ToList())
+				UpdateFileCache(file);
+		}
+		internal void UpdateFileCache(WingraBuffer file)
+		{
+			Prj.IncrementalErrorList.ClearForFile(file);
+			var log = Prj.IncrementalErrorList.GetFileLogger(file);
+			try
+			{
+				// TODO: does this comment still apply?
+				// macro support is definitely buggy here, but it works in the common cases
+				// macros are never cleaned, so old macros continue to apply
+				// probably not a common problem
+				// only really matters if you delete one but still use it?
+				_staticMap.FlushFile(file.Key); // clear cruft
+				Cmplr.ClearMacroCacheForFile(file.Key);
+				Cmplr.PreParse(file, log);
+				Cmplr.Bootstrap(log);
+				var tracker = new FileScopeTracker();
+				_parsedFiles[file] = Cmplr.Parse(file, log, tracker);
+				_scopeTracker[file] = tracker;
+			}
+			catch (Exception e)
+			{
+				// do nothing?
+			}
+		}
+	}
 
-        public SessionDocument(TextDocumentItem doc)
-        {
-            Document = TextDocument.Load<FullTextDocument>(doc);
-        }
+	public class SessionDocument
+	{
+		/// <summary>
+		/// Actually makes the changes to the inner document per this milliseconds.
+		/// </summary>
+		private const int RenderChangesDelay = 100;
 
-        private Task updateChangesDelayTask;
+		public SessionDocument(TextDocumentItem doc)
+		{
+			Document = TextDocument.Load<FullTextDocument>(doc);
+		}
 
-        private readonly object syncLock = new object();
+		private Task updateChangesDelayTask;
 
-        private List<TextDocumentContentChangeEvent> impendingChanges = new List<TextDocumentContentChangeEvent>();
+		private readonly object syncLock = new object();
 
-        public event EventHandler DocumentChanged;
+		private List<TextDocumentContentChangeEvent> impendingChanges = new List<TextDocumentContentChangeEvent>();
 
-        public TextDocument Document { get; set; }
+		public event EventHandler DocumentChanged;
 
-        public void NotifyChanges(IEnumerable<TextDocumentContentChangeEvent> changes)
-        {
-            lock (syncLock)
-            {
-                if (impendingChanges == null)
-                    impendingChanges = changes.ToList();
-                else
-                    impendingChanges.AddRange(changes);
-            }
-            if (updateChangesDelayTask == null || updateChangesDelayTask.IsCompleted)
-            {
-                updateChangesDelayTask = Task.Delay(RenderChangesDelay);
-                updateChangesDelayTask.ContinueWith(t => Task.Run((Action)MakeChanges));
-            }
-        }
+		public TextDocument Document { get; set; }
 
-        private void MakeChanges()
-        {
-            List<TextDocumentContentChangeEvent> localChanges;
-            lock (syncLock)
-            {
-                localChanges = impendingChanges;
-                if (localChanges == null || localChanges.Count == 0) return;
-                impendingChanges = null;
-            }
-            Document = Document.ApplyChanges(localChanges);
-            if (impendingChanges == null)
-            {
-                localChanges.Clear();
-                lock (syncLock)
-                {
-                    if (impendingChanges == null)
-                        impendingChanges = localChanges;
-                }
-            }
-            OnDocumentChanged();
-        }
+		public void NotifyChanges(IEnumerable<TextDocumentContentChangeEvent> changes)
+		{
+			lock (syncLock)
+			{
+				if (impendingChanges == null)
+					impendingChanges = changes.ToList();
+				else
+					impendingChanges.AddRange(changes);
+			}
+			//if (updateChangesDelayTask == null || updateChangesDelayTask.IsCompleted)
+			//{
+			//	updateChangesDelayTask = Task.Delay(RenderChangesDelay);
+			//	updateChangesDelayTask.ContinueWith(t => Task.Run((Action)MakeChanges), TaskScheduler.Current);
+			//}
+			MakeChanges();
+		}
 
-        protected virtual void OnDocumentChanged()
-        {
-            DocumentChanged?.Invoke(this, EventArgs.Empty);
-        }
-    }
+		private void MakeChanges()
+		{
+			List<TextDocumentContentChangeEvent> localChanges;
+			lock (syncLock)
+			{
+				localChanges = impendingChanges;
+				if (localChanges == null || localChanges.Count == 0) return;
+				impendingChanges = null;
+			}
+			Document = Document.ApplyChanges(localChanges);
+			if (impendingChanges == null)
+			{
+				localChanges.Clear();
+				lock (syncLock)
+				{
+					if (impendingChanges == null)
+						impendingChanges = localChanges;
+				}
+			}
+			OnDocumentChanged();
+		}
+
+		protected virtual void OnDocumentChanged()
+		{
+			DocumentChanged?.Invoke(this, EventArgs.Empty);
+		}
+	}
 }

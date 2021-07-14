@@ -23,7 +23,7 @@ namespace Wingra.Parser
 			Process(text, tabWidth);
 		}
 
-		public void Process(string text, int tabWidth)
+		public LexLine Process(string text, int tabWidth)
 		{
 			Tokens.Clear();
 			PreceedingWhitespace = 0;
@@ -98,6 +98,7 @@ namespace Wingra.Parser
 				}
 				ContainsMacro = macroRemainder;
 			}
+			return this;
 		}
 
 		bool IsStartOfIdentifier(char c) => char.IsLetter(c) || c == '_' || c == '#' || c == '$' || c == '^';
@@ -282,6 +283,8 @@ namespace Wingra.Parser
 			{ "#declares", eToken.Declare },
 			{ "#requires", eToken.Require },
 		};
+		//public static Dictionary<eToken, string> _tokeToSymbol = _tokenMap.ToDictionary(p => p.Value, p => p.Key);
+		
 		static bool _validateTokensDummy = _validateDummyFunc();
 		static bool _validateDummyFunc()
 		{

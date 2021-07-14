@@ -6,8 +6,10 @@ using LanguageServer.VsCode;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Wingra;
 
 namespace WingraLanguageServer
 {
@@ -58,16 +60,15 @@ namespace WingraLanguageServer
 
 	}
 
-	internal static class Utility
+	internal static class util
 	{
 		public static readonly JsonSerializer CamelCaseJsonSerializer = new JsonSerializer
 		{
 			ContractResolver = new CamelCasePropertyNamesContractResolver()
 		};
-
-		public static string GetTimeStamp()
+		public static string Join(IEnumerable<string> pieces, string delim)
 		{
-			return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+			return string.Join(delim, pieces);
 		}
 	}
 }

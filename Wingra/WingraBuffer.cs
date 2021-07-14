@@ -9,7 +9,8 @@ namespace Wingra
 	{
 		public string Key { get; set; }
 
-		public List<FileSyntaxLine> _lines = new List<FileSyntaxLine>();
+		public List<string> _text = new List<string>();
+		public List<LexLine> _lex = new List<LexLine>();
 		public int? ParseDebugLine = null;
 		public int? IdentifierProcessDebugLine = null;
 		STopOfFile _tree;
@@ -26,7 +27,7 @@ namespace Wingra
 			Key = key;
 		}
 
-		public int Lines { get { return _lines.Count; } }
+		public int Lines { get { return _text.Count; } }
 		public bool Dirty { get; set; }
 
 		public event LineChangedHandler evLineChanged;
@@ -36,22 +37,25 @@ namespace Wingra
 
 		public void AppendLine(string text)
 		{
-			_lines.Add(new FileSyntaxLine(text));
+			_text.Add(text);
+			_lex.Add(new LexLine(text, SpacesToIndent));
 			evLineInserted?.Invoke(Lines - 1, text, "");
 			Dirty = true;
 		}
 
 		public void DeleteLine(int line)
 		{
-			var prev = _lines[line].Text;
-			_lines.RemoveAt(line);
+			var prev = _text[line];
+			_text.RemoveAt(line);
+			_lex.RemoveAt(line);
 			evLineRemoved?.Invoke(line, "", prev);
 			Dirty = true;
 		}
 
 		public void InsertLine(int line, string text)
 		{
-			_lines.Insert(line, new FileSyntaxLine(text));
+			_text.Insert(line, text);
+			_lex.Insert(line, new LexLine(text, SpacesToIndent));
 			evLineInserted?.Invoke(line, text, "");
 			Dirty = true;
 		}
@@ -75,7 +79,7 @@ namespace Wingra
 			int relevantChar = (left ? 0 : -1);
 			bool startedWord = false;
 			string splits = " -,.()[]{};:";
-			string text = _lines[line].Text;
+			string text = _text[line];
 			int x = idx;
 			for (int i = 0; i < text.Length; i++)
 			{
@@ -93,94 +97,60 @@ namespace Wingra
 
 		public void SetLine(int line, string text)
 		{
-			var prev = _lines[line].Text;
-			_lines[line].Modify(text);
+			var prev = _text[line];
+			_lex[line].Process(text, SpacesToIndent);
 			evLineChanged?.Invoke(line, text, prev);
 			Dirty = true;
 		}
 
 		public string TextAtLine(int line)
 		{
-			return _lines[line].Text;
+			return _text[line];
 		}
 
-		public FileSyntaxLine GetSyntaxMetadata(int line) => _lines[line];
+		public LexLine GetSyntaxMetadata(int line) => _lex[line];
 
 		//includes line continuation
 		// if you are in the middle of a line continuation, gets the line from the start
 		public List<LexLine> GetCompleteLine(int line, out int startOfLine)
 		{
 			startOfLine = line;
-			FileSyntaxLine syn = _lines[line];
-			List<LexLine> cont = new List<LexLine>() { syn.Lex };
-			if (line == _lines.Count - 1) return cont;
-			while (_lines[startOfLine].Lex.LineIsContinuation) // scan upward for continuation
+			List<LexLine> cont = new List<LexLine>() { _lex[line] };
+			if (line == _lex.Count - 1) return cont;
+			while (_lex[startOfLine].LineIsContinuation) // scan upward for continuation
 			{
 				startOfLine--;
-				cont.Insert(0, _lines[startOfLine].Lex);
+				cont.Insert(0, _lex[startOfLine]);
 			}
-			for (int i = line + 1; i < _lines.Count; i++) // now scan downwards until there are no more continuations
-				if (_lines[i].Lex.LineIsContinuation)
-					cont.Add(_lines[i].Lex);
+			for (int i = line + 1; i < _lex.Count; i++) // now scan downwards until there are no more continuations
+				if (_lex[i].LineIsContinuation)
+					cont.Add(_lex[i]);
 				else break;
 			return cont;
 		}
 
 		#region Errors
-		struct LineError
+
+		// TODO: previously, using FSL system allowed unique pointers that would auto-move when a line was inserted
+		// now we don't have the same unique pointer, so the line numbers might get out of sync
+		// probably doesn't matter unless I build my own editor again, though
+		// maybe lexLine should just be a class instead of a struct? it does contain a list pointer that is maintained
+		MapSet<int, SyntaxError> _errors = new MapSet<int, SyntaxError>();
+		public IEnumerable<SyntaxError> GetErrorsAtLine(int line)
 		{
-			public FileSyntaxLine Syntax;
-			public SyntaxError Error;
-			public LineError(FileSyntaxLine syn, SyntaxError err)
-			{
-				Syntax = syn;
-				Error = err;
-			}
-		}
-		List<LineError> _errorMap = new List<LineError>();
-		public IEnumerable<SyntaxError> GetErrorsAtLine(FileSyntaxLine line)
-		{
-			foreach (var le in _errorMap)
-				if (le.Syntax == line)
-					yield return le.Error;
+			if (_errors.Contains(line))
+				foreach (var er in _errors.Values(line))
+					yield return er;
 		}
 		public void RegisterError(SyntaxError error)
 		{
 			if (error.Line < 0) return;
-			_errorMap.Add(new LineError(GetSyntaxMetadata(error.Line), error));
+			_errors.Set(error.Line, error);
 			evLineUpdated?.Invoke(error.Line);
 		}
 		public void ClearError(SyntaxError error)
 		{
-			_errorMap.RemoveAll(le => le.Error == error);
-		}
-		#endregion
-
-		#region code suggest
-		public List<String> GenericResultsForLine(SyntaxNode node)
-		{
-			List<string> results = new List<string>();
-			if (node != null)
-			{
-				searchAddTypeDefs(results);
-				searchAddControlFlow(results);
-			}
-			return results;
-		}
-		void searchAddTypeDefs(List<string> results)
-		{
-			results.Add("int");
-			results.Add("float");
-			results.Add("string");
-		}
-		void searchAddControlFlow(List<string> results)
-		{
-			results.Add("if");
-			results.Add("else");
-			results.Add("switch");
-			results.Add("for");
-			results.Add("while");
-			results.Add("until");
+			_errors.RemoveValues(er => er == error);
 		}
 		#endregion
 
@@ -188,27 +158,21 @@ namespace Wingra
 		{
 			return "File:" + ShortFileName;
 		}
-	}
 
-	//provides reflection of files for editor and detailed error messages
-	// I don't know if I really need any of this with Kilt...
-	public class FileSyntaxLine
-	{
-		LexLine _lex;
-		string _text;
-		public FileSyntaxLine(string text)
+		//DOES NOT BROADCAST UPDATE EVENTS
+		public void SyncFromExternal(List<string> lines)
 		{
-			_text = text;
-			_lex = new LexLine(text, WingraBuffer.SpacesToIndent);
+			var old = _text;
+			_text = lines;
+			if(_lex.Count > _text.Count)
+				_lex.RemoveRange(_text.Count, _lex.Count - _text.Count);
+			for (int i = 0; i < _text.Count; i++)
+			{
+				if (i >= old.Count)
+					_lex.Add(new LexLine(_text[i], SpacesToIndent));
+				else if (_text[i] != old[i])
+					_lex[i] = _lex[i].Process(_text[i], SpacesToIndent);
+			}
 		}
-
-		public void Modify(string newText)
-		{
-			_text = newText;
-			_lex.Process(newText, WingraBuffer.SpacesToIndent);
-		}
-
-		public LexLine Lex => _lex;
-		public string Text => _text;
 	}
 }

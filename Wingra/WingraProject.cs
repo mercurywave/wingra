@@ -110,6 +110,7 @@ namespace Wingra
 		}
 
 		public WingraBuffer GetFile(string key) => _wingraFiles[key];
+		public bool IsFileLoaded(string key) => _wingraFiles.ContainsKey(key);
 
 		protected override async Task<ITextBuffer> _LoadByKey(string key)
 		{
@@ -168,6 +169,7 @@ namespace Wingra
 			=> GetProjectLoadOrder().SelectMany(prj => prj.CompileErrors.Errors).ToList();
 
 		public IEnumerable<WingraBuffer> IterAllFiles() => _wingraFiles.Select(p => p.Value);
+		public IEnumerable<WingraBuffer> IterAllFilesRecursive() => GetProjectLoadOrder().SelectMany(p => p.IterAllFiles());
 
 		public WingraCompile CompileAll(StaticMapping mapping, bool isDebug, bool isTest, bool isIDE, WingraSymbols symbols = null, Compiler compiler = null)
 			=> CompileAll(new Compiler(mapping, isDebug, isTest, false, isIDE), symbols);
@@ -375,7 +377,7 @@ namespace Wingra
 				var assFunc = GetAssemblyCode(lvl.Source);
 				var fileLine = assFunc.GetFileLineFromCodeLine(lvl.CurrentLinePointer);
 				if (fileLine >= 0 && fileLine < file.Lines)
-					return "[ln " + fileLine + "]  " + file._lines[fileLine].Text.Trim().Replace("\t", "  ");
+					return "[ln " + fileLine + "]  " + file.TextAtLine(fileLine).Trim().Replace("\t", "  ");
 			}
 			return "[unknown code]";
 		}

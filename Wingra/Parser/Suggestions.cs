@@ -38,6 +38,10 @@ namespace Wingra
 			// the number of special cases here is fairly small for the moment, not worth fancy system
 			LCompiler.Setup(temp, new Compiler(mapping, true, true, true, true));
 
+			foreach (var pair in LexLine._tokenMap)
+				if (BaseToken.IsTokenReserved(pair.Value))
+					list.Add(new Suggestion(eSuggestionType.Keyword, "", pair.Key));
+
 			return list;
 		}
 

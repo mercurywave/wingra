@@ -12,4 +12,9 @@
     <PackageReference Include="StreamJsonRpc" Version="2.8.21" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ILanguage\ILanguage.csproj" />
+    <ProjectReference Include="..\Wingra\Wingra.csproj" />
+  </ItemGroup>
+
 </Project>

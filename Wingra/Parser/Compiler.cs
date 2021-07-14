@@ -57,24 +57,24 @@ namespace Wingra.Parser
 
 			if (buffer.Lines > 0)
 			{
-				var fsl = buffer.GetSyntaxMetadata(0).Lex;
-				if (!fsl.IsEmpty && fsl.Tokens[0].Type == eToken.BootStrap && !_bootstrap.Contains(buffer))
+				var lex = buffer.GetSyntaxMetadata(0);
+				if (!lex.IsEmpty && lex.Tokens[0].Type == eToken.BootStrap && !_bootstrap.Contains(buffer))
 					_bootstrap.Add(buffer);
 			}
 			for (int buffLine = 0; buffLine < buffer.Lines; buffLine++)
 			{
 				_buffLine = buffLine;
-				var fsl = buffer.GetSyntaxMetadata(buffLine);
-				if (fsl.Lex.DefinesMacro && fsl.Lex.Tokens.Count > 1)
+				var lex = buffer.GetSyntaxMetadata(buffLine);
+				if (lex.DefinesMacro && lex.Tokens.Count > 1)
 				{
-					var name = fsl.Lex.Tokens[1].Token; // assumes first token is always "#def" from DefinesMacro
-					var indent = fsl.Lex.PreceedingWhitespace;
+					var name = lex.Tokens[1].Token; // assumes first token is always "#def" from DefinesMacro
+					var indent = lex.PreceedingWhitespace;
 					WingraBuffer fake = new WingraBuffer(name);
 					for (int j = buffLine + 1; j < buffer.Lines; j++)
 					{
 						var next = buffer.GetSyntaxMetadata(j);
-						if (next.Lex.PreceedingWhitespace <= indent) break;
-						fake.AppendLine(next.Text); // there's a tiny amount of double work here
+						if (next.PreceedingWhitespace <= indent) break;
+						fake.AppendLine(buffer.TextAtLine(j)); // there's a tiny amount of double work here
 					}
 					SMacroDef def = new SMacroDef(buffLine, name);
 					_macroCompiler._Parse(fake, errors, def);
@@ -130,43 +130,39 @@ namespace Wingra.Parser
 			for (int buffLine = 0; buffLine < buffer.Lines;)
 			{
 				_buffLine = buffLine;
-				var fsl = buffer.GetSyntaxMetadata(buffLine);
-				var lline = fsl.Lex;
-				if (lline.DefinesMacro)
+				var lexline = buffer.GetSyntaxMetadata(buffLine);
+				var text = buffer.TextAtLine(buffLine);
+				if (lexline.DefinesMacro)
 				{
 					// need to skip over all lines inside the macro def
 					// must have been handled by pre-parse
-					var indent = lline.PreceedingWhitespace;
+					var indent = lexline.PreceedingWhitespace;
 					int j = 1;
 					for (; j + buffLine < buffer.Lines; j++)
 					{
 						var nextLine = buffer.GetSyntaxMetadata(buffLine + j);
-						if (nextLine.Lex.PreceedingWhitespace <= indent) break;
+						if (nextLine.PreceedingWhitespace <= indent) break;
 					}
 					buffLine += j;
 					continue;
 				}
 
-				if (!_ParseAhead(buffer, errors, topLevel, scope, ref buffLine, fsl, ref expandedLine, tracker))
+				if (!_ParseAhead(buffer, errors, topLevel, scope, ref buffLine, text, lexline, ref expandedLine, tracker))
 					return;
 			}
 		}
 
-		bool _ParseAhead(WingraBuffer buffer, ErrorLogger errors, IHaveChildScope topLevel, ScopeStack scope, ref int buffLine, FileSyntaxLine fsl, ref int expandedLine, FileScopeTracker tracker = null)
+		bool _ParseAhead(WingraBuffer buffer, ErrorLogger errors, IHaveChildScope topLevel, ScopeStack scope, ref int buffLine, string lineText, LexLine lexline, ref int expandedLine, FileScopeTracker tracker = null)
 		{
-			var lline = fsl.Lex;
-			if (lline.ContainsMacro)
+			if (lexline.ContainsMacro)
 			{
-				if (!ProcessMacro(buffer, errors, buffLine, fsl, out var replaceLineCount, out var newCode))
+				if (!ProcessMacro(buffer, errors, buffLine, lineText, lexline, out var replaceLineCount, out var newCode))
 					return false;
 
 				List<LexLine> lexed = new List<LexLine>();
 				foreach (var padded in newCode)
-				{
-					var syntax = new FileSyntaxLine(padded);
-					lexed.Add(syntax.Lex);
-				}
-
+					lexed.Add(new LexLine(padded, WingraBuffer.SpacesToIndent));
+				
 				var offset = buffLine;
 				if (lexed.Count > replaceLineCount)
 				{
@@ -192,30 +188,29 @@ namespace Wingra.Parser
 			}
 			else
 			{
-				List<RelativeTokenReference> lineTokes = lline.GetRealRelativeTokens(0);
+				List<RelativeTokenReference> lineTokes = lexline.GetRealRelativeTokens(0);
 				int j = 1;
 				if (!(scope.Peek() is STextData))
 					for (; j + buffLine < buffer.Lines; j++)
 					{
 						//This code is duplicative of some of the existing buffer features...
-						var lex = buffer.GetSyntaxMetadata(buffLine + j).Lex;
+						var lex = buffer.GetSyntaxMetadata(buffLine + j);
 						if (!lex.LineIsContinuation) break;
 						lineTokes.AddRange(lex.GetRealRelativeTokens(j));
 					}
 
 				var context = new ParseContext(this, buffer, buffLine, errors, scope);
-				ParseSingleLine(context, lineTokes, lline.PreceedingWhitespace, tracker);
+				ParseSingleLine(context, lineTokes, lexline.PreceedingWhitespace, tracker);
 				buffLine += j;
 			}
 			return true;
 		}
 
 
-		bool ProcessMacro(WingraBuffer buffer, ErrorLogger errors, int buffLine, FileSyntaxLine fsl, out int replacedLineCount, out List<string> newCode)
+		bool ProcessMacro(WingraBuffer buffer, ErrorLogger errors, int buffLine, string lineText, LexLine lexline, out int replacedLineCount, out List<string> newCode)
 		{
-			var lline = fsl.Lex;
-			int index = lline.Tokens.FindIndex(t => t.Type == eToken.Macro);
-			var ident = lline.Tokens[index];
+			int index = lexline.Tokens.FindIndex(t => t.Type == eToken.Macro);
+			var ident = lexline.Tokens[index];
 			newCode = null;
 			if (!_macros.ContainsKey(ident.Token))
 			{
@@ -223,16 +218,16 @@ namespace Wingra.Parser
 				errors.LogError("Macro " + ident + " not found", buffLine, new RelativeTokenReference(ident, 0));
 				return false;
 			}
-			var preceeding = fsl.Text.Substring(0, lline.Tokens[index].LineOffset);
-			var indent = lline.PreceedingWhitespace;
+			var preceeding = lineText.Substring(0, lexline.Tokens[index].LineOffset);
+			var indent = lexline.PreceedingWhitespace;
 			var code = new List<string>();
-			code.Add(util.BoundedSubstr(fsl.Text, ident.LineOffset + ident.Length, fsl.Text.Length)); // slightly lazy
+			code.Add(util.BoundedSubstr(lineText, ident.LineOffset + ident.Length, lineText.Length)); // slightly lazy
 			int j = 1;
 			for (; j + buffLine < buffer.Lines; j++)
 			{
 				var nextLine = buffer.GetSyntaxMetadata(buffLine + j);
-				if (nextLine.Lex.PreceedingWhitespace <= indent) break;
-				var inner = LexLine.RemovePreceedingWhitespace(nextLine.Text, indent, WingraBuffer.SpacesToIndent);
+				if (nextLine.PreceedingWhitespace <= indent) break;
+				var inner = LexLine.RemovePreceedingWhitespace(buffer.TextAtLine(buffLine + j), indent, WingraBuffer.SpacesToIndent);
 				code.Add(inner);
 			}
 			replacedLineCount = j;
@@ -281,11 +276,10 @@ namespace Wingra.Parser
 			for (int buffLine = 0; buffLine < buffer.Lines; buffLine++)
 			{
 				_buffLine = buffLine;
-				var fsl = buffer.GetSyntaxMetadata(buffLine);
-				var lline = fsl.Lex;
-				if (lline.ContainsMacro)
+				var lexline = buffer.GetSyntaxMetadata(buffLine);
+				if (lexline.ContainsMacro)
 				{
-					if (ProcessMacro(buffer, errors, buffLine, fsl, out var replacedLines, out var newCode))
+					if (ProcessMacro(buffer, errors, buffLine, buffer.TextAtLine(buffLine), lexline, out var replacedLines, out var newCode))
 					{
 						buffLine += replacedLines - 1;
 						foreach (var code in newCode)

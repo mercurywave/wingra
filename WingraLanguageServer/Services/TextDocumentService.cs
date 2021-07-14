@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,96 +9,372 @@ using JsonRpc.Server;
 using LanguageServer.VsCode;
 using LanguageServer.VsCode.Contracts;
 using LanguageServer.VsCode.Server;
+using Wingra;
+using Wingra.Parser;
 
 namespace WingraLanguageServer.Services
 {
-    [JsonRpcScope(MethodPrefix = "textDocument/")]
-    public class TextDocumentService : LanguageServiceBase
-    {
-        [JsonRpcMethod]
-        public async Task<Hover> Hover(TextDocumentIdentifier textDocument, Position position, CancellationToken ct)
-        {
-            // Note that Hover is cancellable.
-            await Task.Delay(1000, ct);
-            return new Hover { Contents = "Test _hover_ @" + position + "\n\n" + textDocument };
-        }
+	[JsonRpcScope(MethodPrefix = "textDocument/")]
+	public class TextDocumentService : LanguageServiceBase
+	{
+		[JsonRpcMethod]
+		public async Task<Hover> Hover(TextDocumentIdentifier textDocument, Position position, CancellationToken ct)
+		{
+			// Note that Hover is cancellable.
+			await Task.Delay(1000, ct);
+			return new Hover { Contents = "Test _hover_ @" + position + "\n\n" + textDocument };
+		}
 
-        [JsonRpcMethod]
-        public SignatureHelp SignatureHelp(TextDocumentIdentifier textDocument, Position position, object context = null)
-        {
-            return new SignatureHelp(new List<SignatureInformation>
-            {
-                new SignatureInformation("**Function1**", "Documentation1"),
-                new SignatureInformation("**Function2** <strong>test</strong>", "Documentation2"),
-            });
-        }
+		[JsonRpcMethod]
+		public SignatureHelp SignatureHelp(TextDocumentIdentifier textDocument, Position position, object context = null)
+		{
+			return new SignatureHelp(new List<SignatureInformation>
+			{
+				new SignatureInformation("**Function1**", "Documentation1"),
+				new SignatureInformation("**Function2** <strong>test</strong>", "Documentation2"),
+			});
+		}
 
-        [JsonRpcMethod(IsNotification = true)]
-        public async Task DidOpen(TextDocumentItem textDocument)
-        {
-            var doc = new SessionDocument(textDocument);
-            var session = Session;
-            doc.DocumentChanged += async (sender, args) =>
-            {
-                // Lint the document when it's changed.
-                var doc1 = ((SessionDocument)sender).Document;
-                var diag1 = session.DiagnosticProvider.LintDocument(doc1, session.Settings.MaxNumberOfProblems);
-                if (session.Documents.ContainsKey(doc1.Uri))
-                {
-                    // In case the document has been closed when we were linting…
-                    await session.Client.Document.PublishDiagnostics(doc1.Uri, diag1);
-                }
-            };
-            Session.Documents.TryAdd(textDocument.Uri, doc);
-            var diag = Session.DiagnosticProvider.LintDocument(doc.Document, Session.Settings.MaxNumberOfProblems);
-            await Client.Document.PublishDiagnostics(textDocument.Uri, diag);
-        }
+		[JsonRpcMethod(IsNotification = true)]
+		public async Task DidOpen(TextDocumentItem textDocument)
+		{
+			var doc = new SessionDocument(textDocument);
+			var session = Session; // must capture - session not available during callback
+			doc.DocumentChanged += (sender, args) =>
+			{
+				var key = fileUtils.UriTRoPath(doc.Document.Uri);
+				if (session.Prj.IsFileLoaded(key))
+				{
+					var wb = session.Prj.GetFile(key);
+					wb.SyncFromExternal(doc.Document.Content.Split("\n").ToList());
+					session.UpdateFileCache(wb);
+				}
+			};
+			session.Documents.TryAdd(textDocument.Uri, doc);
+		}
 
-        [JsonRpcMethod(IsNotification = true)]
-        public void DidChange(TextDocumentIdentifier textDocument,
-            ICollection<TextDocumentContentChangeEvent> contentChanges)
-        {
-            Session.Documents[textDocument.Uri].NotifyChanges(contentChanges);
-        }
+		[JsonRpcMethod(IsNotification = true)]
+		public void DidChange(TextDocumentIdentifier textDocument,
+			ICollection<TextDocumentContentChangeEvent> contentChanges)
+		{
+			Session.Documents[textDocument.Uri].NotifyChanges(contentChanges);
+		}
 
-        [JsonRpcMethod(IsNotification = true)]
-        public void WillSave(TextDocumentIdentifier textDocument, TextDocumentSaveReason reason)
-        {
-            //Client.Window.LogMessage(MessageType.Log, "-----------");
-            //Client.Window.LogMessage(MessageType.Log, Documents[textDocument].Content);
-        }
+		[JsonRpcMethod(IsNotification = true)]
+		public void WillSave(TextDocumentIdentifier textDocument, TextDocumentSaveReason reason)
+		{
+			//Client.Window.LogMessage(MessageType.Log, "-----------");
+			//Client.Window.LogMessage(MessageType.Log, Documents[textDocument].Content);
+		}
 
-        [JsonRpcMethod(IsNotification = true)]
-        public async Task DidClose(TextDocumentIdentifier textDocument)
-        {
-            if (textDocument.Uri.IsUntitled())
-            {
-                await Client.Document.PublishDiagnostics(textDocument.Uri, new Diagnostic[0]);
-            }
-            Session.Documents.TryRemove(textDocument.Uri, out _);
-        }
+		[JsonRpcMethod(IsNotification = true)]
+		public async Task DidClose(TextDocumentIdentifier textDocument)
+		{
+			if (textDocument.Uri.IsUntitled())
+			{
+				await Client.Document.PublishDiagnostics(textDocument.Uri, new Diagnostic[0]);
+			}
+			Session.Documents.TryRemove(textDocument.Uri, out _);
+		}
 
-        private static readonly CompletionItem[] PredefinedCompletionItems =
-        {
-            new CompletionItem(".NET", CompletionItemKind.Keyword,
-                "Keyword1",
-                MarkupContent.Markdown("Short for **.NET Framework**, a software framework by Microsoft (possibly its subsets) or later open source .NET Core."),
-                null),
-            new CompletionItem(".NET Standard", CompletionItemKind.Keyword,
-                "Keyword2",
-                "The .NET Standard is a formal specification of .NET APIs that are intended to be available on all .NET runtimes.",
-                null),
-            new CompletionItem(".NET Framework", CompletionItemKind.Keyword,
-                "Keyword3",
-                ".NET Framework (pronounced dot net) is a software framework developed by Microsoft that runs primarily on Microsoft Windows.", null),
-        };
+		//private static readonly CompletionItem[] PredefinedCompletionItems =
+		//{
+		//    new CompletionItem(".NET", CompletionItemKind.Keyword,
+		//        "Keyword1",
+		//        MarkupContent.Markdown("Short for **.NET Framework**, a software framework by Microsoft (possibly its subsets) or later open source .NET Core."),
+		//        null),
+		//};
 
-        [JsonRpcMethod]
-        public CompletionList Completion(TextDocumentIdentifier textDocument, Position position, CompletionContext context)
-        {
-            return new CompletionList(PredefinedCompletionItems);
-        }
+		[JsonRpcMethod]
+		public CompletionList Completion(TextDocumentIdentifier textDocument, Position position, CompletionContext context)
+		{
+			var key = fileUtils.UriTRoPath(textDocument.Uri);
+			if (Session.Prj.IsFileLoaded(key))
+			{
+				var buffer = Session.Prj.GetFile(key);
+				if (position.Line < buffer.Lines)
+				{
+					//TODO: clean up
+					var _scopeTracker = Session._scopeTracker;
+					var _staticMap = Session._staticMap;
+					var _compiler = Session.Cmplr;
+					var cursor = position;
+					var _parsedFiles = Session._parsedFiles;
+					List<CompletionItem> results = new List<CompletionItem>();
 
-    }
+					var currLineLex = buffer.GetSyntaxMetadata(position.Line);
+					//Debug(buffer.TextAtLine(position.Line));
+					BaseToken? curr = null;
+					BaseToken? separator = null;
+					BaseToken? prev = null;
+					BaseToken? structurePrefix = null;
+					string staticPath = "";
+					int currIdx = -1;
+					for (int i = 0; i < currLineLex.Tokens.Count; i++)
+					{
+						var tok = currLineLex.Tokens[i];
+						if (tok.LineOffset >= position.Character)
+						{
+							currIdx = i;
+							break;
+						}
+						prev = separator;
+						separator = curr;
+						curr = tok;
+					}
+					staticPath = GetPathUnderCursor(position, buffer, out var expectDollar);
+					if (curr.HasValue && curr.Value.LineOffset + curr.Value.Length < position.Character)
+					{
+						separator = curr;
+						curr = null;
+					}
+					if (separator.HasValue
+						&& (separator.Value.Type == eToken.FunctionDef
+						|| separator.Value.Type == eToken.Enum
+						|| separator.Value.Type == eToken.Data
+						|| separator.Value.Type == eToken.Template
+						|| separator.Value.Type == eToken.Global
+						|| separator.Value.Type == eToken.Library))
+					{
+						return new CompletionList();
+					}
+
+					// thing. => thing.?
+					if (curr.HasValue && curr.Value.Type == eToken.Dot)
+					{
+						prev = separator;
+						separator = curr;
+						curr = null;
+					}
+					// new thi...
+					if (separator.HasValue
+							&& (separator.Value.Type == eToken.New
+							|| separator.Value.Type == eToken.Dim
+							|| separator.Value.Type == eToken.Mixin))
+						structurePrefix = separator;
+					// a+b -> b
+					if (separator.HasValue && separator.Value.Type != eToken.Dot)
+					{
+						prev = null;
+						separator = null;
+					}
+
+					void AddResult(string insert, CompletionItemKind kind, string subtext = "")
+					{
+						results.Add(new CompletionItem(insert, kind, subtext, null));
+					}
+
+					string phrase = "";
+					string phraseWithCapitals = "";
+					if (curr.HasValue && _scopeTracker.ContainsKey(buffer))
+					{
+						phraseWithCapitals = curr.Value.Token;
+						phrase = phraseWithCapitals.ToLower();
+
+						var tracker = _scopeTracker[buffer];
+
+						if (phrase == "$")
+						{
+							var close = _staticMap.SuggestAll(buffer.Key, tracker.GetPossibleUsing(position.Line));
+
+							foreach (var match in close)
+							{
+								var text = StaticMapping.JoinPath(StaticMapping.SplitPath(match));
+								AddResult(match, CompletionItemKind.Module, "$" + text);
+							}
+						}
+
+						if (phrase[0] == '^')
+						{
+							var name = phrase.Replace("^", "");
+							var close = _staticMap.SuggestGlobals(name, buffer.Key);
+
+							foreach (var glo in close)
+							{
+								var text = glo;
+								var suggest = glo;
+								AddResult(suggest, CompletionItemKind.Field, "^" + text);
+							}
+						}
+					}
+
+					if (staticPath != "" && _scopeTracker.ContainsKey(buffer))
+					{
+						var tracker = _scopeTracker[buffer];
+
+						var close = _staticMap.SuggestToken(buffer.Key, staticPath, tracker.GetPossibleUsing(position.Line));
+
+						foreach (var match in close)
+						{
+							var currArr = StaticMapping.SplitPath(staticPath);
+							var goal = StaticMapping.SplitPath(match);
+							var appender = goal[goal.Length - 1];
+							currArr[currArr.Length - 1] = appender;
+							//var suggest = "$" + StaticMapping.JoinPath(currArr);
+							var suggest = "";
+							if (currArr.Length == 1 && expectDollar)
+								suggest = appender;
+							else suggest = appender;
+							var text = StaticMapping.JoinPath(StaticMapping.SplitPath(match));
+							bool good = suggest.ToLower().StartsWith(phrase.ToLower());
+							AddResult(suggest, CompletionItemKind.Module);
+						}
+					}
+					if (structurePrefix.HasValue)
+					{
+						results.AddRange(Session.StaticSuggestions);
+					}
+					else if (!separator.HasValue)
+					{
+						results.AddRange(Session.StaticSuggestions);
+						if (phrase.StartsWith("#"))
+						{
+							//this only handles the 99% case
+							foreach (var mac in _compiler.IterMacroNames())
+								AddResult(mac, CompletionItemKind.Snippet);
+							foreach (var mac in _compiler.BuiltInMacros())
+								AddResult(mac, CompletionItemKind.Snippet);
+						}
+						// this region tries to scan outward in the scope from the cursor, looking for variables that may be accessible
+						void NaiveScanForLocals(int lineNumber, LexLine lex)
+						{
+							var colonSplit = lex.Tokens.FindIndex(t => t.Type == eToken.Colon);
+							if (colonSplit < 0) colonSplit = lex.Tokens.Count;
+							for (int j = 0; j < lex.Tokens.Count; j++)
+							{
+								var tok = lex.Tokens[j];
+								if (tok.Type != eToken.Identifier) continue;
+								if (!tok.Token.ToLower().StartsWith(phrase)) continue;
+								if (lineNumber != cursor.Line && j > 0 && lex.Tokens[j - 1].Type == eToken.AtSign)
+									AddResult(tok.Token, CompletionItemKind.Variable, "local");
+								else if (j < lex.Tokens.Count - 1 && lex.Tokens[j + 1].Type == eToken.Colon)
+									AddResult(tok.Token, CompletionItemKind.Variable, "local");
+								else if (lineNumber != cursor.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.FunctionDef)
+									AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
+								else if (lineNumber != cursor.Line && j > 3 && j < colonSplit && lex.Tokens[1].Type == eToken.FunctionDef) // specifically for global ::func()
+									AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
+								else if (lineNumber != cursor.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.Template) // this isn't a thing anymore...
+									AddResult(tok.Token, CompletionItemKind.Variable, "template parameter");
+							}
+							// naive way to look for local functions/properties in the current template
+							if (lex.PreceedingWhitespace > 0 && lex.Tokens.Count >= 2)
+							{
+								var tok = lex.Tokens[1];
+								if (tok.Type == eToken.Identifier)
+								{
+									if (lex.Tokens[0].Type == eToken.Dot)
+										AddResult(tok.Token, CompletionItemKind.Property);
+									else if (lex.Tokens[0].Type == eToken.FunctionDef)
+										AddResult(tok.Token, CompletionItemKind.Method);
+								}
+							}
+						}
+						int currentIndent = currLineLex.PreceedingWhitespace;
+						int highWaterReadAhead = cursor.Line + 1;
+						// reads upwards till it hits file scope
+						for (int i = cursor.Line - 1; i >= 0; i--)
+						{
+							var lex = buffer.GetSyntaxMetadata(i);
+							if (lex.PreceedingWhitespace > currentIndent)
+								continue;
+							else if (lex.PreceedingWhitespace == currentIndent)
+								NaiveScanForLocals(i, lex);
+							else if (lex.PreceedingWhitespace < currentIndent)
+							{
+								NaiveScanForLocals(i, lex);
+								currentIndent = lex.PreceedingWhitespace;
+								if (currentIndent == 0) break;
+								// scan ahead at the same scope we found when we collapsed a level
+								for (; highWaterReadAhead < buffer.Lines; highWaterReadAhead++)
+								{
+									var readAhead = buffer.GetSyntaxMetadata(highWaterReadAhead);
+									if (readAhead.PreceedingWhitespace < currentIndent)
+										break;
+									if (readAhead.PreceedingWhitespace > currentIndent)
+										continue;
+									NaiveScanForLocals(highWaterReadAhead, readAhead);
+								}
+							}
+							if (currentIndent == 0) break;
+						}
+
+						foreach (var pair in _parsedFiles)
+						{
+							if (pair.Key == buffer)
+							{
+								foreach (var fileChild in pair.Value.Children)
+								{
+									//if (fileChild is SfunctionDef)
+									//MaybeAdd((fileChild as SfunctionDef).Identifier, pair.Key.ShortFileName, eMatchQuality.Good);
+									if (fileChild is IDeclareVariablesAtScope)
+										foreach (var sub in (fileChild as IDeclareVariablesAtScope).GetDeclaredSymbolsInside(pair.Value))
+											AddResult(sub, CompletionItemKind.Variable, "local");
+								}
+
+							}
+							else
+								foreach (var fileChild in pair.Value.Children)
+								{
+									if (fileChild is IExportGlobalSymbol)
+										foreach (var symbol in (fileChild as IExportGlobalSymbol).GetExportableSymbolsInside(fileChild).ToArray())
+											AddResult(symbol, CompletionItemKind.Field, pair.Key.ShortFileName); // is this a thing?
+								}
+						}
+
+					}
+
+
+					return new CompletionList(results);
+				}
+			}
+			return new CompletionList(Session.StaticSuggestions);
+		}
+
+
+		string GetPathUnderCursor(Position cursor, WingraBuffer buffer, out bool shouldUseDollar)
+		{
+			var currLineLex = buffer.GetSyntaxMetadata(cursor.Line);
+			BaseToken? curr = null;
+			var tokes = currLineLex.Tokens;
+			int currIdx = tokes.Count - 1;
+			shouldUseDollar = true;
+			for (int i = 0; i < currLineLex.Tokens.Count; i++)
+			{
+				var tok = tokes[i];
+				if (tok.LineOffset + tok.Length >= cursor.Character)
+				{
+					currIdx = i;
+					break;
+				}
+				curr = tok;
+			}
+
+			var startSearch = tokes.FindLastIndex(currIdx, t => t.Type == eToken.StaticIdentifier);
+
+			if (startSearch < 0)
+			{
+				startSearch = tokes.FindLastIndex(currIdx, t => t.Type == eToken.Using);
+				if (startSearch >= 0 && currIdx != startSearch) startSearch++;
+			}
+
+			if (startSearch >= 0)
+			{
+				if (startSearch > 0)
+					shouldUseDollar = (tokes[startSearch - 1].Type != eToken.Using);
+				if (startSearch >= tokes.Count) return "";
+				var possiblePath = tokes.GetRange(startSearch, tokes.Count - startSearch).ToArray();
+				int length = 1;
+				for (; length < possiblePath.Length; length++)
+				{
+					if (length % 2 == 1 && possiblePath[length].Type != eToken.Dot) break;
+					if (length % 2 == 0 && possiblePath[length].Type != eToken.Identifier) break;
+				}
+				if (startSearch + length <= currIdx) return "";
+				var actualPath = tokes.GetRange(startSearch, length).ToArray();
+				return util.Join(actualPath.Select(t => t.Token), "").Replace("$", "");
+			}
+			return "";
+		}
+	}
 
 }

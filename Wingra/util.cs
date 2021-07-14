@@ -341,6 +341,14 @@ namespace Wingra
 		}
 
 		public bool IsEmpty => _dic.Any();
+
+		public void RemoveValues(Predicate<U> where)
+		{
+			foreach (var k in Keys().ToArray())
+				foreach (var v in Values(k).ToArray())
+					if (where(v))
+						Kill(k, v);
+		}
 	}
 
 	internal class DualIndex<T, U>
@@ -465,7 +473,7 @@ namespace Wingra
 		public bool IsEmpty => _dic.Count > 0;
 	}
 
-	class ODisposable : IDisposable
+	public class ODisposable : IDisposable
 	{
 		Action _clean;
 		public ODisposable(Action cleanup)
