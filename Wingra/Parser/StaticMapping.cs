@@ -386,15 +386,15 @@ namespace Wingra.Parser
 
 		#region completion match and editor stuff
 
-		public List<string> SuggestToken(string fileKey, string path, List<string> usingPrefixes)
+		public Dictionary<string, eStaticType> SuggestToken(string fileKey, string path, List<string> usingPrefixes)
 		{
 			var arr = SplitPath(path);
 			TrySuggest(fileKey, usingPrefixes, arr, out var matches);
 			return matches;
 		}
-		bool TrySuggest(string fileKey, List<string> possiblePrefixes, string[] path, out List<string> matches)
+		bool TrySuggest(string fileKey, List<string> possiblePrefixes, string[] path, out Dictionary<string, eStaticType> matches)
 		{
-			matches = new List<string>();
+			matches = new Dictionary<string, eStaticType>();
 			if (path.Length == 0) return false;
 			var file = new List<string[]>();
 			var data = new List<string[]>();
@@ -409,37 +409,37 @@ namespace Wingra.Parser
 				CheckTree(FILE, GetForFile(fileKey), file, matches);
 			CheckTree(DATA, _root, data, matches);
 
-			void CheckTree(string type, TreeNode node, List<string[]> toCheck, List<string> addTo)
+			void CheckTree(string type, TreeNode node, List<string[]> toCheck, Dictionary<string, eStaticType> addTo)
 			{
 				foreach (var poss in toCheck)
 				{
 					var close = SuggestHasPath(node, poss);
 					foreach (var hit in close)
-						addTo.Add(type + "." + hit);
+						addTo.Add(type + "." + hit.Key, hit.Value);
 				}
 			}
 
 			return (matches.Count == 1);
 		}
-		List<string> SuggestHasPath(TreeNode node, string[] path)
+		Dictionary<string, eStaticType> SuggestHasPath(TreeNode node, string[] path)
 		{
 			for (int i = 0; i < path.Length - 1; i++)
 			{
 				var child = path[i];
 				node = node.TryGetChild(child);
-				if (node == null) return new List<string>();
+				if (node == null) return new Dictionary<string, eStaticType>();
 			}
 			var last = path[path.Length - 1];
-			List<string> poss = new List<string>();
+			var poss = new Dictionary<string, eStaticType>();
 			var partial = JoinPath(util.RangeFront(path, path.Length - 1));
 			foreach (var child in node.Children)
 			{
 				if (child.Key.ToLower().Contains(last.ToLower()))
 				{
 					if (partial == "")
-						poss.Add(child.Key);
+						poss.Add(child.Key, child.Value.Type);
 					else
-						poss.Add(partial + "." + child.Key);
+						poss.Add(partial + "." + child.Key, child.Value.Type);
 				}
 			}
 			return poss;

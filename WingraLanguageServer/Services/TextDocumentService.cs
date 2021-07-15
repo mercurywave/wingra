@@ -17,6 +17,7 @@ namespace WingraLanguageServer.Services
 	[JsonRpcScope(MethodPrefix = "textDocument/")]
 	public class TextDocumentService : LanguageServiceBase
 	{
+		HashSet<WingraBuffer> _needParse = new HashSet<WingraBuffer>();
 		[JsonRpcMethod]
 		public async Task<Hover> Hover(TextDocumentIdentifier textDocument, Position position, CancellationToken ct)
 		{
@@ -28,11 +29,110 @@ namespace WingraLanguageServer.Services
 		[JsonRpcMethod]
 		public SignatureHelp SignatureHelp(TextDocumentIdentifier textDocument, Position position, object context = null)
 		{
-			return new SignatureHelp(new List<SignatureInformation>
+			lock (Session.Lock)
 			{
-				new SignatureInformation("**Function1**", "Documentation1"),
-				new SignatureInformation("**Function2** <strong>test</strong>", "Documentation2"),
-			});
+				var key = fileUtils.UriTRoPath(textDocument.Uri);
+				if (Session.Prj.IsFileLoaded(key))
+				{
+					var buffer = Session.Prj.GetFile(key);
+					if (position.Line < buffer.Lines)
+					{
+						//TODO: cleanup
+						var _scopeTracker = Session._scopeTracker;
+						var _staticMap = Session._staticMap;
+						var _compiler = Session.Cmplr;
+						var cursor = position;
+						var _parsedFiles = Session._parsedFiles;
+
+						var funcCall = GetFunctionCall(cursor, buffer, out var paramIdx);
+						if (funcCall != "" && _scopeTracker.ContainsKey(buffer))
+						{
+							var tracker = _scopeTracker[buffer];
+							var prefixes = tracker.GetPossibleUsing(cursor.Character);
+							var absPath = _staticMap.GetAbsPath(buffer.Key, funcCall, prefixes, out _);
+
+							if (absPath != "" && _staticMap.TryGetFunctionInfo(absPath, out var fnName, out var isMethod, out var inputs, out var outputs, out var doesYield, out var isAsync))
+							{
+								string sig = "::";
+								if (isMethod) sig += ".";
+								sig += StaticMapping.GetPathFromAbsPath(absPath);
+								sig += "(";
+								var ins = new List<string>();
+								var pars = new List<ParameterInformation>();
+								for (int i = 0; i < inputs.Length; i++)
+								{
+									ins.Add(inputs[i]);
+									pars.Add(new ParameterInformation("", new MarkupContent( MarkupKind.Markdown, inputs[i])));
+								}
+								sig += util.Join(ins, ",");
+								if (outputs.Length > 0 || isAsync) 
+									sig += " => ";
+								if (isAsync) sig += " async ";
+								if (doesYield) sig += " yield ";
+								sig += util.Join(outputs, ", ");
+								sig += ")";
+
+								return new SignatureHelp(new List<SignatureInformation> {
+									new SignatureInformation(sig, new MarkupContent(MarkupKind.PlainText, ""), pars)
+								}, 0, paramIdx);
+							}
+						}
+					}
+				}
+			}
+			return new SignatureHelp(new List<SignatureInformation>());
+		}
+
+		string GetFunctionCall(Position cursor, WingraBuffer iBuffer, out int currParam)
+		{
+			var buffer = iBuffer as WingraBuffer;
+			var currLineLex = buffer.GetSyntaxMetadata(cursor.Line);
+			BaseToken? curr = null;
+			var tokes = currLineLex.Tokens;
+			int currIdx = -1;
+
+			for (int i = 0; i < currLineLex.Tokens.Count; i++)
+			{
+				var tok = tokes[i];
+				if (tok.LineOffset + tok.Length >= cursor.Character)
+				{
+					currIdx = i;
+					break;
+				}
+				curr = tok;
+			}
+
+			int parenStack = 1;
+			int parenIdx = -1;
+			currParam = 0;
+			for (int i = currIdx; i >= 0; i--)
+			{
+				if (tokes[i].Type == eToken.LeftParen) parenStack--;
+				if (tokes[i].Type == eToken.RightParen) parenStack++;
+				if (parenStack == 1 && tokes[i].Type == eToken.Comma)
+					currParam++;
+				if (parenStack == 0)
+				{
+					parenIdx = i;
+					break;
+				}
+			}
+
+			if (parenIdx <= 0) return "";
+			var startSearch = tokes.FindLastIndex(parenIdx, t => t.Type == eToken.StaticIdentifier);
+			if (startSearch >= 0)
+			{
+				var possiblePath = tokes.GetRange(startSearch, tokes.Count - startSearch - 1).ToArray();
+				int length = 1;
+				for (; length < possiblePath.Length; length++)
+				{
+					if (length % 2 == 1 && possiblePath[length].Type != eToken.Dot) break;
+					if (length % 2 == 0 && possiblePath[length].Type != eToken.Identifier) break;
+				}
+				var actualPath = tokes.GetRange(startSearch, length).ToArray();
+				return util.Join(actualPath.Select(t => t.Token), "").Replace("$", "");
+			}
+			return "";
 		}
 
 		[JsonRpcMethod(IsNotification = true)]
@@ -46,8 +146,22 @@ namespace WingraLanguageServer.Services
 				if (session.Prj.IsFileLoaded(key))
 				{
 					var wb = session.Prj.GetFile(key);
-					wb.SyncFromExternal(doc.Document.Content.Split("\n").ToList());
-					session.UpdateFileCache(wb);
+					lock (session.Lock)
+					{
+						wb.SyncFromExternal(doc.Document.Content.Split("\n").ToList());
+						_needParse.Add(wb);
+					}
+
+					_ = Task.Delay(100).ContinueWith(t => Task.Run(() =>
+					{
+						lock (session.Lock)
+						{
+							foreach (var file in _needParse)
+								session.UpdateFileCache(file);
+							_needParse.Clear();
+						}
+					}), TaskScheduler.Current);
+
 				}
 			};
 			session.Documents.TryAdd(textDocument.Uri, doc);
@@ -88,243 +202,251 @@ namespace WingraLanguageServer.Services
 		[JsonRpcMethod]
 		public CompletionList Completion(TextDocumentIdentifier textDocument, Position position, CompletionContext context)
 		{
-			var key = fileUtils.UriTRoPath(textDocument.Uri);
-			if (Session.Prj.IsFileLoaded(key))
+			lock (Session.Lock)
 			{
-				var buffer = Session.Prj.GetFile(key);
-				if (position.Line < buffer.Lines)
+				var key = fileUtils.UriTRoPath(textDocument.Uri);
+				if (Session.Prj.IsFileLoaded(key))
 				{
-					//TODO: clean up
-					var _scopeTracker = Session._scopeTracker;
-					var _staticMap = Session._staticMap;
-					var _compiler = Session.Cmplr;
-					var cursor = position;
-					var _parsedFiles = Session._parsedFiles;
-					List<CompletionItem> results = new List<CompletionItem>();
-
-					var currLineLex = buffer.GetSyntaxMetadata(position.Line);
-					//Debug(buffer.TextAtLine(position.Line));
-					BaseToken? curr = null;
-					BaseToken? separator = null;
-					BaseToken? prev = null;
-					BaseToken? structurePrefix = null;
-					string staticPath = "";
-					int currIdx = -1;
-					for (int i = 0; i < currLineLex.Tokens.Count; i++)
+					var buffer = Session.Prj.GetFile(key);
+					if (position.Line < buffer.Lines)
 					{
-						var tok = currLineLex.Tokens[i];
-						if (tok.LineOffset >= position.Character)
+						//TODO: clean up
+						var _scopeTracker = Session._scopeTracker;
+						var _staticMap = Session._staticMap;
+						var _compiler = Session.Cmplr;
+						var cursor = position;
+						var _parsedFiles = Session._parsedFiles;
+						List<CompletionItem> results = new List<CompletionItem>();
+
+						var currLineLex = buffer.GetSyntaxMetadata(position.Line);
+						//Debug(buffer.TextAtLine(position.Line));
+						BaseToken? curr = null;
+						BaseToken? separator = null;
+						BaseToken? prev = null;
+						BaseToken? structurePrefix = null;
+						string staticPath = "";
+						int currIdx = -1;
+						for (int i = 0; i < currLineLex.Tokens.Count; i++)
 						{
-							currIdx = i;
-							break;
+							var tok = currLineLex.Tokens[i];
+							if (tok.LineOffset >= position.Character)
+							{
+								currIdx = i;
+								break;
+							}
+							prev = separator;
+							separator = curr;
+							curr = tok;
 						}
-						prev = separator;
-						separator = curr;
-						curr = tok;
-					}
-					staticPath = GetPathUnderCursor(position, buffer, out var expectDollar);
-					if (curr.HasValue && curr.Value.LineOffset + curr.Value.Length < position.Character)
-					{
-						separator = curr;
-						curr = null;
-					}
-					if (separator.HasValue
-						&& (separator.Value.Type == eToken.FunctionDef
-						|| separator.Value.Type == eToken.Enum
-						|| separator.Value.Type == eToken.Data
-						|| separator.Value.Type == eToken.Template
-						|| separator.Value.Type == eToken.Global
-						|| separator.Value.Type == eToken.Library))
-					{
-						return new CompletionList();
-					}
-
-					// thing. => thing.?
-					if (curr.HasValue && curr.Value.Type == eToken.Dot)
-					{
-						prev = separator;
-						separator = curr;
-						curr = null;
-					}
-					// new thi...
-					if (separator.HasValue
-							&& (separator.Value.Type == eToken.New
-							|| separator.Value.Type == eToken.Dim
-							|| separator.Value.Type == eToken.Mixin))
-						structurePrefix = separator;
-					// a+b -> b
-					if (separator.HasValue && separator.Value.Type != eToken.Dot)
-					{
-						prev = null;
-						separator = null;
-					}
-
-					void AddResult(string insert, CompletionItemKind kind, string subtext = "")
-					{
-						results.Add(new CompletionItem(insert, kind, subtext, null));
-					}
-
-					string phrase = "";
-					string phraseWithCapitals = "";
-					if (curr.HasValue && _scopeTracker.ContainsKey(buffer))
-					{
-						phraseWithCapitals = curr.Value.Token;
-						phrase = phraseWithCapitals.ToLower();
-
-						var tracker = _scopeTracker[buffer];
-
-						if (phrase == "$")
+						staticPath = GetPathUnderCursor(position, buffer, out var expectDollar);
+						if (curr.HasValue && curr.Value.LineOffset + curr.Value.Length < position.Character)
 						{
-							var close = _staticMap.SuggestAll(buffer.Key, tracker.GetPossibleUsing(position.Line));
+							separator = curr;
+							curr = null;
+						}
+						if (separator.HasValue
+							&& (separator.Value.Type == eToken.FunctionDef
+							|| separator.Value.Type == eToken.Enum
+							|| separator.Value.Type == eToken.Data
+							|| separator.Value.Type == eToken.Template
+							|| separator.Value.Type == eToken.Global
+							|| separator.Value.Type == eToken.Library))
+						{
+							return new CompletionList();
+						}
+
+						// thing. => thing.?
+						if (curr.HasValue && curr.Value.Type == eToken.Dot)
+						{
+							prev = separator;
+							separator = curr;
+							curr = null;
+						}
+						// new thi...
+						if (separator.HasValue
+								&& (separator.Value.Type == eToken.New
+								|| separator.Value.Type == eToken.Dim
+								|| separator.Value.Type == eToken.Mixin))
+							structurePrefix = separator;
+						// a+b -> b
+						if (separator.HasValue && separator.Value.Type != eToken.Dot)
+						{
+							prev = null;
+							separator = null;
+						}
+
+						void AddResult(string insert, CompletionItemKind kind, string subtext = "")
+						{
+							results.Add(new CompletionItem(insert, kind, subtext, null));
+						}
+
+						string phrase = "";
+						string phraseWithCapitals = "";
+						if (curr.HasValue && _scopeTracker.ContainsKey(buffer))
+						{
+							phraseWithCapitals = curr.Value.Token;
+							phrase = phraseWithCapitals.ToLower();
+
+							var tracker = _scopeTracker[buffer];
+
+							if (phrase == "$")
+							{
+								var close = _staticMap.SuggestAll(buffer.Key, tracker.GetPossibleUsing(position.Line));
+
+								foreach (var match in close)
+								{
+									var text = StaticMapping.JoinPath(StaticMapping.SplitPath(match));
+									AddResult(match, CompletionItemKind.Module, "$" + text);
+								}
+							}
+
+							if (phrase[0] == '^')
+							{
+								var name = phrase.Replace("^", "");
+								var close = _staticMap.SuggestGlobals(name, buffer.Key);
+
+								foreach (var glo in close)
+								{
+									var text = glo;
+									var suggest = glo;
+									AddResult(suggest, CompletionItemKind.Field, "^" + text);
+								}
+							}
+						}
+
+						if (staticPath != "" && _scopeTracker.ContainsKey(buffer))
+						{
+							var tracker = _scopeTracker[buffer];
+
+							var close = _staticMap.SuggestToken(buffer.Key, staticPath, tracker.GetPossibleUsing(position.Line));
 
 							foreach (var match in close)
 							{
-								var text = StaticMapping.JoinPath(StaticMapping.SplitPath(match));
-								AddResult(match, CompletionItemKind.Module, "$" + text);
+								var currArr = StaticMapping.SplitPath(staticPath);
+								var goal = StaticMapping.SplitPath(match.Key);
+								var appender = goal[goal.Length - 1];
+								currArr[currArr.Length - 1] = appender;
+								//var suggest = "$" + StaticMapping.JoinPath(currArr);
+								var suggest = "";
+								if (currArr.Length == 1 && expectDollar)
+									suggest = appender;
+								else suggest = appender;
+								var text = StaticMapping.JoinPath(StaticMapping.SplitPath(match.Key));
+								bool good = suggest.ToLower().StartsWith(phrase.ToLower());
+								CompletionItemKind kind = CompletionItemKind.Module;
+								if (match.Value == eStaticType.Constant) kind = CompletionItemKind.Field;
+								if (match.Value == eStaticType.Data) kind = CompletionItemKind.Class;
+								if (match.Value == eStaticType.EnumValue) kind = CompletionItemKind.Enum;
+								if (match.Value == eStaticType.Function) kind = CompletionItemKind.Function;
+								AddResult(suggest, kind);
 							}
 						}
-
-						if (phrase[0] == '^')
+						if (structurePrefix.HasValue)
 						{
-							var name = phrase.Replace("^", "");
-							var close = _staticMap.SuggestGlobals(name, buffer.Key);
-
-							foreach (var glo in close)
+							results.AddRange(Session.StaticSuggestions);
+						}
+						else if (!separator.HasValue)
+						{
+							results.AddRange(Session.StaticSuggestions);
+							if (phrase.StartsWith("#"))
 							{
-								var text = glo;
-								var suggest = glo;
-								AddResult(suggest, CompletionItemKind.Field, "^" + text);
+								//this only handles the 99% case
+								foreach (var mac in _compiler.IterMacroNames())
+									AddResult(mac, CompletionItemKind.Snippet);
+								foreach (var mac in _compiler.BuiltInMacros())
+									AddResult(mac, CompletionItemKind.Snippet);
 							}
-						}
-					}
-
-					if (staticPath != "" && _scopeTracker.ContainsKey(buffer))
-					{
-						var tracker = _scopeTracker[buffer];
-
-						var close = _staticMap.SuggestToken(buffer.Key, staticPath, tracker.GetPossibleUsing(position.Line));
-
-						foreach (var match in close)
-						{
-							var currArr = StaticMapping.SplitPath(staticPath);
-							var goal = StaticMapping.SplitPath(match);
-							var appender = goal[goal.Length - 1];
-							currArr[currArr.Length - 1] = appender;
-							//var suggest = "$" + StaticMapping.JoinPath(currArr);
-							var suggest = "";
-							if (currArr.Length == 1 && expectDollar)
-								suggest = appender;
-							else suggest = appender;
-							var text = StaticMapping.JoinPath(StaticMapping.SplitPath(match));
-							bool good = suggest.ToLower().StartsWith(phrase.ToLower());
-							AddResult(suggest, CompletionItemKind.Module);
-						}
-					}
-					if (structurePrefix.HasValue)
-					{
-						results.AddRange(Session.StaticSuggestions);
-					}
-					else if (!separator.HasValue)
-					{
-						results.AddRange(Session.StaticSuggestions);
-						if (phrase.StartsWith("#"))
-						{
-							//this only handles the 99% case
-							foreach (var mac in _compiler.IterMacroNames())
-								AddResult(mac, CompletionItemKind.Snippet);
-							foreach (var mac in _compiler.BuiltInMacros())
-								AddResult(mac, CompletionItemKind.Snippet);
-						}
-						// this region tries to scan outward in the scope from the cursor, looking for variables that may be accessible
-						void NaiveScanForLocals(int lineNumber, LexLine lex)
-						{
-							var colonSplit = lex.Tokens.FindIndex(t => t.Type == eToken.Colon);
-							if (colonSplit < 0) colonSplit = lex.Tokens.Count;
-							for (int j = 0; j < lex.Tokens.Count; j++)
+							// this region tries to scan outward in the scope from the cursor, looking for variables that may be accessible
+							void NaiveScanForLocals(int lineNumber, LexLine lex)
 							{
-								var tok = lex.Tokens[j];
-								if (tok.Type != eToken.Identifier) continue;
-								if (!tok.Token.ToLower().StartsWith(phrase)) continue;
-								if (lineNumber != cursor.Line && j > 0 && lex.Tokens[j - 1].Type == eToken.AtSign)
-									AddResult(tok.Token, CompletionItemKind.Variable, "local");
-								else if (j < lex.Tokens.Count - 1 && lex.Tokens[j + 1].Type == eToken.Colon)
-									AddResult(tok.Token, CompletionItemKind.Variable, "local");
-								else if (lineNumber != cursor.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.FunctionDef)
-									AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
-								else if (lineNumber != cursor.Line && j > 3 && j < colonSplit && lex.Tokens[1].Type == eToken.FunctionDef) // specifically for global ::func()
-									AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
-								else if (lineNumber != cursor.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.Template) // this isn't a thing anymore...
-									AddResult(tok.Token, CompletionItemKind.Variable, "template parameter");
-							}
-							// naive way to look for local functions/properties in the current template
-							if (lex.PreceedingWhitespace > 0 && lex.Tokens.Count >= 2)
-							{
-								var tok = lex.Tokens[1];
-								if (tok.Type == eToken.Identifier)
+								var colonSplit = lex.Tokens.FindIndex(t => t.Type == eToken.Colon);
+								if (colonSplit < 0) colonSplit = lex.Tokens.Count;
+								for (int j = 0; j < lex.Tokens.Count; j++)
 								{
-									if (lex.Tokens[0].Type == eToken.Dot)
-										AddResult(tok.Token, CompletionItemKind.Property);
-									else if (lex.Tokens[0].Type == eToken.FunctionDef)
-										AddResult(tok.Token, CompletionItemKind.Method);
+									var tok = lex.Tokens[j];
+									if (tok.Type != eToken.Identifier) continue;
+									if (!tok.Token.ToLower().StartsWith(phrase)) continue;
+									if (lineNumber != cursor.Line && j > 0 && lex.Tokens[j - 1].Type == eToken.AtSign)
+										AddResult(tok.Token, CompletionItemKind.Variable, "local");
+									else if (j < lex.Tokens.Count - 1 && lex.Tokens[j + 1].Type == eToken.Colon)
+										AddResult(tok.Token, CompletionItemKind.Variable, "local");
+									else if (lineNumber != cursor.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.FunctionDef)
+										AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
+									else if (lineNumber != cursor.Line && j > 3 && j < colonSplit && lex.Tokens[1].Type == eToken.FunctionDef) // specifically for global ::func()
+										AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
+									else if (lineNumber != cursor.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.Template) // this isn't a thing anymore...
+										AddResult(tok.Token, CompletionItemKind.Variable, "template parameter");
+								}
+								// naive way to look for local functions/properties in the current template
+								if (lex.PreceedingWhitespace > 0 && lex.Tokens.Count >= 2)
+								{
+									var tok = lex.Tokens[1];
+									if (tok.Type == eToken.Identifier)
+									{
+										if (lex.Tokens[0].Type == eToken.Dot)
+											AddResult(tok.Token, CompletionItemKind.Property);
+										else if (lex.Tokens[0].Type == eToken.FunctionDef)
+											AddResult(tok.Token, CompletionItemKind.Method);
+									}
 								}
 							}
-						}
-						int currentIndent = currLineLex.PreceedingWhitespace;
-						int highWaterReadAhead = cursor.Line + 1;
-						// reads upwards till it hits file scope
-						for (int i = cursor.Line - 1; i >= 0; i--)
-						{
-							var lex = buffer.GetSyntaxMetadata(i);
-							if (lex.PreceedingWhitespace > currentIndent)
-								continue;
-							else if (lex.PreceedingWhitespace == currentIndent)
-								NaiveScanForLocals(i, lex);
-							else if (lex.PreceedingWhitespace < currentIndent)
+							int currentIndent = currLineLex.PreceedingWhitespace;
+							int highWaterReadAhead = cursor.Line + 1;
+							// reads upwards till it hits file scope
+							for (int i = cursor.Line - 1; i >= 0; i--)
 							{
-								NaiveScanForLocals(i, lex);
-								currentIndent = lex.PreceedingWhitespace;
+								var lex = buffer.GetSyntaxMetadata(i);
+								if (lex.PreceedingWhitespace > currentIndent)
+									continue;
+								else if (lex.PreceedingWhitespace == currentIndent)
+									NaiveScanForLocals(i, lex);
+								else if (lex.PreceedingWhitespace < currentIndent)
+								{
+									NaiveScanForLocals(i, lex);
+									currentIndent = lex.PreceedingWhitespace;
+									if (currentIndent == 0) break;
+									// scan ahead at the same scope we found when we collapsed a level
+									for (; highWaterReadAhead < buffer.Lines; highWaterReadAhead++)
+									{
+										var readAhead = buffer.GetSyntaxMetadata(highWaterReadAhead);
+										if (readAhead.PreceedingWhitespace < currentIndent)
+											break;
+										if (readAhead.PreceedingWhitespace > currentIndent)
+											continue;
+										NaiveScanForLocals(highWaterReadAhead, readAhead);
+									}
+								}
 								if (currentIndent == 0) break;
-								// scan ahead at the same scope we found when we collapsed a level
-								for (; highWaterReadAhead < buffer.Lines; highWaterReadAhead++)
-								{
-									var readAhead = buffer.GetSyntaxMetadata(highWaterReadAhead);
-									if (readAhead.PreceedingWhitespace < currentIndent)
-										break;
-									if (readAhead.PreceedingWhitespace > currentIndent)
-										continue;
-									NaiveScanForLocals(highWaterReadAhead, readAhead);
-								}
 							}
-							if (currentIndent == 0) break;
-						}
 
-						foreach (var pair in _parsedFiles)
-						{
-							if (pair.Key == buffer)
+							foreach (var pair in _parsedFiles)
 							{
-								foreach (var fileChild in pair.Value.Children)
+								if (pair.Key == buffer)
 								{
-									//if (fileChild is SfunctionDef)
-									//MaybeAdd((fileChild as SfunctionDef).Identifier, pair.Key.ShortFileName, eMatchQuality.Good);
-									if (fileChild is IDeclareVariablesAtScope)
-										foreach (var sub in (fileChild as IDeclareVariablesAtScope).GetDeclaredSymbolsInside(pair.Value))
-											AddResult(sub, CompletionItemKind.Variable, "local");
-								}
+									foreach (var fileChild in pair.Value.Children)
+									{
+										//if (fileChild is SfunctionDef)
+										//MaybeAdd((fileChild as SfunctionDef).Identifier, pair.Key.ShortFileName, eMatchQuality.Good);
+										if (fileChild is IDeclareVariablesAtScope)
+											foreach (var sub in (fileChild as IDeclareVariablesAtScope).GetDeclaredSymbolsInside(pair.Value))
+												AddResult(sub, CompletionItemKind.Variable, "local");
+									}
 
-							}
-							else
-								foreach (var fileChild in pair.Value.Children)
-								{
-									if (fileChild is IExportGlobalSymbol)
-										foreach (var symbol in (fileChild as IExportGlobalSymbol).GetExportableSymbolsInside(fileChild).ToArray())
-											AddResult(symbol, CompletionItemKind.Field, pair.Key.ShortFileName); // is this a thing?
 								}
+								else
+									foreach (var fileChild in pair.Value.Children)
+									{
+										if (fileChild is IExportGlobalSymbol)
+											foreach (var symbol in (fileChild as IExportGlobalSymbol).GetExportableSymbolsInside(fileChild).ToArray())
+												AddResult(symbol, CompletionItemKind.Field, pair.Key.ShortFileName); // is this a thing?
+									}
+							}
+
 						}
 
+
+						return new CompletionList(results);
 					}
-
-
-					return new CompletionList(results);
 				}
 			}
 			return new CompletionList(Session.StaticSuggestions);

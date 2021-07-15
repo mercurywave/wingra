@@ -22,6 +22,7 @@ namespace WingraLanguageServer
 		private readonly CancellationTokenSource cts = new CancellationTokenSource();
 
 		internal WingraProject Prj = null;
+		public object Lock = new object();
 		internal Compiler Cmplr => Prj.IncrementalDebugCompiler;
 		internal DocFileServer FileServer = new DocFileServer();
 		internal string _folderPath;
@@ -73,9 +74,7 @@ namespace WingraLanguageServer
 			MinimalErrorLogger log = new MinimalErrorLogger();
 			// pre-parse to get all macros up front before attempting to fully compile anything
 			foreach (var file in Prj.IterAllFilesRecursive().ToList())
-			{
 				Cmplr.PreParse(file, log);
-			}
 			foreach (var file in Prj.IterAllFilesRecursive().ToList())
 				UpdateFileCache(file);
 		}
@@ -110,14 +109,14 @@ namespace WingraLanguageServer
 		/// <summary>
 		/// Actually makes the changes to the inner document per this milliseconds.
 		/// </summary>
-		private const int RenderChangesDelay = 100;
+		//private const int RenderChangesDelay = 100;
 
 		public SessionDocument(TextDocumentItem doc)
 		{
 			Document = TextDocument.Load<FullTextDocument>(doc);
 		}
 
-		private Task updateChangesDelayTask;
+		//private Task updateChangesDelayTask;
 
 		private readonly object syncLock = new object();
 
