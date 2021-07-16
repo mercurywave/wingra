@@ -31,6 +31,10 @@ namespace WingraLanguageServer
 		internal StaticMapping _staticMap = new StaticMapping();
 
 		internal List<CompletionItem> StaticSuggestions = new List<CompletionItem>();
+
+		Task _loadTask = null;
+		internal Task LoadTask => _loadTask ?? Task.CompletedTask;
+		internal bool IsLoaded => _loadTask?.IsCompleted ?? false;
 		public LanguageServerSession(JsonRpcClient rpcClient, IJsonRpcContractResolver contractResolver)
 		{
 			RpcClient = rpcClient ?? throw new ArgumentNullException(nameof(rpcClient));
@@ -58,6 +62,11 @@ namespace WingraLanguageServer
 		}
 
 		internal async Task InitializeAsync()
+		{
+			_loadTask = _InitializeAsync();
+			await _loadTask;
+		}
+		internal async Task _InitializeAsync()
 		{
 			Prj = await Loader.LoadProject(_folderPath, FileServer);
 			Prj.IncrementalDebugCompiler = new Compiler(_staticMap, false, false, true, true);

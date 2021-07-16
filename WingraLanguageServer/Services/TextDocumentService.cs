@@ -22,9 +22,48 @@ namespace WingraLanguageServer.Services
 		public async Task<Hover> Hover(TextDocumentIdentifier textDocument, Position position, CancellationToken ct)
 		{
 			// Note that Hover is cancellable.
-			await Task.Delay(1000, ct);
-			return new Hover { Contents = "Test _hover_ @" + position + "\n\n" + textDocument };
+			await Task.Delay(100, ct);
+
+			lock (Session.Lock)
+			{
+				var key = fileUtils.UriTRoPath(textDocument.Uri);
+				if (Session.Prj.IsFileLoaded(key))
+				{
+					var buffer = Session.Prj.GetFile(key);
+					if (position.Line < buffer.Lines)
+					{
+						var scopeTracker = Session._scopeTracker;
+						var staticMap = Session._staticMap;
+
+						// I can't think of a good use case for this other than function signatures
+						// maybe scratch locations?
+						var staticPath = GetPathUnderCursor(position, buffer, out _);
+						if (staticPath != "" && scopeTracker.ContainsKey(buffer))
+						{
+							var tracker = scopeTracker[buffer];
+
+							var prefixes = tracker.GetPossibleUsing(position.Line);
+							var result = staticMap.GetJumpToTarget(buffer.Key, staticPath, prefixes);
+							if (result != null)
+							{
+								var absPath = staticMap.GetAbsPath(buffer.Key, staticPath, prefixes, out _);
+								TryGetFunctionSig(absPath, out var sig, out _);
+								var path = fileUtils.RelativePath(Session.Prj.Path, result.Item1);
+								return new Hover
+								{
+									Contents = sig + "\n" + path,
+									Range = new LanguageServer.VsCode.Contracts.Range(position, position)
+								};
+							}
+						}
+					}
+				}
+			}
+
+			return null;
+			//return new Hover { Contents = "Test _hover_ @" + position + "\n\n" + textDocument, Range = new LanguageServer.VsCode.Contracts.Range(position, position) };
 		}
+
 
 		[JsonRpcMethod]
 		public SignatureHelp SignatureHelp(TextDocumentIdentifier textDocument, Position position, object context = null)
@@ -37,41 +76,18 @@ namespace WingraLanguageServer.Services
 					var buffer = Session.Prj.GetFile(key);
 					if (position.Line < buffer.Lines)
 					{
-						//TODO: cleanup
-						var _scopeTracker = Session._scopeTracker;
-						var _staticMap = Session._staticMap;
-						var _compiler = Session.Cmplr;
-						var cursor = position;
-						var _parsedFiles = Session._parsedFiles;
+						var scopeTracker = Session._scopeTracker;
+						var staticMap = Session._staticMap;
 
-						var funcCall = GetFunctionCall(cursor, buffer, out var paramIdx);
-						if (funcCall != "" && _scopeTracker.ContainsKey(buffer))
+						var funcCall = GetFunctionCall(position, buffer, out var paramIdx);
+						if (funcCall != "" && scopeTracker.ContainsKey(buffer))
 						{
-							var tracker = _scopeTracker[buffer];
-							var prefixes = tracker.GetPossibleUsing(cursor.Character);
-							var absPath = _staticMap.GetAbsPath(buffer.Key, funcCall, prefixes, out _);
+							var tracker = scopeTracker[buffer];
+							var prefixes = tracker.GetPossibleUsing(position.Line);
+							var absPath = staticMap.GetAbsPath(buffer.Key, funcCall, prefixes, out _);
 
-							if (absPath != "" && _staticMap.TryGetFunctionInfo(absPath, out var fnName, out var isMethod, out var inputs, out var outputs, out var doesYield, out var isAsync))
+							if (TryGetFunctionSig(absPath, out var sig, out var pars))
 							{
-								string sig = "::";
-								if (isMethod) sig += ".";
-								sig += StaticMapping.GetPathFromAbsPath(absPath);
-								sig += "(";
-								var ins = new List<string>();
-								var pars = new List<ParameterInformation>();
-								for (int i = 0; i < inputs.Length; i++)
-								{
-									ins.Add(inputs[i]);
-									pars.Add(new ParameterInformation("", new MarkupContent( MarkupKind.Markdown, inputs[i])));
-								}
-								sig += util.Join(ins, ",");
-								if (outputs.Length > 0 || isAsync) 
-									sig += " => ";
-								if (isAsync) sig += " async ";
-								if (doesYield) sig += " yield ";
-								sig += util.Join(outputs, ", ");
-								sig += ")";
-
 								return new SignatureHelp(new List<SignatureInformation> {
 									new SignatureInformation(sig, new MarkupContent(MarkupKind.PlainText, ""), pars)
 								}, 0, paramIdx);
@@ -83,9 +99,36 @@ namespace WingraLanguageServer.Services
 			return new SignatureHelp(new List<SignatureInformation>());
 		}
 
-		string GetFunctionCall(Position cursor, WingraBuffer iBuffer, out int currParam)
+		bool TryGetFunctionSig(string absPath, out string sig, out List<ParameterInformation> pars)
 		{
-			var buffer = iBuffer as WingraBuffer;
+			sig = "";
+			pars = new List<ParameterInformation>();
+			if (absPath != "" && Session._staticMap.TryGetFunctionInfo(absPath, out var fnName, out var isMethod, out var inputs, out var outputs, out var doesYield, out var isAsync))
+			{
+				sig += "::";
+				if (isMethod) sig += ".";
+				sig += StaticMapping.GetPathFromAbsPath(absPath);
+				sig += "(";
+				var ins = new List<string>();
+				for (int i = 0; i < inputs.Length; i++)
+				{
+					ins.Add(inputs[i]);
+					pars.Add(new ParameterInformation("", new MarkupContent(MarkupKind.Markdown, inputs[i])));
+				}
+				sig += util.Join(ins, ",");
+				if (outputs.Length > 0 || isAsync)
+					sig += " => ";
+				if (isAsync) sig += " async ";
+				if (doesYield) sig += " yield ";
+				sig += util.Join(outputs, ", ");
+				sig += ")";
+				return true;
+			}
+			return false;
+		}
+
+		string GetFunctionCall(Position cursor, WingraBuffer buffer, out int currParam)
+		{
 			var currLineLex = buffer.GetSyntaxMetadata(cursor.Line);
 			BaseToken? curr = null;
 			var tokes = currLineLex.Tokens;
@@ -140,9 +183,17 @@ namespace WingraLanguageServer.Services
 		{
 			var doc = new SessionDocument(textDocument);
 			var session = Session; // must capture - session not available during callback
+			var key = fileUtils.UriTRoPath(doc.Document.Uri);
+
+			await session.LoadTask;
+			if (!session.Prj.IsFileLoaded(key))
+				if (fileUtils.IsFileInPath(key, session.Prj.Path))
+					if (WingraProject.IsFileWingra(key))
+						await session.Prj.AddNewFile(key);
+
 			doc.DocumentChanged += (sender, args) =>
 			{
-				var key = fileUtils.UriTRoPath(doc.Document.Uri);
+
 				if (session.Prj.IsFileLoaded(key))
 				{
 					var wb = session.Prj.GetFile(key);
@@ -177,6 +228,8 @@ namespace WingraLanguageServer.Services
 		[JsonRpcMethod(IsNotification = true)]
 		public void WillSave(TextDocumentIdentifier textDocument, TextDocumentSaveReason reason)
 		{
+			// TODO: changing the wingraProj file should probably trigger some sort of reload, or at least a warning
+
 			//Client.Window.LogMessage(MessageType.Log, "-----------");
 			//Client.Window.LogMessage(MessageType.Log, Documents[textDocument].Content);
 		}
@@ -191,14 +244,6 @@ namespace WingraLanguageServer.Services
 			Session.Documents.TryRemove(textDocument.Uri, out _);
 		}
 
-		//private static readonly CompletionItem[] PredefinedCompletionItems =
-		//{
-		//    new CompletionItem(".NET", CompletionItemKind.Keyword,
-		//        "Keyword1",
-		//        MarkupContent.Markdown("Short for **.NET Framework**, a software framework by Microsoft (possibly its subsets) or later open source .NET Core."),
-		//        null),
-		//};
-
 		[JsonRpcMethod]
 		public CompletionList Completion(TextDocumentIdentifier textDocument, Position position, CompletionContext context)
 		{
@@ -210,12 +255,10 @@ namespace WingraLanguageServer.Services
 					var buffer = Session.Prj.GetFile(key);
 					if (position.Line < buffer.Lines)
 					{
-						//TODO: clean up
-						var _scopeTracker = Session._scopeTracker;
-						var _staticMap = Session._staticMap;
-						var _compiler = Session.Cmplr;
-						var cursor = position;
-						var _parsedFiles = Session._parsedFiles;
+						var scopeTracker = Session._scopeTracker;
+						var staticMap = Session._staticMap;
+						var compiler = Session.Cmplr;
+						var parsedFiles = Session._parsedFiles;
 						List<CompletionItem> results = new List<CompletionItem>();
 
 						var currLineLex = buffer.GetSyntaxMetadata(position.Line);
@@ -282,16 +325,16 @@ namespace WingraLanguageServer.Services
 
 						string phrase = "";
 						string phraseWithCapitals = "";
-						if (curr.HasValue && _scopeTracker.ContainsKey(buffer))
+						if (curr.HasValue && scopeTracker.ContainsKey(buffer))
 						{
 							phraseWithCapitals = curr.Value.Token;
 							phrase = phraseWithCapitals.ToLower();
 
-							var tracker = _scopeTracker[buffer];
+							var tracker = scopeTracker[buffer];
 
 							if (phrase == "$")
 							{
-								var close = _staticMap.SuggestAll(buffer.Key, tracker.GetPossibleUsing(position.Line));
+								var close = staticMap.SuggestAll(buffer.Key, tracker.GetPossibleUsing(position.Line));
 
 								foreach (var match in close)
 								{
@@ -303,7 +346,7 @@ namespace WingraLanguageServer.Services
 							if (phrase[0] == '^')
 							{
 								var name = phrase.Replace("^", "");
-								var close = _staticMap.SuggestGlobals(name, buffer.Key);
+								var close = staticMap.SuggestGlobals(name, buffer.Key);
 
 								foreach (var glo in close)
 								{
@@ -314,11 +357,11 @@ namespace WingraLanguageServer.Services
 							}
 						}
 
-						if (staticPath != "" && _scopeTracker.ContainsKey(buffer))
+						if (staticPath != "" && scopeTracker.ContainsKey(buffer))
 						{
-							var tracker = _scopeTracker[buffer];
+							var tracker = scopeTracker[buffer];
 
-							var close = _staticMap.SuggestToken(buffer.Key, staticPath, tracker.GetPossibleUsing(position.Line));
+							var close = staticMap.SuggestToken(buffer.Key, staticPath, tracker.GetPossibleUsing(position.Line));
 
 							foreach (var match in close)
 							{
@@ -351,9 +394,9 @@ namespace WingraLanguageServer.Services
 							if (phrase.StartsWith("#"))
 							{
 								//this only handles the 99% case
-								foreach (var mac in _compiler.IterMacroNames())
+								foreach (var mac in compiler.IterMacroNames())
 									AddResult(mac, CompletionItemKind.Snippet);
-								foreach (var mac in _compiler.BuiltInMacros())
+								foreach (var mac in compiler.BuiltInMacros())
 									AddResult(mac, CompletionItemKind.Snippet);
 							}
 							// this region tries to scan outward in the scope from the cursor, looking for variables that may be accessible
@@ -366,15 +409,15 @@ namespace WingraLanguageServer.Services
 									var tok = lex.Tokens[j];
 									if (tok.Type != eToken.Identifier) continue;
 									if (!tok.Token.ToLower().StartsWith(phrase)) continue;
-									if (lineNumber != cursor.Line && j > 0 && lex.Tokens[j - 1].Type == eToken.AtSign)
+									if (lineNumber != position.Line && j > 0 && lex.Tokens[j - 1].Type == eToken.AtSign)
 										AddResult(tok.Token, CompletionItemKind.Variable, "local");
 									else if (j < lex.Tokens.Count - 1 && lex.Tokens[j + 1].Type == eToken.Colon)
 										AddResult(tok.Token, CompletionItemKind.Variable, "local");
-									else if (lineNumber != cursor.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.FunctionDef)
+									else if (lineNumber != position.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.FunctionDef)
 										AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
-									else if (lineNumber != cursor.Line && j > 3 && j < colonSplit && lex.Tokens[1].Type == eToken.FunctionDef) // specifically for global ::func()
+									else if (lineNumber != position.Line && j > 3 && j < colonSplit && lex.Tokens[1].Type == eToken.FunctionDef) // specifically for global ::func()
 										AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
-									else if (lineNumber != cursor.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.Template) // this isn't a thing anymore...
+									else if (lineNumber != position.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.Template) // this isn't a thing anymore...
 										AddResult(tok.Token, CompletionItemKind.Variable, "template parameter");
 								}
 								// naive way to look for local functions/properties in the current template
@@ -391,9 +434,9 @@ namespace WingraLanguageServer.Services
 								}
 							}
 							int currentIndent = currLineLex.PreceedingWhitespace;
-							int highWaterReadAhead = cursor.Line + 1;
+							int highWaterReadAhead = position.Line + 1;
 							// reads upwards till it hits file scope
-							for (int i = cursor.Line - 1; i >= 0; i--)
+							for (int i = position.Line - 1; i >= 0; i--)
 							{
 								var lex = buffer.GetSyntaxMetadata(i);
 								if (lex.PreceedingWhitespace > currentIndent)
@@ -419,7 +462,7 @@ namespace WingraLanguageServer.Services
 								if (currentIndent == 0) break;
 							}
 
-							foreach (var pair in _parsedFiles)
+							foreach (var pair in parsedFiles)
 							{
 								if (pair.Key == buffer)
 								{

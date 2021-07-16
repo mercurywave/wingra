@@ -101,6 +101,18 @@ namespace WingraLanguageServer
 
 		public static bool FileExists(string path)
 			=> new FileInfo(path).Exists;
+
+		public static string GetFileExtension(string path)
+			=> new FileInfo(path).Extension;
+
+		public static string RelativePath(string fromPath, string toTarget)
+			=> Path.GetRelativePath(fromPath, toTarget);
+
+		public static bool IsFileInPath(string file, string folder)
+		{
+			var rel = Path.GetRelativePath(folder, file);
+			return !(rel.StartsWith(".") || Path.IsPathRooted(rel));
+		}
 	}
 
 	class DocFileServer : IServeCodeFiles

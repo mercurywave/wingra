@@ -11,6 +11,9 @@ namespace Wingra
 {
 	public class WingraProject : ILanguage.CodeProject
 	{
+		const string EXTENSION = "wng";
+		const string PROJ_EXTENSION = "wingraProj";
+
 		SortedDictionary<string, WingraBuffer> _wingraFiles = new SortedDictionary<string, WingraBuffer>();
 		public Dictionary<string, string> Config;
 		public List<string> RequiredPaths = new List<string>();
@@ -75,7 +78,7 @@ namespace Wingra
 			}
 			return false;
 		}
-		public override string ProjExtension => "wingraProj";
+		public override string ProjExtension => PROJ_EXTENSION;
 
 		public bool DoRunTests => CheckConfigFlag("runTests");
 		public bool IsJsExport => CheckConfigString("jsExport") != "";
@@ -152,8 +155,9 @@ namespace Wingra
 			list.Add(prj);
 		}
 
-		public static bool IsFileWingra(string file) => file.ToLower().EndsWith(".wng");
-		public override string FileExtension => "wng";
+		public static bool IsFileWingra(string file) => file.ToLower().EndsWith("." + EXTENSION);
+		public static bool IsFileWingraProject(string file) => file.ToLower().EndsWith("." + PROJ_EXTENSION);
+		public override string FileExtension => EXTENSION;
 
 		internal Parser.ErrorList CompileErrors = new Parser.ErrorList();
 
