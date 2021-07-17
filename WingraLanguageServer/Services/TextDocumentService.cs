@@ -540,6 +540,61 @@ namespace WingraLanguageServer.Services
 			}
 			return "";
 		}
+
+		[JsonRpcMethod(methodName: "definition")]
+		public async Task<Location> Definition(TextDocumentIdentifier textDocument, Position position, CancellationToken ct)
+		{
+			// TODO: I'm not sure why this code is never hit
+			Debug("ok...");
+			lock (Session.Lock)
+			{
+				var key = fileUtils.UriTRoPath(textDocument.Uri);
+				if (Session.Prj.IsFileLoaded(key))
+				{
+					var buffer = Session.Prj.GetFile(key);
+					if (position.Line < buffer.Lines)
+					{
+						var scopeTracker = Session._scopeTracker;
+						var staticMap = Session._staticMap;
+
+						var staticPath = GetPathUnderCursor(position, buffer, out _);
+						if (staticPath != "" && scopeTracker.ContainsKey(buffer))
+						{
+							var tracker = scopeTracker[buffer];
+
+							var prefixes = tracker.GetPossibleUsing(position.Line);
+							var result = staticMap.GetJumpToTarget(buffer.Key, staticPath, prefixes);
+							if (result != null)
+							{
+								var pos = new Position(result.Item2, 0);
+								return new Location()
+								{
+									Uri = fileUtils.FileToUri(key),
+									Range = new LanguageServer.VsCode.Contracts.Range(pos, pos),
+								};
+							}
+						}
+					}
+				}
+			}
+			return new Location();
+		}
+		[JsonRpcMethod("documentLink")]
+		public async Task<List<DocumentLink>> DocumentLink(TextDocumentIdentifier textDocument)
+		{
+			// TODO: I'm not sure why this code is never hit
+			Debug("linking...");
+			List<DocumentLink> list = new List<DocumentLink>();
+			lock (Session.Lock)
+			{
+				var key = fileUtils.UriTRoPath(textDocument.Uri);
+				if (Session.Prj.IsFileLoaded(key))
+				{
+					var buffer = Session.Prj.GetFile(key);
+				}
+			}
+			return null;
+		}
 	}
 
 }

@@ -113,6 +113,9 @@ namespace WingraLanguageServer
 			var rel = Path.GetRelativePath(folder, file);
 			return !(rel.StartsWith(".") || Path.IsPathRooted(rel));
 		}
+
+		public static Uri FileToUri(string file)
+			=> new Uri("file://" + file);
 	}
 
 	class DocFileServer : IServeCodeFiles
