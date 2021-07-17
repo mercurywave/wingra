@@ -3,6 +3,7 @@ using LanguageServer.VsCode.Server;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using Range = LanguageServer.VsCode.Contracts.Range;
 
 namespace WingraLanguageServer
@@ -18,42 +19,39 @@ namespace WingraLanguageServer
 		private static readonly string[] Keywords =
 			{".NET Framework", ".NET Core", ".NET Standard", ".NET Compact", ".NET"};
 
-		public ICollection<Diagnostic> LintDocument(TextDocument document, int maxNumberOfProblems)
+		public ICollection<Diagnostic> LintDocument(LanguageServerSession Session, string key)
 		{
 			var diag = new List<Diagnostic>();
-			var content = document.Content;
-			if (string.IsNullOrWhiteSpace(content))
+
+			lock (Session.Lock)
 			{
-				diag.Add(new Diagnostic(DiagnosticSeverity.Hint,
-					new Range(new Position(0, 0), document.PositionAt(content?.Length ?? 0)),
-					"DLS", "DLS0001", "Empty document. Try typing something, such as \".net core\"."));
-				return diag;
-			}
-			foreach (var kw in Keywords)
-			{
-				int pos = 0;
-				while (pos < content.Length)
+				if (Session.IsLoaded && Session.Prj.IsFileLoaded(key))
 				{
-					pos = content.IndexOf(kw, pos, StringComparison.CurrentCultureIgnoreCase);
-					if (pos < 0) break;
-					var separatorPos = pos + kw.Length;
-					if (separatorPos < content.Length && char.IsLetterOrDigit(content, separatorPos))
-						continue;
-					var inputKw = content.Substring(pos, kw.Length);
-					if (inputKw != kw)
+					var buffer = Session.Prj.GetFile(key);
+					foreach (var err in Session.Prj.IncrementalErrorList.Errors)
 					{
-						diag.Add(new Diagnostic(DiagnosticSeverity.Warning,
-							new Range(document.PositionAt(pos), document.PositionAt(separatorPos)), "DLS", "DLS1001", $"\"{inputKw}\" should be \"{kw}\"."));
-						if (diag.Count >= maxNumberOfProblems)
+						if (err.Buffer == buffer)
 						{
-							diag.Add(new Diagnostic(DiagnosticSeverity.Information,
-								new Range(document.PositionAt(pos), document.PositionAt(separatorPos)), "DLS", "DLS2001", "Too many messages, exiting…"));
-							return diag;
+							var line = err.Line;
+							if (err.Token.HasValue)
+							{
+								var off = err.Token.Value.Token.LineOffset;
+								diag.Add(new Diagnostic(DiagnosticSeverity.Error,
+									new Range(err.Line, off, err.Line, off + err.Token.Value.Token.Length),
+									buffer.Key,
+									"",
+									err.Text + "\n" + err.ExtraText));
+							}
+							else diag.Add(new Diagnostic(DiagnosticSeverity.Error,
+								new Range(err.Line, 0, err.Line, 0),
+								buffer.Key,
+								"",
+								err.Text + "\n" + err.ExtraText));
 						}
 					}
-					pos++;
 				}
 			}
+
 			return diag;
 		}
 	}

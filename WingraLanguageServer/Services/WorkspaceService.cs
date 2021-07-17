@@ -18,7 +18,7 @@ namespace WingraLanguageServer.Services
 			Session.Settings = settings.LanguageServer;
 			foreach (var doc in Session.Documents.Values)
 			{
-				var diag = Session.DiagnosticProvider.LintDocument(doc.Document, Session.Settings.MaxNumberOfProblems);
+				var diag = Session.DiagnosticProvider.LintDocument(Session, fileUtils.UriTRoPath(doc.Document.Uri));
 				await Client.Document.PublishDiagnostics(doc.Document.Uri, diag);
 			}
 		}

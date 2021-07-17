@@ -199,20 +199,31 @@ namespace WingraLanguageServer.Services
 					var wb = session.Prj.GetFile(key);
 					lock (session.Lock)
 					{
-						wb.SyncFromExternal(doc.Document.Content.Split("\n").ToList());
+						wb.SyncFromExternal(doc.Document.Content.Split(Environment.NewLine).ToList());
 						_needParse.Add(wb);
 					}
 
-					_ = Task.Delay(100).ContinueWith(t => Task.Run(() =>
+					_ = Task.Delay(100).ContinueWith(t => Task.Run(async () =>
 					{
-						lock (session.Lock)
+						try
 						{
-							foreach (var file in _needParse)
-								session.UpdateFileCache(file);
-							_needParse.Clear();
+							ICollection<Diagnostic> diag;
+							lock (session.Lock)
+							{
+								foreach (var file in _needParse)
+									session.UpdateFileCache(file);
+								_needParse.Clear();
+
+								var prov = session.DiagnosticProvider;
+								diag = prov.LintDocument(session, key);
+							}
+							await session.Client.Document.PublishDiagnostics(doc.Document.Uri, diag);
+						}
+						catch (Exception e)
+						{
+							session.Client.Window.ShowMessage(MessageType.Error, e.ToString());
 						}
 					}), TaskScheduler.Current);
-
 				}
 			};
 			session.Documents.TryAdd(textDocument.Uri, doc);
