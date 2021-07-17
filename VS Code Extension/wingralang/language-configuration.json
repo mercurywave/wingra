@@ -3,7 +3,7 @@
         // symbol used for single line comment. Remove this entry if your language does not support line comments
         "lineComment": "//",
         // symbols used for start and end a block comment. Remove this entry if your language does not support block comments
-        "blockComment": [ "/*", "*/" ]
+        //"blockComment": [ "/*", "*/" ]
     },
     // symbols used as brackets
     "brackets": [
@@ -26,5 +26,17 @@
         ["(", ")"],
         ["\"", "\""],
         ["`", "`"]
+    ],
+    "indentationRules": {
+		"increaseIndentPattern": "^((?!\\/\\/).)*(((if|else|switch|for|while|library|enum|trap|#def|lambda|textdata|case)[^\\\\]*)|(::.*\\(.*\\)(?!.*=>)[^\\\\]*)|(dim(\\s)*[^(][^\\\\]*))$",
+        // this applies an unindent to the current line, not the following line, which is what we would want
+        // should match nothing - if we don't include decreaseIndentPattern, increaseIndentPattern does nothing
+        "decreaseIndentPattern": "$a"
+	},
+    "onEnterRules": [
+        {
+            "beforeText": "^((?!\\/\\/).)*(quit|(return(?!.*switch|(.*dim(?!(\\s)*\\())))).*$",
+            "action": { "indent": "outdent" }
+        }
     ]
 }
