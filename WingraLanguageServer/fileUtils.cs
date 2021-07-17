@@ -26,7 +26,7 @@ namespace WingraLanguageServer
 			cache.Add(path, prj);
 			fileUtils.PreLoadDirectory(path, prj);
 			await LoadDependentProjects(prj, path, cache, server);
-			await prj.LoadAllFiles();
+			await prj.AllFilesAdded();
 			return prj;
 		}
 
@@ -78,7 +78,7 @@ namespace WingraLanguageServer
 		// Expects you called PreLoad first!
 		public static async Task LoadDirectory(WingraProject proj)
 		{
-			await proj.LoadAllFiles();
+			await proj.AllFilesAdded();
 		}
 
 		static void AddFolderToTree(DirectoryInfo dir, WingraProject proj)
@@ -115,7 +115,7 @@ namespace WingraLanguageServer
 		}
 
 		public static Uri FileToUri(string file)
-			=> new Uri("file://" + file);
+			=> new Uri("file:///" + Uri.EscapeUriString( file.Replace(Path.DirectorySeparatorChar, '/')), UriKind.Absolute);
 	}
 
 	class DocFileServer : IServeCodeFiles

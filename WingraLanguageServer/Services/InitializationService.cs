@@ -32,6 +32,7 @@ namespace WingraLanguageServer.Services
 					WillSave = true,
 					Change = TextDocumentSyncKind.Incremental
 				},
+				DefinitionProvider = new DefinitionOptions(),
 			});
 		}
 

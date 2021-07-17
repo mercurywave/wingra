@@ -5,8 +5,8 @@ import { LanguageClient, LanguageClientOptions, ServerOptions } from "vscode-lan
 
 // Defines the search path of your language server DLL. (.NET Core)
 const languageServerPaths = [
-    "server/WingraLanguageServer.dll",
     "../../WingraLanguageServer/bin/Debug/netcoreapp3.1/WingraLanguageServer.dll",
+    "server/WingraLanguageServer.dll",
 ]
 
 let client: LanguageClient | undefined;

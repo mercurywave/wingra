@@ -185,6 +185,7 @@ namespace WingraLanguageServer.Services
 			var session = Session; // must capture - session not available during callback
 			var key = fileUtils.UriTRoPath(doc.Document.Uri);
 
+			session.Documents.TryAdd(textDocument.Uri, doc);
 			await session.LoadTask;
 			if (!session.Prj.IsFileLoaded(key))
 				if (fileUtils.IsFileInPath(key, session.Prj.Path))
@@ -226,7 +227,6 @@ namespace WingraLanguageServer.Services
 					}), TaskScheduler.Current);
 				}
 			};
-			session.Documents.TryAdd(textDocument.Uri, doc);
 		}
 
 		[JsonRpcMethod(IsNotification = true)]
@@ -555,8 +555,6 @@ namespace WingraLanguageServer.Services
 		[JsonRpcMethod(methodName: "definition")]
 		public async Task<Location> Definition(TextDocumentIdentifier textDocument, Position position, CancellationToken ct)
 		{
-			// TODO: I'm not sure why this code is never hit
-			Debug("ok...");
 			lock (Session.Lock)
 			{
 				var key = fileUtils.UriTRoPath(textDocument.Uri);
@@ -577,10 +575,27 @@ namespace WingraLanguageServer.Services
 							var result = staticMap.GetJumpToTarget(buffer.Key, staticPath, prefixes);
 							if (result != null)
 							{
-								var pos = new Position(result.Item2, 0);
+								int cPos = 0;
+								if (Session.Prj.IsFileLoaded(result.Item1))
+								{
+									var targ = Session.Prj.GetFile(result.Item1);
+									var lex = targ.GetSyntaxMetadata(result.Item2);
+									if (lex.Tokens.Count > 0)
+										cPos = lex.Tokens[0].LineOffset;
+									foreach (var tok in lex.Tokens)
+										if (tok.Token.Contains(staticPath))
+											cPos = tok.LineOffset;
+									if (cPos == 0)
+									{
+										var text = targ.TextAtLine(result.Item2);
+										if (text.Length > 0)
+											cPos = Array.FindIndex(text.ToCharArray(), c => !char.IsWhiteSpace(c));
+									}
+								}
+								var pos = new Position(result.Item2, cPos);
 								return new Location()
 								{
-									Uri = fileUtils.FileToUri(key),
+									Uri = fileUtils.FileToUri(result.Item1),
 									Range = new LanguageServer.VsCode.Contracts.Range(pos, pos),
 								};
 							}
@@ -588,23 +603,7 @@ namespace WingraLanguageServer.Services
 					}
 				}
 			}
-			return new Location();
-		}
-		[JsonRpcMethod("documentLink")]
-		public async Task<List<DocumentLink>> DocumentLink(TextDocumentIdentifier textDocument)
-		{
-			// TODO: I'm not sure why this code is never hit
-			Debug("linking...");
-			List<DocumentLink> list = new List<DocumentLink>();
-			lock (Session.Lock)
-			{
-				var key = fileUtils.UriTRoPath(textDocument.Uri);
-				if (Session.Prj.IsFileLoaded(key))
-				{
-					var buffer = Session.Prj.GetFile(key);
-				}
-			}
-			return null;
+			return new Location() { Uri = textDocument.Uri, Range = new LanguageServer.VsCode.Contracts.Range(position, position) };
 		}
 	}
 

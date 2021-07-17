@@ -15,6 +15,7 @@ namespace Wingra
 		const string PROJ_EXTENSION = "wingraProj";
 
 		SortedDictionary<string, WingraBuffer> _wingraFiles = new SortedDictionary<string, WingraBuffer>();
+		SortedDictionary<string, WingraBuffer> _allWingraFiles = new SortedDictionary<string, WingraBuffer>();
 		public Dictionary<string, string> Config;
 		public List<string> RequiredPaths = new List<string>();
 		public List<WingraProject> RequiredProjects = new List<WingraProject>();
@@ -112,8 +113,8 @@ namespace Wingra
 			return gel;
 		}
 
-		public WingraBuffer GetFile(string key) => _wingraFiles[key];
-		public bool IsFileLoaded(string key) => _wingraFiles.ContainsKey(key);
+		public WingraBuffer GetFile(string key) => _allWingraFiles[key];
+		public bool IsFileLoaded(string key) => _allWingraFiles.ContainsKey(key);
 
 		protected override async Task<ITextBuffer> _LoadByKey(string key)
 		{
@@ -131,10 +132,13 @@ namespace Wingra
 			// I didn't want to pre-load all these files for the editor, but I can't compile unless everything is loaded
 			// maybe someday I can defer this
 			await LoadAllFiles();
+			foreach (var prj in GetProjectLoadOrder())
+				foreach (var file in prj._wingraFiles)
+					_allWingraFiles.Add(file.Key, file.Value);
 			await base.AllFilesAdded();
 		}
 
-		public async Task LoadAllFiles()
+		internal async Task LoadAllFiles()
 		{
 			foreach (var pair in _wingraFiles.ToArray())
 				if (pair.Value == null)
