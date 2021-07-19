@@ -11,7 +11,8 @@
     ],
     "activationEvents": [
         "onCommand:extension.sayHello",
-        "onLanguage:wingra"
+        "onLanguage:wingra",
+        "onCommand:workbench.action.tasks.runTask"
     ],
     "main": "./out/src/extension",
     "configuration": {
@@ -62,6 +63,25 @@
                 "scopeName": "source.wingraProj",
                 "path": "./syntaxes/wingraProj.tmLanguage.json"
             }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "wingraRunProvider"
+            }
+        ],
+        "problemMatchers": [
+            {
+                "name": "wingra.run",
+                "owner": "wingralang",
+                "fileLocation": ["relative", "${workspaceRoot}"]
+            }
+        ],
+        "commands": [
+            {
+				"command": "wingra.run",
+				"title": "Run current folder",
+				"category": "Wingra"
+			}
         ]
     },
     "extensionDependencies": [],

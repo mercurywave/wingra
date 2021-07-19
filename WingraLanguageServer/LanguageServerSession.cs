@@ -70,7 +70,6 @@ namespace WingraLanguageServer
 		{
 			Prj = await Loader.LoadProject(_folderPath, FileServer);
 			Prj.IncrementalDebugCompiler = new Compiler(_staticMap, false, false, true, true);
-			Prj.IncrementalErrorList = new ErrorList();
 			foreach (var sug in Suggestion.GetBuiltIns(_staticMap))
 			{
 				if (sug.Type == eSuggestionType.Keyword)
@@ -89,8 +88,8 @@ namespace WingraLanguageServer
 		}
 		internal void UpdateFileCache(WingraBuffer file)
 		{
-			Prj.IncrementalErrorList.ClearForFile(file);
-			var log = Prj.IncrementalErrorList.GetFileLogger(file);
+			Prj.ClearFileErrors(file);
+			var log = Prj.GetFileErrorLogger(file);
 			try
 			{
 				// TODO: does this comment still apply?

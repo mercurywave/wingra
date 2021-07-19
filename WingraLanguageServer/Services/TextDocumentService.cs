@@ -48,7 +48,11 @@ namespace WingraLanguageServer.Services
 							{
 								var absPath = staticMap.GetAbsPath(buffer.Key, staticPath, prefixes, out _);
 								TryGetFunctionSig(absPath, out var sig, out _);
-								var path = fileUtils.RelativePath(Session.Prj.Path, result.Item1);
+								string path;
+								if (fileUtils.IsFileInPath(result.Item1, Loader.StdLibPath))
+									path = fileUtils.RelativePath(Loader.StdLibPath, result.Item1);
+								else
+									path = fileUtils.RelativePath(Session.Prj.Path, result.Item1);
 								return new Hover
 								{
 									Contents = sig + "\n" + path,
@@ -185,7 +189,8 @@ namespace WingraLanguageServer.Services
 			var session = Session; // must capture - session not available during callback
 			var key = fileUtils.UriTRoPath(doc.Document.Uri);
 
-			session.Documents.TryAdd(textDocument.Uri, doc);
+			lock(session.Lock)
+				session.Documents.TryAdd(textDocument.Uri, doc);
 			await session.LoadTask;
 			if (!session.Prj.IsFileLoaded(key))
 				if (fileUtils.IsFileInPath(key, session.Prj.Path))
@@ -204,16 +209,24 @@ namespace WingraLanguageServer.Services
 						_needParse.Add(wb);
 					}
 
-					_ = Task.Delay(100).ContinueWith(t => Task.Run(async () =>
+					_ = Task.Delay(200).ContinueWith(t => Task.Run(async () =>
 					{
 						try
 						{
 							ICollection<Diagnostic> diag;
 							lock (session.Lock)
 							{
+								if (_needParse.Count == 0) return;
 								foreach (var file in _needParse)
 									session.UpdateFileCache(file);
 								_needParse.Clear();
+
+								var prj = session.Prj;
+								if (!prj.CheckForErrors())
+								{
+									var compiler = new Compiler(session._staticMap, false, true, false, true, false);
+									prj.CompileAll(compiler);
+								}
 
 								var prov = session.DiagnosticProvider;
 								diag = prov.LintDocument(session, key);
@@ -233,7 +246,10 @@ namespace WingraLanguageServer.Services
 		public void DidChange(TextDocumentIdentifier textDocument,
 			ICollection<TextDocumentContentChangeEvent> contentChanges)
 		{
-			Session.Documents[textDocument.Uri].NotifyChanges(contentChanges);
+			lock (Session.Lock)
+			{
+				Session.Documents[textDocument.Uri].NotifyChanges(contentChanges);
+			}
 		}
 
 		[JsonRpcMethod(IsNotification = true)]

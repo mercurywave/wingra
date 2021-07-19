@@ -33,6 +33,9 @@ namespace WingraLanguageServer.Services
 					Change = TextDocumentSyncKind.Incremental
 				},
 				DefinitionProvider = new DefinitionOptions(),
+				//ExecuteCommandProvider = new ExecuteCommandOptions(new List<string> { 
+				//	"wingra.build"
+				//}),
 			});
 		}
 
@@ -42,7 +45,7 @@ namespace WingraLanguageServer.Services
 			try
 			{
 				await Session.InitializeAsync();
-				await Client.Window.ShowMessage(MessageType.Info, $"Wingra parser booted");
+				//await Client.Window.ShowMessage(MessageType.Info, $"Wingra parser booted");
 			}
 			catch(Exception e)
 			{

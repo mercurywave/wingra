@@ -2,6 +2,7 @@
 using LanguageServer.VsCode.Server;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Range = LanguageServer.VsCode.Contracts.Range;
@@ -28,24 +29,25 @@ namespace WingraLanguageServer
 				if (Session.IsLoaded && Session.Prj.IsFileLoaded(key))
 				{
 					var buffer = Session.Prj.GetFile(key);
-					foreach (var err in Session.Prj.IncrementalErrorList.Errors)
+					foreach (var err in Session.Prj.GetAllErrors())
 					{
 						if (err.Buffer == buffer)
 						{
 							var line = err.Line;
+							var code = "";
 							if (err.Token.HasValue)
 							{
 								var off = err.Token.Value.Token.LineOffset;
 								diag.Add(new Diagnostic(DiagnosticSeverity.Error,
 									new Range(err.Line, off, err.Line, off + err.Token.Value.Token.Length),
 									buffer.Key,
-									"",
+									code,
 									err.Text + "\n" + err.ExtraText));
 							}
 							else diag.Add(new Diagnostic(DiagnosticSeverity.Error,
 								new Range(err.Line, 0, err.Line, 0),
 								buffer.Key,
-								"",
+								code,
 								err.Text + "\n" + err.ExtraText));
 						}
 					}

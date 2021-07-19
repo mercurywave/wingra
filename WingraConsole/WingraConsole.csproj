@@ -10,4 +10,8 @@
     <ProjectReference Include="..\Wingra\Wingra.csproj" />
   </ItemGroup>
 
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="xcopy &quot;$(TargetDir)*.dll&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y &#xD;&#xA;xcopy &quot;$(TargetDir)*.exe&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y &#xD;&#xA;xcopy &quot;$(TargetDir)*.pdb&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y&#xD;&#xA;xcopy &quot;$(TargetDir)*.json&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y&#xD;&#xA;xcopy &quot;$(TargetDir)*.wng&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y" />
+  </Target>
+
 </Project>

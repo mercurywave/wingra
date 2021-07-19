@@ -21,10 +21,11 @@ namespace Wingra
 		public List<WingraProject> RequiredProjects = new List<WingraProject>();
 
 		public Compiler IncrementalDebugCompiler; // managed by editor, if any
-		public ErrorList IncrementalErrorList;
-		public WingraProject(string path, IServeCodeFiles server)
+		public WingraProject(string path, IServeCodeFiles server, WingraProject stdLib)
 			: base(path, server)
 		{
+			if (stdLib != null)
+				RequiredProjects.Add(stdLib);
 		}
 
 		#region config file
@@ -172,6 +173,16 @@ namespace Wingra
 					return true;
 			return false;
 		}
+
+		public ErrorLogger GetFileErrorLogger(WingraBuffer buff)
+		{
+			foreach (var prj in GetProjectLoadOrder())
+				if (prj._wingraFiles.ContainsKey(buff.Key))
+					return prj.CompileErrors.GetFileLogger(buff);
+			return CompileErrors.GetFileLogger(buff);
+		}
+		public void ClearFileErrors(WingraBuffer buff)
+			=> GetProjectLoadOrder().ForEach(prj => prj.CompileErrors.ClearForFile(buff));
 
 		public List<SyntaxError> GetAllErrors()
 			=> GetProjectLoadOrder().SelectMany(prj => prj.CompileErrors.Errors).ToList();

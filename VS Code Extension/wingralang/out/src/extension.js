@@ -9,15 +9,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deactivate = exports.activate = void 0;
+exports.deactivate = exports.getWorkspaceFolder = exports.activate = void 0;
 const fs = require("fs");
 const path = require("path");
 const vscode = require("vscode");
 const node_1 = require("vscode-languageclient/node");
 // Defines the search path of your language server DLL. (.NET Core)
 const languageServerPaths = [
-    "server/WingraLanguageServer.dll",
-    "../../WingraLanguageServer/bin/Debug/netcoreapp3.1/WingraLanguageServer.dll",
+    "bin/ext/WingraLanguageServer.dll",
 ];
 let client;
 function activateLanguageServer(context) {
@@ -73,18 +72,66 @@ function activateLanguageServer(context) {
 // your extension is activated the very first time the command is executed
 function activate(context) {
     return __awaiter(this, void 0, void 0, function* () {
-        console.log("wingraLang extension is now activated.");
-        yield activateLanguageServer(context);
-        // The command has been defined in the package.json file
-        let disposable = vscode.commands.registerCommand("extension.sayHello", () => {
+        let WTerminal = null;
+        var extPath = context.asAbsolutePath("");
+        context.subscriptions.push(vscode.commands.registerCommand("wingra.run", () => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             // The code you place here will be executed every time your command is executed
-            // Display a message box to the user
-            vscode.window.showInformationMessage("Hello World!");
-        });
-        context.subscriptions.push(disposable);
+            const doc = (_a = vscode.window.activeTextEditor) === null || _a === void 0 ? void 0 : _a.document;
+            if (vscode.workspace.workspaceFolders) {
+                const folder = vscode.workspace.workspaceFolders[0]; // TODO: maybe this needs to be fancier?
+                if (folder) {
+                    if (doc && doc.isDirty) {
+                        yield doc.save();
+                    }
+                    //const wingra = `%USERPROFILE%\.vscode\extensions`;
+                    const config = getWorkspaceConfig();
+                    const wingra = (config === null || config === void 0 ? void 0 : config.get('pathToExecutableFile', ''))
+                        || 'C:\\Users\\mettu\\Source\\Repos\\wingra\\WingraConsole\\bin\\Debug\\netcoreapp3.1\\WingraConsole.exe';
+                    WTerminal = WTerminal || vscode.window.createTerminal("Wingra");
+                    WTerminal.show();
+                    WTerminal.sendText(wingra, true);
+                }
+            }
+        })));
+        // var type = "wingraRunProvider";
+        // vscode.tasks.registerTaskProvider(type,{
+        //     provideTasks(token?: vscode.CancellationToken) {
+        //         var execution = new vscode.ShellExecution("echo \"Hello World\"");
+        //         var problemMatchers = ["$runWingra"];
+        //         return [
+        //             new vscode.Task({type: type}, vscode.TaskScope.Workspace,
+        //                 "Run", "wingralang", execution, problemMatchers)
+        //         ];
+        //     },
+        //     resolveTask(task: vscode.Task, token?: vscode.CancellationToken) {
+        //         return task;
+        //     }
+        // });
+        yield activateLanguageServer(context);
     });
 }
 exports.activate = activate;
+function getWorkspaceConfig() {
+    const currentWorkspaceFolder = getWorkspaceFolder();
+    if (!currentWorkspaceFolder)
+        return null;
+    return vscode.workspace.getConfiguration('v', currentWorkspaceFolder.uri);
+}
+function getWorkspaceFolder(uri) {
+    if (uri)
+        return vscode.workspace.getWorkspaceFolder(uri) || null;
+    if (!vscode.workspace.workspaceFolders)
+        return null;
+    const currentDoc = getCurrentDocument();
+    return currentDoc
+        ? vscode.workspace.getWorkspaceFolder(currentDoc.uri) || null
+        : vscode.workspace.workspaceFolders[0];
+}
+exports.getWorkspaceFolder = getWorkspaceFolder;
+function getCurrentDocument() {
+    return vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document : null;
+}
 // this method is called when your extension is deactivated
 function deactivate() {
     return __awaiter(this, void 0, void 0, function* () {

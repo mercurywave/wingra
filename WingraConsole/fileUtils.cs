@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Wingra;
@@ -14,24 +15,26 @@ namespace WingraConsole
 		public static async Task<WingraProject> LoadProject(string path)
 		{
 			var cache = new Dictionary<string, WingraProject>();
-			var prj = await LoadProject(path, cache);
+			// StdLib always loads first
+			var stdLib = await LoadProject(Path.GetDirectoryName(Assembly.GetAssembly(typeof(Loader)).Location), cache);
+			var prj = await LoadProject(path, cache, stdLib);
 			return prj;
 		}
 
-		static async Task<WingraProject> LoadProject(string path, Dictionary<string, WingraProject> cache)
+		static async Task<WingraProject> LoadProject(string path, Dictionary<string, WingraProject> cache, WingraProject stdLib = null)
 		{
 			if (cache.ContainsKey(path))
 				return cache[path];
 
-			var prj = new WingraProject(path, new CodeFileServer());
+			var prj = new WingraProject(path, new CodeFileServer(), stdLib);
 			cache.Add(path, prj);
 			fileUtils.PreLoadDirectory(path, prj);
 			await LoadDependentProjects(prj, path, cache);
-			await prj.LoadAllFiles();
+			await prj.AllFilesAdded();
 			return prj;
 		}
 
-		static async Task LoadDependentProjects(WingraProject prj, string dir, Dictionary<string, WingraProject> cache)
+		static async Task LoadDependentProjects(WingraProject prj, string dir, Dictionary<string, WingraProject> cache, WingraProject stdLib = null)
 		{
 			var file = fileUtils.CombinePath(dir, "project." + prj.ProjExtension);
 			if (!fileUtils.FileExists(file))
@@ -40,7 +43,7 @@ namespace WingraConsole
 			foreach (var path in prj.RequiredPaths)
 			{
 				var absPath = Path.GetFullPath(Path.Combine(dir, path));
-				var child = await LoadProject(absPath, cache);
+				var child = await LoadProject(absPath, cache, stdLib);
 				prj.RequiredProjects.Add(child);
 			}
 		}
@@ -75,7 +78,7 @@ namespace WingraConsole
 		// Expects you called PreLoad first!
 		public static async Task LoadDirectory(WingraProject proj)
 		{
-			await proj.LoadAllFiles();
+			await proj.AllFilesAdded();
 		}
 
 		static void AddFolderToTree(DirectoryInfo dir, WingraProject proj)

@@ -32,6 +32,9 @@ namespace WingraLanguageServer
 			{
 				logWriter = File.CreateText("messages-" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".log");
 				logWriter.AutoFlush = true;
+				var debugLog  = File.CreateText("debug-" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".log");
+				debugLog.AutoFlush = true;
+				util._logger = debugLog;
 			}
 			using (logWriter)
 			using (var cin = Console.OpenStandardInput())
@@ -121,6 +124,13 @@ namespace WingraLanguageServer
 		public static string GetTimeStamp()
 		{
 			return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+		}
+
+		internal static TextWriter _logger;
+		public static void Log(object obj)
+		{
+			if(_logger != null)
+			lock (_logger) _logger.WriteLine("{0} < {1}", GetTimeStamp(), obj);
 		}
 	}
 }

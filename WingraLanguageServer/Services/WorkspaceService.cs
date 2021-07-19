@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using JsonRpc.Contracts;
 using LanguageServer.VsCode.Contracts;
 using Newtonsoft.Json.Linq;
+using Wingra;
+using Wingra.Parser;
 
 namespace WingraLanguageServer.Services
 {
@@ -40,6 +42,31 @@ namespace WingraLanguageServer.Services
 					}
 				}
 			}
+		}
+		[JsonRpcMethod]
+		public async Task ExecuteCommand(string command, ICollection<string> arguments)
+		{
+			try
+			{
+				//if (command == "wingra.build")
+				//{
+				//	lock (Session.Lock)
+				//	{
+				//		var prj = Session.Prj;
+				//		var symbols = new WingraSymbols();
+				//		var compiler = new Compiler(Session._staticMap, false, true, false, true, false);
+				//		prj.CompileAll(compiler, symbols);
+
+				//		Debug("errors:" + prj.GetAllErrors().Count);
+				//	}
+				//	foreach (var doc in Session.Documents.Values)
+				//	{
+				//		var diag = Session.DiagnosticProvider.LintDocument(Session, fileUtils.UriTRoPath(doc.Document.Uri));
+				//		await Client.Document.PublishDiagnostics(doc.Document.Uri, diag);
+				//	}
+				//}
+			}
+			catch (Exception e) { Debug(e.ToString()); }
 		}
 	}
 }

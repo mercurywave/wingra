@@ -1,6 +1,5 @@
 version=1
 
-requires ..\Standard Library\
 requires ..\Test Harness\
 
 ; export to javascript
