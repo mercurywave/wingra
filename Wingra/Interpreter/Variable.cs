@@ -165,7 +165,7 @@ namespace Wingra.Interpreter
 			if (_dataType == eVar.Int) return "" + _int;
 			if (_dataType == eVar.Float) return "" + _float;
 			if (_dataType == eVar.Bool) return (_int != 0 ? "true" : "false");
-			if (IsEnum) return EnumContent.ToString();
+			if (IsEnum) return EnumContent.GetValueString();
 			return _AsString();
 		}
 		bool _AsBool()

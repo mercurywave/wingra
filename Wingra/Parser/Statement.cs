@@ -181,13 +181,16 @@ namespace Wingra.Parser
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			func.InjectDeferrals(asmStackLevel);
 			if (_ret == null)
+			{
+				func.InjectDeferrals(asmStackLevel);
 				func.Add(asmStackLevel, eAsmCommand.Return);
+			}
 			else
 			{
 				foreach (var par in _ret)
 					par.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+				func.InjectDeferrals(asmStackLevel);
 				func.Add(asmStackLevel, eAsmCommand.Return, _ret.Count);
 			}
 		}

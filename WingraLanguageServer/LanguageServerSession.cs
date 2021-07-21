@@ -73,7 +73,9 @@ namespace WingraLanguageServer
 			foreach (var sug in Suggestion.GetBuiltIns(_staticMap))
 			{
 				if (sug.Type == eSuggestionType.Keyword)
-					StaticSuggestions.Add(new CompletionItem(sug.Function, CompletionItemKind.Keyword, null));
+					StaticSuggestions.Add(new CompletionItem(sug.Function, CompletionItemKind.Keyword, null) { 
+						CommitCharacters = new List<char>() { ' ', '(', ';' }
+					});
 			}
 			BuildCache();
 		}

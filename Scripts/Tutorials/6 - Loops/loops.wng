@@ -1,0 +1,61 @@
+
+// if you want to execute some code multiple times, you can use a 'for' or 'while' loop
+@a : 0
+while a < 4 // this loop will execute as long as the condition a < 4 is true
+    // this block of code will execute 4 times
+    a : a + 1
+    $IO.Write("while " + ~a)
+
+// you can break out of a loop early with the 'break' statement
+@b : 0
+while true // this would loop forever
+    a : a + 1
+    $IO.Write("while " + ~a)
+    if a >= 4 \ break // this condition escapes the loop
+
+// you could write that same loop more simply with a 'for' loop
+for @b : 1 to 5 // when the loop reaches 5, it quits
+    $IO.Write("for b " + ~b)
+
+// declaring a variable like that is optional
+// if you don't declare a variable, the 'it' variable will automatically be used
+for 1 to 5
+    $IO.Write("for it " + ~it)
+
+// you can iterate through a loop at a different pace with the 'by' keyword
+for 2 to 10 by 2
+    $IO.Write("for by " + ~(it / 2))
+    // prints 1, 2, 3, 4
+
+@c : dim()
+c[0] : 3
+c[1] : 4
+c[2] : 5
+
+// you can also loop over the keys of a struct
+for @key in c
+    $IO.Write("for in " + ~key)
+    // prints 0, 1, 2
+
+// or loop over the values of a struct
+for @val of c
+    $IO.Write("for of " + ~val)
+    // prints 3, 4, 5
+
+// or both at the same time
+for @val of c at @key
+    $IO.Write("for of-at " + ~key + ", " + ~val)
+
+
+// there is an alternative syntax for for that loops over an iterator
+// this will be covered more completely in future tutorials
+// for now, you can loop over the values of a list like this
+for @val : c
+    $IO.Write("for : " + ~val)
+    // prints 3, 4, 5
+
+// declaring the variable with this form is also optional here
+// again, the 'it' variable is used automatically
+for c
+    $IO.Write("for " + ~it)
+    // prints 3, 4, 5

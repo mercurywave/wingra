@@ -18,6 +18,7 @@ namespace WingraLanguageServer.Services
 			var item = RequestContext.Request.Parameters.ToObject<CompletionItem>(util.CamelCaseJsonSerializer);
 			// Add a pair of square brackets around the inserted text.
 			item.InsertText = item.Label; //$"[{item.Label}]";
+			item.CommitCharacters = new List<char>() { ' ', '(', ';' };
 			return item;
 		}
 	}

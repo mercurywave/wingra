@@ -7,17 +7,21 @@
 	$assert($Foo())
 	
 ::Bar( => a)
-	@a : false
+	// if we returned a value type variable, this wouldn't work the same way
+	// currently, the return expressions are run and locked in prior to defer running
+	// it seems handy to be able to return a child node of an object before it's cleaned up
+	// can't of a reasonable example where the defer should occur prior to the return expressions running
+	@a : dim()
 	for 1 to 5
 		if it = 4
 			return a
 		if it = 3
-			a : false
+			a.out : false
 		if it = 2
-			defer a : true
+			defer a.out : true
 	
 #test
-	$assert($Bar())
+	$assert($Bar().out)
 	
 #test
 	@a : dim(false)

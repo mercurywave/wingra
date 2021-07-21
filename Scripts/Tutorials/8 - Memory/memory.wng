@@ -1,0 +1,134 @@
+
+// Wingra data types can be categorized as either value type or reference type
+// numbers and strings are value types
+// when you use them as an expression or assign them to another variable, you create a copy
+@a : 4
+@b : a
+a : 5
+// the original value is not modified, so b = 4 at this point
+
+
+// complex data types like structs are reference types
+// reference types have more complicated memory patterns
+// when you use one of these in an expression or assign them to another variable, you create a pointer
+// when you modify the inner contents of the variable, pointers to that variable reflect that change
+@c : dim()
+@d : c // d is a pointer to c
+c[0] : "text"
+$IO.Write(d[0]) // prints text
+
+// you can access the shared memory from the pointer the same way you would the struct itself
+d[0] : "new text"
+$IO.Write(c[0]) // prints new text
+
+// the pointer itself is a value-type variable
+// so manipulating where the pointer points does not modify other copies
+@e : d
+e : dim()
+$IO.Write(d[0]) // still prints new text
+
+
+// the reference type value itself is considered to own some chunk of memory
+// the pointers are just shallow copies to the core owned memory
+// you can manually free the memory of a reference type with the 'free' keyword
+free c
+// at this point, the owned memory is released for other parts of your program to use
+// any pointers to the former memory are immediately and forever invalidated
+// attempting to access these old pointers is a fatal exception for your program
+//$IO.Write(d[0]) // this would now crash
+// you could reassign d to point to a new value, that is the only valid action you could take with the variable
+
+
+// instead of making a pointer to a reference type, you could copy the contents of the reference type
+@f : dim()
+f.foo : "hello"
+@g : copy f
+g.foo : "goodbye"
+$IO.Write(f.foo) // still hello
+
+// the 'free' keyword can also similarly be used to pass the ownsership of a variable to another
+@h : g // a pointer to the contents of g
+@i : free g
+$IO.Write(i.foo) // goodbye
+$IO.Write(~(g = null)) // true
+
+// pointers that point to the owned memory continue to be valid, as the core memory persist through this transfer
+$IO.Write(h.foo) // goodbye
+
+
+// memory ownership like this is hierarchical
+@j : dim()
+j.top : dim()
+j.top.inner : "something"
+// so j owns the contents of top, which owns the context inner
+
+// note: copy does not recursive copy the contents
+@k : copy j
+k.top.inner : "something else"
+$IO.Write(j.top.inner) // prints 'something else'
+
+// 'free'-ing j at this point would release j.top, which would release j.top.inner
+free j
+// k now contains an invalid pointer to the memory that formerly was owned by j.top
+// $IO.Write(k.top.inner) // would crash
+
+
+// you can use '.' operator to chain together nodes and access inner variable contents
+// you can also use the [] symbols to access inner contents for non-string or non-known contents
+@m : dim()
+m["top","inner"] : "leaf"
+// this [] path automatically creates the dim() reference that we made in j
+$IO.Write(m.top.inner) // prints leaf
+// with this, you can form tree-like nested hierarchies of data
+
+// you can free individual branches of a struct with free, similar to 'free'-ing a variable
+free m.top.inner
+// now, m.top still exists, it just contains an empty struct
+// to remove the empty struct you would instead have done this
+free m.top
+
+
+// within the scope of a single function, all local variables are automatically 'free'-d when the function returns
+// this cleanup prevents memory leaks and makes sure the space used is available for future code
+// this can however create some potential surprises
+::BadFunction( => invalidNode)
+    @a : dim()
+    a.inner : dim()
+    a.inner.leaf : "boo!"
+    invalidNode : a.inner
+    // the problem is that invalidNode is a pointer to a.inner
+    // a.inner is automatically 'free'-d, which means the pointer is invalid
+//$IO.Write($BadFunction().leaf) // would crash
+
+// the exception to the previous rule is that the named output parameters are not subject to this
+::GoodFunc(=> validPointer)
+    validPointer : dim() // validpointer contains a real reference type
+    validPointer.leaf : "yay!"
+$IO.Write($GoodFunc().leaf) // prints 'yay!'
+// note, we aren't saving the output of $GoodFunc() here while it is still in use in this expression
+// the owned memory here is 'free'-d as soon as it's home is released during the processing of this line
+
+
+// reference types always need an owner, and managing that state can be difficult
+// one tool to help is the scratch variable
+scratch ColdStorage : dim()
+// these variables cannot be declared within a function
+// they persist with the lifetime of the program, and can be accessed from anywhere in the file with the ^ symbol
+^ColdStorage[1,2] : "frozen"
+$IO.Write(^ColdStorage[1,2])
+
+// the $Scratch library extends the ability to store memory that persists until it is freed (or the program ends)
+@p : $Scratch.Alloc()
+p.keepMe : "hold onto this"
+$Scratch.Free(p) // releases p.keepMe as well
+
+
+// sometimes additional work is needed to release resources (like nodes in a scratch variable)
+// to help with this sort of resource de-allocation, you can use the 'defer' keyword
+::DefTest()
+    @a : $Scratch.Alloc()
+    defer $Scratch.Free(a) // this code waits until the quit below to run
+    // ... [a bunch of code]
+    a.stuff : "something" // valid, as the defer block has not executed
+    // ... [more code]
+    quit 

@@ -73,7 +73,7 @@ namespace Wingra.Parser
 					for (int j = buffLine + 1; j < buffer.Lines; j++)
 					{
 						var next = buffer.GetSyntaxMetadata(j);
-						if (next.PreceedingWhitespace <= indent) break;
+						if (next.PreceedingWhitespace <= indent && !next.IsEmpty) break;
 						fake.AppendLine(buffer.TextAtLine(j)); // there's a tiny amount of double work here
 					}
 					SMacroDef def = new SMacroDef(buffLine, name);
@@ -141,7 +141,7 @@ namespace Wingra.Parser
 					for (; j + buffLine < buffer.Lines; j++)
 					{
 						var nextLine = buffer.GetSyntaxMetadata(buffLine + j);
-						if (nextLine.PreceedingWhitespace <= indent) break;
+						if (nextLine.PreceedingWhitespace <= indent && !nextLine.IsEmpty) break;
 					}
 					buffLine += j;
 					continue;
@@ -162,7 +162,7 @@ namespace Wingra.Parser
 				List<LexLine> lexed = new List<LexLine>();
 				foreach (var padded in newCode)
 					lexed.Add(new LexLine(padded, WingraBuffer.SpacesToIndent));
-				
+
 				var offset = buffLine;
 				if (lexed.Count > replaceLineCount)
 				{
@@ -172,6 +172,7 @@ namespace Wingra.Parser
 
 				for (int k = 0; k < lexed.Count; k++)
 				{
+					if (lexed[k].IsEmpty) continue;
 					List<RelativeTokenReference> lineTokes = lexed[k].GetRealRelativeTokens(0);
 					int m = 1;
 					for (; m + k < lexed.Count; m++)
@@ -186,7 +187,7 @@ namespace Wingra.Parser
 
 				buffLine += replaceLineCount;
 			}
-			else
+			else if (!lexline.IsEmpty)
 			{
 				List<RelativeTokenReference> lineTokes = lexline.GetRealRelativeTokens(0);
 				int j = 1;
@@ -203,8 +204,9 @@ namespace Wingra.Parser
 				ParseSingleLine(context, lineTokes, lexline.PreceedingWhitespace, tracker);
 				buffLine += j;
 			}
+			else buffLine++; // empty line
 			return true;
-		}
+		}7
 
 
 		bool ProcessMacro(WingraBuffer buffer, ErrorLogger errors, int buffLine, string lineText, LexLine lexline, out int replacedLineCount, out List<string> newCode)
@@ -226,7 +228,7 @@ namespace Wingra.Parser
 			for (; j + buffLine < buffer.Lines; j++)
 			{
 				var nextLine = buffer.GetSyntaxMetadata(buffLine + j);
-				if (nextLine.PreceedingWhitespace <= indent) break;
+				if (nextLine.PreceedingWhitespace <= indent && !nextLine.IsEmpty) break;
 				var inner = LexLine.RemovePreceedingWhitespace(buffer.TextAtLine(buffLine + j), indent, WingraBuffer.SpacesToIndent);
 				code.Add(inner);
 			}

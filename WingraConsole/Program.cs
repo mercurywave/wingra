@@ -13,11 +13,12 @@ namespace WingraConsole
 		{
 			try
 			{
+				var parsedArgs = CommandLineArgs.Parse(args);
 				var prj = await Loader.LoadProject(Environment.CurrentDirectory);
 				if (prj.IsJsExport)
 					await ExportJs(prj);
 				else
-					await RunInterpretted(prj);
+					await RunInterpretted(prj, parsedArgs);
 			}
 			catch (Exception e)
 			{
@@ -26,19 +27,20 @@ namespace WingraConsole
 			}
 		}
 
-		static async Task RunInterpretted(WingraProject prj)
+		static async Task RunInterpretted(WingraProject prj, CommandLineArgs args)
 		{
 			var vm = new WingraVM();
 			WingraSymbols symbols = new WingraSymbols();
 			try
 			{
+				if (args.Verbose)
 				Console.WriteLine("Load " + Environment.CurrentDirectory);
-				vm.InitializeNow(prj, symbols);
+				vm.InitializeNow(prj, symbols, args.Verbose);
 				if (prj.CheckForErrors())
 					PrintCompilerErrors(prj);
 				else
 				{
-					await vm.RunMain(prj);
+					await vm.RunMain(prj, symbols, args.Verbose);
 					if (vm.HasOpenJobs)
 						Console.WriteLine("Main() completed with " + vm.OpenJobs + " open jobs running");
 				}

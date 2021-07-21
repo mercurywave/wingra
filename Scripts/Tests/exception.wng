@@ -15,7 +15,7 @@
 	b : a
 	
 ::Switch(a => throw b)
-	b : switch a
+	b : switch(a)
 		true: a
 		false: throw "str"
 		else: throw

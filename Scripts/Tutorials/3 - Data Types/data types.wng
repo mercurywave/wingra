@@ -1,0 +1,64 @@
+
+// Wingra variables can store a number of different types of data
+
+////// Numbers //////
+@a : 4
+
+// math on two integer values will return integer results
+@b : a / 5 // b will be  0, because a and 5 are integers
+
+// math involving a floating point value will calcualate a floating point result
+@c : a + 2.2 // c will be 6.4, as 2.2 is a float
+
+
+
+////// Strings //////
+@d : "string"
+
+// you can escape the " character
+d : "He said, \" you know what..."
+
+// you can similarly escape new lines with \n
+d : "I know. \n It is a duck."
+
+
+////// Bool //////
+@e : true
+@f : false
+
+
+////// Null //////
+// represents the absense of any value
+@g : null
+
+
+////// Structs //////
+// structs are complex data that contains more data points
+// the dim keyword creates a new struct
+// these will be discussed in more detail in a future section
+@h : dim()
+
+// structs contain data stored against a key
+h["key"] : true
+h[0] : "a value"
+
+// you can access the values within the variable the same way
+$IO.Log(h[0]) // a value
+
+// you can access values with a string key with the dot operator
+$IO.Log(h.key) // true
+
+// attempting to access a key that does not exist will fail
+//$IO.Log(h.fakeKey) // this would cause a runtime error
+
+// these structs can represent many different relationships between data
+// we will explore these in future samples
+
+
+////// Other Data Types //////
+// there are a few more data types that will be explored in future samples
+// for reference, here are the additional types
+//      Pointer
+//      Lambda
+//      Iterator
+//      Enum

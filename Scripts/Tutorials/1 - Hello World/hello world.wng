@@ -1,0 +1,4 @@
+
+$IO.Write("Hello, World!")
+
+// this is a comment, it is not evaluated

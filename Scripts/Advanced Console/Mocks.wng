@@ -1,7 +1,6 @@
-
-#suggest
-	library Console
-		::Clear()
-		::Write(str)
-		::SetBufferSize(w, h)
-		::SetCursorPosition(x, y)
+	
+library Console
+	extern ::Clear()
+	extern ::Write(str)
+	extern ::SetBufferSize(w, h)
+	extern ::SetCursorPosition(x, y)

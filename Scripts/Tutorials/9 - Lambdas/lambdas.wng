@@ -1,0 +1,52 @@
+
+// some times it can be useful to write code that can itself be used flexibly
+// perhaps to execute code to run later, or to alter the behavior of another function
+
+// say you have a function like this
+::DoThing(val)
+    $IO.Write(val)
+
+// you could reference this function as a variable
+@a : $DoThing
+// and then call that function by running the variable as a function
+a("something") // prints 'something'
+// a is a pointer to the function, you could pass it into another function and execute it
+
+
+// you can create a function on the fly with the 'lambda' keyword
+@b : lambda(input => output)
+    // this scope is the body of the code that will be executed
+    output : input + " extra"
+b("super") // prints 'super extra'
+
+
+// lambdas also can capture variables from where the lambda is declared, and reference those when the code is run
+@c : "got me!"
+@d : lambda()
+    $IO.Write(c)
+d() // prints 'got me!'
+
+// as an alternative, you could also call d with the indirection function $()
+$(d) // prints 'got me!'
+
+
+// you can declare a lambda in a different style
+@e : lambda // notice no ()
+    // the variable 'who' is nowhere to be found
+    // this variable is not captured, but will be injected when this function is invoked
+    $IO.Write(who)
+// e() // this would throw an error, as e doesn't know what the 'who' variable is
+
+// the $() function allows you to execute a function like this, injecting
+::Inject(func)
+    @who : "Flash Gordon"
+    $(func, who) // execute the function at variable 'func', injecting 'who'
+$Inject(e) // prints 'Flash Gordon'
+
+
+// when you have an expression that can be expressed in a single line of code, there is another syntax for this style of lambda
+// wrapping an expression in `` will create a lambda like this
+@f : `it = 4`
+for 1 to 10 // note: it is the implicit looping variable
+    if $(f, it)
+        $IO.Write("found item " + ~it) // prints only when it = 4

@@ -35,13 +35,13 @@
 	$assert(a)
 	
 #test
-	@a : switch 4
+	@a : switch(4)
 		3 : false
 		else : true
 	$assert(a)
 	
 #test
-	@a : switch 3
+	@a : switch(3)
 		3 : true
 		else : false
 	$assert(a)

@@ -1,0 +1,143 @@
+
+scratch RandSeed : 123456 // random seed to generate hands
+
+enum eSuit
+    Hearts : "♥"
+    Diamonds : "♦"
+    Clubs : "♣"
+    Spades : "♠"
+
+data Cards : dim
+    "a"; "2"; "3"; "4"; "5"; "6"; "7"; "8"; "9"; "10"; "j"; "q"; "k";
+
+
+global ::Main()
+    @stats : dim()
+    for 0 to 200
+        $Deal(stats)
+    $IO.Write("")
+    for @cnt of stats at @type
+        $IO.Write(type + ": " + ~cnt)
+
+
+::Deal(stats)
+    using List
+    @deck : $BuildDeck()
+    deck.$Shuffle()
+    @hand : dim()
+    for 0 to 5
+        hand.$Add(deck[it])
+    @result : $Analyze(hand)
+    stats.$IncrememntCount(result)
+    @print : hand.$List.Map(`"" + it.Card + "" + ~it.Suit`).$Join(" ")
+    print : print + "  " + result
+    $IO.Write(print)
+
+
+::BuildDeck(=> deck)
+    deck : dim()
+    for @suit : $eSuit
+        for @card : $Cards
+            deck.$List.Add(dim)
+                Suit : suit
+                Card : card
+
+
+::Analyze(hand => result)
+    @nums : hand.$List.FrequencyMap(`it.Card`)
+    @suits : hand.$List.FrequencyMap(`it.Suit`)
+    return switch
+        $RoyalFlush(suits, nums) : "Royal Flush"
+        $StraightFlush(suits, nums) : "Straight Flush"
+        $FourOfAKind(nums) : "Four of a kind"
+        $FullHouse(nums) : "Full House"
+        $Flush(suits) : "Flush"
+        $Straight(nums) : "Straight"
+        $ThreeOfAKind(nums) : "Three of a kind"
+        $TwoPair(nums) : "Two Pair"
+        $OnePair(nums) : "Pair"
+        else : "High Card"
+
+
+::RoyalFlush(suits,nums => bool)
+    // if it's a straight flush that involves the ace, but not the 2
+    => $StraightFlush(suits,nums) & nums.$Map.Has($Cards[0]) & !nums.$Map.Has($Cards[1])
+
+::StraightFlush(suits, nums => bool)
+    => $Flush(suits) & $Straight(nums)
+
+::FourOfAKind(nums => bool)
+    => nums.$List.Any(`it = 4`)
+    
+::FullHouse(nums => bool)
+    @freq : nums.$List.FrequencyMap(`it`)[2]
+    bool : freq[2] = 1 & freq[3] = 1
+
+::Flush(suits => bool)
+    => suits.$Obj.Count() = 1
+
+::Straight(nums => bool)
+    @counts : dim()
+    for @face of $Cards at @idx
+        @cnt : nums[face]
+        cnt ?: 0
+        counts[idx] : ~cnt
+    @series : counts.$List.Join()
+    series : series + series
+    return series.$Str.Contains("11111")
+
+::ThreeOfAKind(nums => bool)
+    => nums.$List.Any(`it = 3`)
+
+::TwoPair(nums => bool)
+    => nums.$List.FrequencyMap(`it`)[2] = 2
+
+::OnePair(nums => bool)
+    => nums.$List.Any(`it = 2`)
+
+
+// some handy utility functions
+
+// very simple random number generator
+library Rand
+    ::_Next(=> val)
+        ^RandSeed : (^RandSeed + 37) * 6211
+        ^RandSeed : $Math.Mod(^RandSeed, 27361)
+        return ^RandSeed
+    // [min, max)
+    ::Int(min, max => val)
+        return min + $Math.Floor($Math.Mod($_Next(), max - min))
+
+library List
+    ::.Map(conversion => newList)
+        newList : dim()
+        for this
+            newList.$Add($(conversion, it))
+
+    ::.Join(?delim => str)
+        delim ?: ""
+        str : ""
+        for this
+            if str != "" \ str : str + delim
+            str : str + it
+
+    ::.Shuffle()
+        @cnt : this.$Obj.Count()
+        for @i : 0 to cnt
+            @j : $Rand.Int(0, cnt)
+            if i != j
+                @tmp : free? this[i]
+                this[i] : free? this[j]
+                this[j] : free? tmp
+
+    ::.FrequencyMap(mapFunc => freqMap)
+        freqMap : dim()
+        for this
+            freqMap.$IncrememntCount($(mapFunc, it))
+
+// helper function that increments a node of frequency map [key] : count
+::.IncrememntCount(key)
+    if !this.$Map.Has(key)
+        this[key] : 1
+    else
+        this[key] : this[key] + 1

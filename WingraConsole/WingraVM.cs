@@ -30,22 +30,22 @@ namespace WingraConsole
 		//	STraceViewer.Show(trace, symbols);
 		//}
 
-		public async Task RunMain(WingraProject prj, WingraSymbols symbols = null)
+		public async Task RunMain(WingraProject prj, WingraSymbols symbols = null, bool verbose = false)
 		{
 			var start = Stopwatch.GetTimestamp();
 			await _runtime.RunMain();
 			var complTime = Stopwatch.GetTimestamp();
-			WriteToConsole("Run (" + DurationMs(start, complTime) + " ms)");
+			if (verbose) WriteToConsole("Run (" + DurationMs(start, complTime) + " ms)");
 			if (prj.DoRunTests)
-				await RunTests(symbols);
+				await RunTests(symbols, verbose);
 		}
 
-		public async Task RunTests(WingraSymbols symbols = null)
+		public async Task RunTests(WingraSymbols symbols = null, bool verbose = false)
 		{
 			var start = Stopwatch.GetTimestamp();
 			await _runtime.RunTests();
 			var complTime = Stopwatch.GetTimestamp();
-			WriteToConsole("Run Tests (" + DurationMs(start, complTime) + " ms)");
+			if (verbose) WriteToConsole("Run Tests (" + DurationMs(start, complTime) + " ms)");
 		}
 
 		internal Compiler CompileNow(WingraProject prj, WingraSymbols symbols = null)
@@ -60,21 +60,21 @@ namespace WingraConsole
 			return compiler;
 		}
 
-		internal void InitializeNow(WingraProject prj, WingraSymbols symbols = null)
+		internal void InitializeNow(WingraProject prj, WingraSymbols symbols = null, bool verbose = false)
 		{
-			WriteToConsole("Booting...");
+			if (verbose) WriteToConsole("Booting...");
 			var start = Stopwatch.GetTimestamp();
 			var comp = CompileNow(prj, symbols);
 			var complTime = Stopwatch.GetTimestamp();
 
 			if (!prj.CheckForErrors())
 			{
-				WriteToConsole("Compiled! (" + DurationMs(start, complTime) + " ms)");
+				if (verbose) WriteToConsole("Compiled! (" + DurationMs(start, complTime) + " ms)");
 				start = Stopwatch.GetTimestamp();
 
 				_runtime.Initialize(comp);
 				var done = Stopwatch.GetTimestamp();
-				WriteToConsole("Initialized! (" + DurationMs(start, done) + " ms)");
+				if (verbose) WriteToConsole("Initialized! (" + DurationMs(start, done) + " ms)");
 			}
 		}
 

@@ -1,0 +1,51 @@
+
+// there are a number of options to control the flow of your code
+// the 'if' statement will conditionally execute code on the lines that follow it
+if false
+    $IO.Write("this code never executes")
+    $IO.Write("and neither does this")
+if true
+    $IO.Write("this code always executes")
+
+// code flow continues at the end of the indented region of code
+// you can use an 'else' and 'else if' statement to control flow in conjuction with an 'if' statement
+if false
+    $IO.Write("never executes")
+else if true
+    $IO.Write("does execute")
+else
+    $IO.Write("doesn't execute because the previous branch did")
+
+
+// when you only have a single line to execute and a simple condition, you can do that on one line with the \ symbol
+if false \ $IO.Write("this isn't a part of condition - it is a statement that could execute")
+
+
+// instead of a long chain of if/else statements, you can simplify with a 'switch' statement
+switch
+    false \ $IO.Write("skipped")
+    true \ $IO.Write("this runs")
+    else \ $IO.Write("this else would handle other cases, and is optional here")
+
+// you can also use this form if you want to perform an action where each condition compares a fixed variable equals a specific value
+switch 2
+    case 1 \ $IO.Write("skipped")
+    case 2 \ $IO.Write("this runs") // the 2 on this line matches the input 2
+    else \ $IO.Write("this else would handle other cases, and is optional here")
+
+// that type of switch will run the code within the appropriate as statements
+// you might want to set a single output variable based on a an input
+// this form allows you to do that
+// you use the : to denote the value that will be carried back to the switch
+@A : switch
+    false : 1
+    true : 2 // the expression true is true, so the value 2 is used
+    else : 3 // this else is required
+// A will be 2 at this point
+
+// similarly, you can pass a variable to switch
+@B : switch(A) // the parenthesis are required in this form
+    1 : 4
+    2 : 5 // A = 2, therefore 5 will be used
+    else : 6 // this else is required here as well
+// B will be 5 at this point

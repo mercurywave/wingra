@@ -1,6 +1,6 @@
 version=1
 
-requires ..\Standard Library\
+;requires ..\Standard Library\
 
 ; comment test
 

@@ -260,17 +260,21 @@ namespace Wingra.Parser
 					}
 				case eToken.Switch:
 					{
-						if (currLine.Length == 1)
+						if (currLine.Length > 2 && currLine[1].Token.Type == eToken.LeftParen)
+						{
+							var read = ScanAhead(currLine, 2, 0, false);
+							if (!TryParseExpression(context, read, out var exp, out int use))
+								throw new ParserException("expected expression", currLine[1]);
+							node = new SSwitchExpression(exp);
+							usedTokens = use + 3;
+							return true;
+						}
+						else
 						{
 							usedTokens = 1;
 							node = new SSwitchExpression();
 							return true;
 						}
-						if (!TryParseExpression(context, util.RangeRemainder(currLine, 1), out var exp, out int use))
-							throw new ParserException("expected expression", currLine[1]);
-						node = new SSwitchExpression(exp);
-						usedTokens = use + 1;
-						return true;
 					}
 				case eToken.Dim:
 					{

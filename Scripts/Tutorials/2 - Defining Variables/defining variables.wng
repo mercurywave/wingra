@@ -1,0 +1,13 @@
+
+// variables are declared by using the @ symbol
+// you assign values to variables using the : operator
+// the expression to the right of the : is assigned to the variable on the left
+// code is evaluated in a linear order
+// you cannot use a variable which has not been declared
+
+@a : 4
+@b : 5
+@c : a + b
+b : a + 1 // changing b now does not affect the value of c
+c : c + 2.2
+$IO.Log(c) // outputs 11.2

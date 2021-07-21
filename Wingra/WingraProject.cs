@@ -96,6 +96,10 @@ namespace Wingra
 			if (!Config.ContainsKey(key)) return fallback;
 			return Config[key];
 		}
+		// for command line arguments
+		public void SetConfigFlag(string key, bool value)
+			=> Config?.Add(key, "1");
+		
 		#endregion
 
 		public override void AddLoadedFile(string key)

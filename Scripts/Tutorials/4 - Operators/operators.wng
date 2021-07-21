@@ -1,0 +1,39 @@
+
+// as with many other languages, you can use basic math operators as you might expect
+@a : 5 + 4 * 3 / 2 - 1
+
+// Wingra respects fairly normal order of operations, which can be enforced with ()
+// so this has the same value (10), as the previous example
+@b : (5 + ((4 * 3) / 2)) - 1
+
+// additional math operations are exposed via library functions
+@c : $Math.Mod(12, 10) // 2
+
+// you can test the equivilence of two values
+@d : (4 = 4) // equal --> true
+@e : (4 != 5) // not equal --> true
+
+// you can compare numeric values
+@f : (3 < 4) // true
+@g : (3 > 4) // false
+@h : (3 <= 3) // true
+@i : (3 >= 4) // false
+
+// booleans can use the ! unary operator to flip between true and false
+@j : !true // false
+
+// with booleans, you can use logical operators
+@k : true | false // or --> true
+@l : true & false // and --> false
+
+// & and | will short-circuit the right side of expressions when their value will not affect the result
+
+// you can append strings with the + operator
+// NOTE: this feature is under consideration for deprecation
+@m : "this" + "that" // thisthat
+
+// if you have two values of different types, like a string and number, you cannot just combine them in the same way
+// @n : "test" + 2.2 // this would be a fatal exception
+// you should either use a function to perform the conversion explicitly, or you can use the ~ operator
+@n : "test" + ~2.2 // test2.2
+// this operator tells the program to attempt a lossy conversion on the value

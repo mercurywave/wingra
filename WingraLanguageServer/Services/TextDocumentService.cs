@@ -189,7 +189,7 @@ namespace WingraLanguageServer.Services
 			var session = Session; // must capture - session not available during callback
 			var key = fileUtils.UriTRoPath(doc.Document.Uri);
 
-			lock(session.Lock)
+			lock (session.Lock)
 				session.Documents.TryAdd(textDocument.Uri, doc);
 			await session.LoadTask;
 			if (!session.Prj.IsFileLoaded(key))
@@ -347,7 +347,10 @@ namespace WingraLanguageServer.Services
 
 						void AddResult(string insert, CompletionItemKind kind, string subtext = "")
 						{
-							results.Add(new CompletionItem(insert, kind, subtext, null));
+							results.Add(new CompletionItem(insert, kind, subtext, null)
+							{
+								CommitCharacters = new List<char>() { '.', '(' }
+							});
 						}
 
 						string phrase = "";
@@ -411,13 +414,10 @@ namespace WingraLanguageServer.Services
 								AddResult(suggest, kind);
 							}
 						}
-						if (structurePrefix.HasValue)
+						if (!separator.HasValue)
 						{
-							results.AddRange(Session.StaticSuggestions);
-						}
-						else if (!separator.HasValue)
-						{
-							results.AddRange(Session.StaticSuggestions);
+							if (!phrase.StartsWith("$"))
+								results.AddRange(Session.StaticSuggestions);
 							if (phrase.StartsWith("#"))
 							{
 								//this only handles the 99% case
@@ -463,31 +463,32 @@ namespace WingraLanguageServer.Services
 							int currentIndent = currLineLex.PreceedingWhitespace;
 							int highWaterReadAhead = position.Line + 1;
 							// reads upwards till it hits file scope
-							for (int i = position.Line - 1; i >= 0; i--)
-							{
-								var lex = buffer.GetSyntaxMetadata(i);
-								if (lex.PreceedingWhitespace > currentIndent)
-									continue;
-								else if (lex.PreceedingWhitespace == currentIndent)
-									NaiveScanForLocals(i, lex);
-								else if (lex.PreceedingWhitespace < currentIndent)
+							if (!phrase.StartsWith("$"))
+								for (int i = position.Line - 1; i >= 0; i--)
 								{
-									NaiveScanForLocals(i, lex);
-									currentIndent = lex.PreceedingWhitespace;
-									if (currentIndent == 0) break;
-									// scan ahead at the same scope we found when we collapsed a level
-									for (; highWaterReadAhead < buffer.Lines; highWaterReadAhead++)
+									var lex = buffer.GetSyntaxMetadata(i);
+									if (lex.PreceedingWhitespace > currentIndent || lex.IsEmpty)
+										continue;
+									else if (lex.PreceedingWhitespace == currentIndent)
+										NaiveScanForLocals(i, lex);
+									else if (lex.PreceedingWhitespace < currentIndent)
 									{
-										var readAhead = buffer.GetSyntaxMetadata(highWaterReadAhead);
-										if (readAhead.PreceedingWhitespace < currentIndent)
-											break;
-										if (readAhead.PreceedingWhitespace > currentIndent)
-											continue;
-										NaiveScanForLocals(highWaterReadAhead, readAhead);
+										NaiveScanForLocals(i, lex);
+										currentIndent = lex.PreceedingWhitespace;
+										if (currentIndent == 0) break;
+										// scan ahead at the same scope we found when we collapsed a level
+										for (; highWaterReadAhead < buffer.Lines; highWaterReadAhead++)
+										{
+											var readAhead = buffer.GetSyntaxMetadata(highWaterReadAhead);
+											if (readAhead.PreceedingWhitespace < currentIndent)
+												break;
+											if (readAhead.PreceedingWhitespace > currentIndent)
+												continue;
+											NaiveScanForLocals(highWaterReadAhead, readAhead);
+										}
 									}
+									if (currentIndent == 0) break;
 								}
-								if (currentIndent == 0) break;
-							}
 
 							foreach (var pair in parsedFiles)
 							{

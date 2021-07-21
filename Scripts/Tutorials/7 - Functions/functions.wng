@@ -1,0 +1,82 @@
+
+// it is useful to collect code into reusable pieces, commonly called methods or functions
+// you can declare a function with this syntax
+::DoThing()
+    // the code inside this block is only called when the function is invoked
+    // when you call this function, the code within it is executed
+    $IO.Write("Did the thing")
+
+// you can then call these functions with this syntax
+$DoThing()
+
+
+// you can have a function behave differently based on a paremter
+::AddOne(par) // the par variable is passed in from the caller
+    par : par + 1 // this does not modify the variable that the caller passed int
+    $IO.Write(~par)
+$AddOne(4) // prints 5
+
+
+// a function could quit early with the 'quit' keyword
+::MaybePrint(doThing)
+    if !doThing
+        quit
+    $IO.Write("maybe?")
+$MaybePrint(false) // does not print
+
+
+// a function can return a value to the caller
+// if can also accept multiple input parameters, seperated by a ','
+::Append(left, right => combined)
+    // combined is an output variable
+    combined : left + " > " + right
+// a caller can read that output variable in an expression
+$IO.Write($Append("L", "R")) // prints L > R
+
+
+// instead of modifying the output variable and quitting, you can do that in one step with 'return'
+::AbsDelta(a, b => delta)
+    if a > b
+        return a - b
+    return b - a
+$IO.Write(~$AbsDelta(4, 5)) // prints 1
+
+
+// for simple functions that return the result of an expression, you can use a shorthand form
+::SimpleTest(val => isVal4) => val = 4
+$IO.Write(~$SimpleTest(4)) // true
+$IO.Write(~$SimpleTest(5)) // false
+
+
+// you can return multiple output variables
+::AddSome(val => a1, a2)
+    a1 : val + 1
+    a2 : val + 2
+// you can retrieve both outputs like this:
+@x, @y : $AddSome(3) // x is 4, y is 5
+// if you use the output of a function like this in an expression, only the first output is used
+$IO.Write(~$AddSome(5)) // prints 6
+
+
+// you can declare a method-style function that accepts an input as a chain
+// these are similar to normal functions, but declared with '::.' instead of '::'
+::.Method()
+    // methods are passed a special input, the 'this' variable
+    $IO.Write(this)
+// you can run a method and pass in a this variable with a '.$' syntax like this
+@str : "a string"
+str.$Method()
+// this passes the str variable into the method as the 'this' variable
+
+
+// you can organize functions with libraries
+library MyLib
+    ::SubFunc()
+        $IO.Write("here")
+// you can call these functions like this
+$MyLib.SubFunc()
+
+// if you are calling functions in the same library frequently, you can simplify with the 'using' statement
+// when you use $ after 'using', the compiler will search for functions from the 'using' libraries
+using MyLib
+$SubFunc()

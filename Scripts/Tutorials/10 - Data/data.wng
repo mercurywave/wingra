@@ -1,0 +1,13 @@
+
+// if you have a constant value that is used many times in your program, you can define that in a single place
+$CONST : "fixed"
+$IO.Write($CONST) // prints 'fixed'
+
+// the data keyword lets you define more complicated static content as part of your program
+data Warrior : dim
+    Attack : 5
+    Defense : 3
+    Cost : 2
+
+// you can reference Data objects statically, with the $ sign
+$IO.Write(~$Warrior.Cost)
