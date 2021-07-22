@@ -33,6 +33,7 @@ namespace WingraLanguageServer.Services
 					Change = TextDocumentSyncKind.Incremental
 				},
 				DefinitionProvider = new DefinitionOptions(),
+				//DocumentRangeFormattingProvider = new DocumentRangeFormattingOptions()
 				//ExecuteCommandProvider = new ExecuteCommandOptions(new List<string> { 
 				//	"wingra.build"
 				//}),

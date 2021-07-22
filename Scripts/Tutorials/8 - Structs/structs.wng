@@ -1,0 +1,62 @@
+
+// structs are a common building block that are used for many things
+// each struct stores multiple pieces of data, and can represent many different data types
+// the simplest way to create a struct is with the dim keyword
+@a : dim()
+
+// this creates a blank struct, and we can then use it to store other things
+a["key"] : "value"
+$IO.Write(a["key"]) // prints "value"
+// struct keys can be numbers, strings, or other value-type variables
+// struct values can contain any variable
+
+// one common pattern is to create an ordered list of elements
+// you can accomplish that by passing in the elements that will form the list
+@b : dim("a", "b", "c")
+// this initializes 'b' like so:
+//   b[0] = "a"
+//   b[1] = "b"
+//   b[2] = "c"
+
+// alternatively, you can define a list within the scope of the line
+@c : dim
+    "a"
+    "b"
+    "c"
+// that created a struct with the same structure as the previous example
+
+// you could use this in conjuntcion with the ';' line break symbol to do the same thing more compactly
+@d : dim
+    "a"; "b"; "c"
+
+
+// another common type of struct is a dictionary of string keys to variables
+// these can be useful to conceptually represent objects
+@e : dim // this is equivilent to how we initialized 'a' above
+    "key" : "value"
+
+@f : dim // this is also equivilent, literal one-word keys without "" like this are assumed to act like strings
+    key : "value"
+// this is similar to how you can access that node of the struct
+$IO.Write(f.key) // prints "value"
+
+// you can also declare a struct like this inline like this
+@g : dim(key: "value")
+
+
+// in the Wingra language, the dim keyword is one of a handful of scope inverters
+// these are symbols that read the child scope of a line (the lines of code indented below)
+// you can use this keyword as part of a larger expression, while having space to define the contents
+@h : $IO.Write(~(dim).$List.Contains("a"))  //prints true
+    "a"; "b"; "c"
+
+// note: you cannot use a scope inverter with a statement that also has a child scope
+//if (dim)[0] // this is invalid because it's ambiguous which keyword the child scope belongs to
+// and you cannot use multiple scope inverters on the same line for the same reason
+//@a : dim; @b : dim // ambiguous
+
+
+// TODO: has
+// TODO: dim $Tmplt()
+// TODO: mixin
+// TODO: $Obj functions

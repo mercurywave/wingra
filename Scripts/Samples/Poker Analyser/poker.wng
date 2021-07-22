@@ -1,11 +1,9 @@
 
 scratch RandSeed : 123456 // random seed to generate hands
 
-enum eSuit
-    Hearts : "♥"
-    Diamonds : "♦"
-    Clubs : "♣"
-    Spades : "♠"
+
+data Suits : dim
+    "♥"; "♦"; "♣"; "♠"
 
 data Cards : dim
     "a"; "2"; "3"; "4"; "5"; "6"; "7"; "8"; "9"; "10"; "j"; "q"; "k";
@@ -13,7 +11,7 @@ data Cards : dim
 
 global ::Main()
     @stats : dim()
-    for 0 to 200
+    for 0 to 100
         $Deal(stats)
     $IO.Write("")
     for @cnt of stats at @type
@@ -36,7 +34,7 @@ global ::Main()
 
 ::BuildDeck(=> deck)
     deck : dim()
-    for @suit : $eSuit
+    for @suit : $Suits
         for @card : $Cards
             deck.$List.Add(dim)
                 Suit : suit
@@ -98,7 +96,8 @@ global ::Main()
 
 // some handy utility functions
 
-// very simple random number generator
+// very simple kinda-random number generator
+// not particularly robust - seems to loop after a while
 library Rand
     ::_Next(=> val)
         ^RandSeed : (^RandSeed + 37) * 6211

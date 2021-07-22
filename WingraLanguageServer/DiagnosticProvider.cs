@@ -17,9 +17,6 @@ namespace WingraLanguageServer
 
 		}
 
-		private static readonly string[] Keywords =
-			{".NET Framework", ".NET Core", ".NET Standard", ".NET Compact", ".NET"};
-
 		public ICollection<Diagnostic> LintDocument(LanguageServerSession Session, string key)
 		{
 			var diag = new List<Diagnostic>();
@@ -34,18 +31,21 @@ namespace WingraLanguageServer
 						if (err.Buffer == buffer)
 						{
 							var line = err.Line;
+							if (line < 0 || line > buffer.Lines) line = 0;
 							var code = "";
+							var sever = err.Type == Wingra.Parser.eErrorType.Warning ?
+								DiagnosticSeverity.Warning : DiagnosticSeverity.Error;
 							if (err.Token.HasValue)
 							{
 								var off = err.Token.Value.Token.LineOffset;
-								diag.Add(new Diagnostic(DiagnosticSeverity.Error,
-									new Range(err.Line, off, err.Line, off + err.Token.Value.Token.Length),
+								diag.Add(new Diagnostic(sever,
+									new Range(line, off, line, off + err.Token.Value.Token.Length),
 									buffer.Key,
 									code,
 									err.Text + "\n" + err.ExtraText));
 							}
-							else diag.Add(new Diagnostic(DiagnosticSeverity.Error,
-								new Range(err.Line, 0, err.Line, 0),
+							else diag.Add(new Diagnostic(sever,
+								new Range(line, 0, line, 0),
 								buffer.Key,
 								code,
 								err.Text + "\n" + err.ExtraText));

@@ -231,7 +231,7 @@ namespace Wingra.Parser
 
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			if (!_children.Any(s => s is SSwitchExpressionElse)) errors.LogError("switch expression has no else case");
+			if (!_children.Any(s => s is SSwitchExpressionElse)) errors.LogError("switch expression has no else case", compiler.FileLine);
 			SaveToTemp = func.GetReserveUniqueTemp("sOut");
 			func.ClearAsmStack(asmStackLevel);
 			if (_test != null)

@@ -88,6 +88,30 @@ namespace Wingra.Parser
 					buffLine += fake.Lines;
 				}
 			}
+			bool leadingTabs = false;
+			bool leadingSpaces = false;
+			string GetLead(string lineText)
+			{
+				for (int i = 0; i < lineText.Length; i++)
+				{
+					if (lineText[i] != ' ' && lineText[i] != '\t')
+						return util.BoundedSubstr(lineText, 0, i);
+				}
+				return "";
+			}
+			for (int buffLine = 0; buffLine < buffer.Lines; buffLine++)
+			{
+				var lead = GetLead(buffer.TextAtLine(buffLine));
+				if (!leadingTabs && lead.Contains('\t'))
+					leadingTabs = true;
+				if (!leadingSpaces && lead.Contains(' '))
+					leadingSpaces = true;
+				if(leadingSpaces && leadingTabs)
+				{
+					errors.LogError("Mix of leading tabs and spaces - parsing might behave erratically", buffLine, null, eErrorType.Warning);
+					break;
+				}
+			}
 		}
 
 		public void Bootstrap(ErrorLogger errors)
@@ -206,7 +230,7 @@ namespace Wingra.Parser
 			}
 			else buffLine++; // empty line
 			return true;
-		}7
+		}
 
 
 		bool ProcessMacro(WingraBuffer buffer, ErrorLogger errors, int buffLine, string lineText, LexLine lexline, out int replacedLineCount, out List<string> newCode)

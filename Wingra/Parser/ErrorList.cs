@@ -48,7 +48,7 @@ namespace Wingra.Parser
 
 	public abstract class ErrorLogger
 	{
-		public virtual void LogError(string text, int line = -1, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
+		public virtual void LogError(string text, int line, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
 		{
 		}
 		public virtual bool AnyLogged => throw new NotImplementedException();

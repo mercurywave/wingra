@@ -69,11 +69,15 @@ namespace WingraLanguageServer
 		internal async Task _InitializeAsync()
 		{
 			Prj = await Loader.LoadProject(_folderPath, FileServer);
-			Prj.IncrementalDebugCompiler = new Compiler(_staticMap, false, false, true, true);
+			Prj.IncrementalDebugCompiler = new Compiler(_staticMap, false, false, true, true)
+			{
+				Optimizations = false
+			};
 			foreach (var sug in Suggestion.GetBuiltIns(_staticMap))
 			{
 				if (sug.Type == eSuggestionType.Keyword)
-					StaticSuggestions.Add(new CompletionItem(sug.Function, CompletionItemKind.Keyword, null) { 
+					StaticSuggestions.Add(new CompletionItem(sug.Function, CompletionItemKind.Keyword, null)
+					{
 						CommitCharacters = new List<char>() { ' ', '(', ';' }
 					});
 			}

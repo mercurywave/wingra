@@ -224,8 +224,7 @@ namespace WingraLanguageServer.Services
 								var prj = session.Prj;
 								if (!prj.CheckForErrors())
 								{
-									var compiler = new Compiler(session._staticMap, false, true, false, true, false);
-									prj.CompileAll(compiler);
+									prj.CompileAll(session.Cmplr);
 								}
 
 								var prov = session.DiagnosticProvider;
@@ -270,6 +269,24 @@ namespace WingraLanguageServer.Services
 			}
 			Session.Documents.TryRemove(textDocument.Uri, out _);
 		}
+
+		// can't figure out a way to get the correct tabstop
+		// probably better to just have the linter detect a mix of tabs and spaces
+		//[JsonRpcMethod]
+		//public TextEdit[] RangeFormatting(TextDocumentIdentifier textDocument, LanguageServer.VsCode.Contracts.Range range, FormattingOptions options)
+		//{
+		//	lock (Session.Lock)
+		//	{
+		//		if (Session.Documents.TryGetValue(textDocument.Uri, out var doc))
+		//		{
+		//			var text = doc.Document.GetRange(range);
+		//			if(text.Contains('\t'))
+		//				Session.Client.Workspace.Configuration.
+		//				return new TextEdit[] { new TextEdit(range, text.Replace("\t", "     ")) };
+		//		}
+		//	}
+		//	return null;
+		//}
 
 		[JsonRpcMethod]
 		public CompletionList Completion(TextDocumentIdentifier textDocument, Position position, CompletionContext context)
@@ -320,7 +337,8 @@ namespace WingraLanguageServer.Services
 							|| separator.Value.Type == eToken.Data
 							|| separator.Value.Type == eToken.Template
 							|| separator.Value.Type == eToken.Global
-							|| separator.Value.Type == eToken.Library))
+							|| separator.Value.Type == eToken.Library
+							|| separator.Value.Type == eToken.AtSign))
 						{
 							return new CompletionList();
 						}
@@ -345,16 +363,25 @@ namespace WingraLanguageServer.Services
 							separator = null;
 						}
 
-						void AddResult(string insert, CompletionItemKind kind, string subtext = "")
-						{
-							results.Add(new CompletionItem(insert, kind, subtext, null)
-							{
-								CommitCharacters = new List<char>() { '.', '(' }
-							});
-						}
-
 						string phrase = "";
 						string phraseWithCapitals = "";
+						void AddResult(string insert, CompletionItemKind kind, string subtext = "")
+						{
+							if (phrase != "$" &&
+								(kind == CompletionItemKind.Property
+								|| kind == CompletionItemKind.Method
+								|| kind == CompletionItemKind.Function))
+								results.Add(new CompletionItem(insert, kind, subtext, null)
+								{
+									CommitCharacters = new List<char>() { '.', '(' }
+								});
+							else
+								results.Add(new CompletionItem(insert, kind, subtext, null)
+								{
+									CommitCharacters = new List<char>() { '.' }
+								});
+						}
+
 						if (curr.HasValue && scopeTracker.ContainsKey(buffer))
 						{
 							phraseWithCapitals = curr.Value.Token;

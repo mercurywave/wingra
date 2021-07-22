@@ -652,8 +652,12 @@ namespace Wingra.Interpreter
 			foreach (var line in inline._lines)
 			{
 				var cmd = line.Command;
-				//if (cmd != eAsmCommand.CreateLambda) return false;
-				Debug.Assert(cmd != eAsmCommand.CreateLambda);
+				// You can trigger this with a return switch with an expression that contains a one liner
+				// it's a good argument for building an actual AST instead
+				// right now this would probably need a new method to drill into scoped stuff like that
+				// PERF: it would be nice if we could detect that scenario earlier, so we don't waste time like this
+				//Debug.Assert(cmd != eAsmCommand.CreateLambda);
+				if (cmd == eAsmCommand.CreateLambda) return false;
 				string literal = line.Literal;
 				if (CommandLoadsSymbol(cmd))
 				{

@@ -121,9 +121,9 @@ namespace Wingra.Parser
 		{
 			if (_operator == eToken.OptionalAssign)
 			{
-				if (_left.Count != 1) { errors.LogError("?: expects a single assignment on left side"); return; }
+				if (_left.Count != 1) { errors.LogError("?: expects a single assignment on left side", func.CurrentFileLine); return; }
 				var target = _left[0] as SIdentifier;
-				if (target == null) errors.LogError("?: only works with local variables");
+				if (target == null) errors.LogError("?: only works with local variables", func.CurrentFileLine);
 				func.Add(asmStackLevel, eAsmCommand.TestIfUninitialized, target.Symbol);
 				func.Add(asmStackLevel + 1, eAsmCommand.DoIfTest);
 				EmitAssignment(compiler, file, func, asmStackLevel + 2, errors, parent);
