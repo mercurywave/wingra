@@ -11,7 +11,9 @@ namespace WingraLanguageServer
 {
 	static class Loader
 	{
-		internal static string StdLibPath => Path.GetDirectoryName(Assembly.GetAssembly(typeof(Loader)).Location);
+		internal static string AsmPath => Path.GetDirectoryName(Assembly.GetAssembly(typeof(Loader)).Location);
+		internal static string StdLibPath => Path.Combine(AsmPath, "..", "lang", "StdLib");
+		internal static string ExtLibPath => Path.Combine(AsmPath, "..", "lang", "extensions");
 		public static async Task<WingraProject> LoadProject(string path, DocFileServer server)
 		{
 			var cache = new Dictionary<string, WingraProject>();
@@ -39,6 +41,13 @@ namespace WingraLanguageServer
 			if (!fileUtils.FileExists(file))
 				return;
 			await prj.LoadConfigProject(file);
+			foreach (var key in prj.Extensions)
+			{
+				var exePath = Path.GetDirectoryName(Assembly.GetAssembly(typeof(Loader)).Location);
+				var absPath = Path.GetFullPath(Path.Combine(exePath, "..", "lang", "extensions", key));
+				var child = await LoadProject(absPath, cache, server, stdLib);
+				prj.RequiredProjects.Add(child);
+			}
 			foreach (var path in prj.RequiredPaths)
 			{
 				var absPath = Path.GetFullPath(Path.Combine(dir, path));
@@ -118,7 +127,7 @@ namespace WingraLanguageServer
 		}
 
 		public static Uri FileToUri(string file)
-			=> new Uri("file:///" + Uri.EscapeUriString( file.Replace(Path.DirectorySeparatorChar, '/')), UriKind.Absolute);
+			=> new Uri("file:///" + Uri.EscapeUriString(file.Replace(Path.DirectorySeparatorChar, '/')), UriKind.Absolute);
 	}
 
 	class DocFileServer : IServeCodeFiles

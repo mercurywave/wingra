@@ -18,6 +18,7 @@ namespace Wingra
 		SortedDictionary<string, WingraBuffer> _allWingraFiles = new SortedDictionary<string, WingraBuffer>();
 		public Dictionary<string, string> Config;
 		public List<string> RequiredPaths = new List<string>();
+		public List<string> Extensions = new List<string>();
 		public List<WingraProject> RequiredProjects = new List<WingraProject>();
 
 		public Compiler IncrementalDebugCompiler; // managed by editor, if any
@@ -42,9 +43,12 @@ namespace Wingra
 					for (int i = 1; i < projectFile.Lines; i++)
 					{
 						var text = projectFile.TextAtLine(i);
-						if (_ReadRequirement(text, out var path))
-							RequiredPaths.Add(path);
-						if (_ReadLine(text, out var key, out var value))
+						string parm = "";
+						if (_ReadRequirement(text, out parm))
+							RequiredPaths.Add(parm);
+						else if (_ReadExtension(text, out parm))
+							Extensions.Add(parm);
+						else if (_ReadLine(text, out var key, out var value))
 							Config[key] = value;
 					}
 				}
@@ -69,17 +73,23 @@ namespace Wingra
 			return true;
 		}
 		bool _ReadRequirement(string text, out string path)
+			=> _ReadKey(ref text, out path, "requires");
+		bool _ReadExtension(string text, out string path)
+			=> _ReadKey(ref text, out path, "extension");
+
+		private static bool _ReadKey(ref string text, out string path, string key)
 		{
 			path = "";
 			text = text.Trim();
-			if (text.Length > 9 && text.StartsWith("requires "))
+			if (text.Length >= key.Length && text.StartsWith(key + " "))
 			{
-				path = util.BoundedSubstr(text, 9, text.Length - 9);
+				path = util.BoundedSubstr(text, key.Length + 1, text.Length - (key.Length + 1));
 				path = path.Trim();
 				return true;
 			}
 			return false;
 		}
+
 		public override string ProjExtension => PROJ_EXTENSION;
 
 		public bool DoRunTests => CheckConfigFlag("runTests");
@@ -99,7 +109,7 @@ namespace Wingra
 		// for command line arguments
 		public void SetConfigFlag(string key, bool value)
 			=> Config?.Add(key, "1");
-		
+
 		#endregion
 
 		public override void AddLoadedFile(string key)

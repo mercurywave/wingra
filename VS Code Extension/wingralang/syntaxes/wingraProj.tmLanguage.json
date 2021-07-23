@@ -11,7 +11,7 @@
 		"statements": {
 			"patterns": [{
 				"name": "keyword.control.wingraProj",
-				"match": "\\b(requires)\\b"
+				"match": "\\b(requires|extension)\\b"
 			}]
 		},
 		"comments": {

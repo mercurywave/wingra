@@ -1,8 +1,17 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>$(SolutionDir)\bin\$(Configuration)</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,7 +20,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy &quot;$(TargetDir)*.dll&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y &#xD;&#xA;xcopy &quot;$(TargetDir)*.exe&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y &#xD;&#xA;xcopy &quot;$(TargetDir)*.pdb&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y&#xD;&#xA;xcopy &quot;$(TargetDir)*.json&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y&#xD;&#xA;xcopy &quot;$(TargetDir)*.wng&quot; &quot;$(ProjectDir)..\VS Code Extension\wingralang\bin\lang\&quot; /e /y" />
+    <Exec Command="xcopy &quot;$(TargetDir)*.dll&quot; &quot;$(SolutionDir)\VS Code Extension\wingralang\bin\lang\&quot; /e /y &#xD;&#xA;xcopy &quot;$(TargetDir)*.exe&quot; &quot;$(SolutionDir)\VS Code Extension\wingralang\bin\lang\&quot; /e /y &#xD;&#xA;xcopy &quot;$(TargetDir)*.pdb&quot; &quot;$(SolutionDir)\VS Code Extension\wingralang\bin\lang\&quot; /e /y&#xD;&#xA;xcopy &quot;$(TargetDir)*.json&quot; &quot;$(SolutionDir)\VS Code Extension\wingralang\bin\lang\&quot; /e /y&#xD;&#xA;xcopy &quot;$(TargetDir)*.wng&quot; &quot;$(SolutionDir)\VS Code Extension\wingralang\bin\lang\&quot; /e /y&#xD;&#xA;xcopy &quot;$(TargetDir)*.wingraProj&quot; &quot;$(SolutionDir)\VS Code Extension\wingralang\bin\lang\&quot; /e /y" />
   </Target>
 
 </Project>

@@ -51,6 +51,8 @@ namespace WingraLanguageServer.Services
 								string path;
 								if (fileUtils.IsFileInPath(result.Item1, Loader.StdLibPath))
 									path = fileUtils.RelativePath(Loader.StdLibPath, result.Item1);
+								else if (fileUtils.IsFileInPath(result.Item1, Loader.ExtLibPath))
+									path = fileUtils.RelativePath(Loader.ExtLibPath, result.Item1);
 								else
 									path = fileUtils.RelativePath(Session.Prj.Path, result.Item1);
 								return new Hover

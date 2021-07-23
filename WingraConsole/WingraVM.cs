@@ -52,12 +52,25 @@ namespace WingraConsole
 		{
 			if (prj.DoRunTests && symbols == null) symbols = new WingraSymbols();
 			_runtime.InjectDynamicLibrary(new IO(this), "IO");
-			_runtime.LoadPlugins(prj);
+			LoadPlugins(prj);
 			var compiler = new Compiler(prj, _runtime.StaticMap);
 			var compl = prj.CompileAll(compiler, symbols);
 			//NOTE: add functions to completion match as well
 			_runtime.RegisterFiles(compl);
 			return compiler;
+		}
+
+		void LoadPlugins(WingraProject prj)
+		{
+			foreach (var child in prj.GetProjectLoadOrder())
+			{
+				var path = child.CheckConfigString("plugin");
+				if (path != "")
+				{
+					path = fileUtils.CombinePath(child.Path, path);
+					_runtime.LoadPlugin(path);
+				}
+			}
 		}
 
 		internal void InitializeNow(WingraProject prj, WingraSymbols symbols = null, bool verbose = false)

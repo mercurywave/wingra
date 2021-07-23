@@ -5,11 +5,17 @@ VisualStudioVersion = 16.0.29609.76
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Wingra", "Wingra\Wingra.csproj", "{E191E5B3-F457-4718-977E-96F80E53E125}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ILanguage", "ILanguage\ILanguage.csproj", "{65087D33-0CD3-4BAD-96B4-6A2CE48771B2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILanguage", "ILanguage\ILanguage.csproj", "{65087D33-0CD3-4BAD-96B4-6A2CE48771B2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WingraConsole", "WingraConsole\WingraConsole.csproj", "{C3D73754-B2B9-4441-8B82-87D23FF3B1E7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WingraConsole", "WingraConsole\WingraConsole.csproj", "{C3D73754-B2B9-4441-8B82-87D23FF3B1E7}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F014F424-A1A6-40B5-AD0D-4DDE14F23860} = {F014F424-A1A6-40B5-AD0D-4DDE14F23860}
+		{945DC848-5A0E-4B76-B815-BB70C829A7E8} = {945DC848-5A0E-4B76-B815-BB70C829A7E8}
+	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WingraAdvancedConsole", "WingraAdvancedConsole\WingraAdvancedConsole.csproj", "{9E241BF4-907B-4D90-9077-2ECFE40638B7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WingraAdvancedConsole", "Extensions\WingraAdvancedConsole\WingraAdvancedConsole.csproj", "{F014F424-A1A6-40B5-AD0D-4DDE14F23860}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StdLib", "Extensions\StdLib\StdLib.csproj", "{945DC848-5A0E-4B76-B815-BB70C829A7E8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +35,14 @@ Global
 		{C3D73754-B2B9-4441-8B82-87D23FF3B1E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C3D73754-B2B9-4441-8B82-87D23FF3B1E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C3D73754-B2B9-4441-8B82-87D23FF3B1E7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9E241BF4-907B-4D90-9077-2ECFE40638B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9E241BF4-907B-4D90-9077-2ECFE40638B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9E241BF4-907B-4D90-9077-2ECFE40638B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9E241BF4-907B-4D90-9077-2ECFE40638B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F014F424-A1A6-40B5-AD0D-4DDE14F23860}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F014F424-A1A6-40B5-AD0D-4DDE14F23860}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F014F424-A1A6-40B5-AD0D-4DDE14F23860}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F014F424-A1A6-40B5-AD0D-4DDE14F23860}.Release|Any CPU.Build.0 = Release|Any CPU
+		{945DC848-5A0E-4B76-B815-BB70C829A7E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{945DC848-5A0E-4B76-B815-BB70C829A7E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{945DC848-5A0E-4B76-B815-BB70C829A7E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{945DC848-5A0E-4B76-B815-BB70C829A7E8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

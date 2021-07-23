@@ -87,7 +87,7 @@ function activate(context) {
                     //const wingra = `%USERPROFILE%\.vscode\extensions`;
                     const config = getWorkspaceConfig();
                     const wingra = (config === null || config === void 0 ? void 0 : config.get('pathToExecutableFile', ''))
-                        || 'C:\\Users\\mettu\\Source\\Repos\\wingra\\WingraConsole\\bin\\Debug\\netcoreapp3.1\\WingraConsole.exe';
+                        || "& '" + extPath + "\\bin\\lang\\WingraConsole.exe'";
                     WTerminal = WTerminal || vscode.window.createTerminal("Wingra");
                     WTerminal.show();
                     WTerminal.sendText(wingra, true);

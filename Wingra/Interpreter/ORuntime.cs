@@ -256,14 +256,9 @@ namespace Wingra.Interpreter
 		public void InjectExternalCall(MethodInfo meth, object host = null, string function = "", string libraryName = "")
 			=> ExternalCalls.AddLibFunction(this, meth, host, function, libraryName);
 
-		public void LoadPlugins(WingraProject prj)
+		public void LoadPlugin(string absPath)
 		{
-			foreach (var child in prj.GetProjectLoadOrder())
-			{
-				var path = child.CheckConfigString("plugin");
-				if (path != "")
-					ExternalCalls.LoadPlugin(this, path);
-			}
+			ExternalCalls.LoadPlugin(this, absPath);
 		}
 
 		public void InjectExternalCall(Action<Job, Variable?> act, string name, string path = "")

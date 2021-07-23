@@ -1,0 +1,6 @@
+	
+library Console
+	extern ::Clear()
+	extern ::Write(str)
+	extern ::SetBufferSize(w, h)
+	extern ::SetCursorPosition(x, y)

@@ -23,7 +23,7 @@
 		return dim
 	$MacroHelp.UnindentAll(code)
 	return code
-	
+
 
 library IO
 	extern ::Write(text)
@@ -116,7 +116,7 @@ library Debug
 	extern ::TypeName(obj => str)
 			
 
-// Methods that don't really need to be mocked, but make sense for completness
+// Methods that don't really need to be mocked, but make sense for completeness
 library List
 	::New( => list) => dim
 		

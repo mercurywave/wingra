@@ -16,7 +16,9 @@ namespace WingraConsole
 		{
 			var cache = new Dictionary<string, WingraProject>();
 			// StdLib always loads first
-			var stdLib = await LoadProject(Path.GetDirectoryName(Assembly.GetAssembly(typeof(Loader)).Location), cache);
+			var libDir = Path.GetDirectoryName(Assembly.GetAssembly(typeof(Loader)).Location);
+			libDir = fileUtils.CombinePath(libDir, "StdLib");
+			var stdLib = await LoadProject(libDir, cache);
 			var prj = await LoadProject(path, cache, stdLib);
 			return prj;
 		}
@@ -40,6 +42,13 @@ namespace WingraConsole
 			if (!fileUtils.FileExists(file))
 				return;
 			await prj.LoadConfigProject(file);
+			foreach (var key in prj.Extensions)
+			{
+				var exePath = Path.GetDirectoryName(Assembly.GetAssembly(typeof(Loader)).Location);
+				var absPath = Path.GetFullPath(Path.Combine(exePath, "extensions", key));
+				var child = await LoadProject(absPath, cache, stdLib);
+				prj.RequiredProjects.Add(child);
+			}
 			foreach (var path in prj.RequiredPaths)
 			{
 				var absPath = Path.GetFullPath(Path.Combine(dir, path));
