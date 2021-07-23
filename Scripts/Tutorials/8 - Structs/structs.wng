@@ -56,7 +56,48 @@ $IO.Write(f.key) // prints "value"
 //@a : dim; @b : dim // ambiguous
 
 
-// TODO: has
-// TODO: dim $Tmplt()
-// TODO: mixin
-// TODO: $Obj functions
+// you can also pair the 'dim' keyword with a function call
+// this allows you to take a struct returned by the function and add additional data
+@i : dim $Monster("Wolf") // creates a Foo struct, and then adds a "HP" value
+    HP : 3
+
+::Monster(name => obj)
+    return dim
+        name : name
+
+// with this style of struct creation, you can use a property function to compose a more complicated struct
+@j : dim $Monster("Ogre") // this grabs the output struct created by the monster function
+    mixin $mixAttacker(3) // this applies the mixAttacker function to that struct
+
+::.mixAttacker(dmg)
+    this.attacks : true
+    this.damage : dmg
+
+
+// you can use the 'has' keyword to check if a struct has a fixed key
+@k : dim("duck" : 4)
+$IO.Write(~(k has "duck")) // prints true
+
+// one-word values are treated like a string, similar to how k.duck accesses the node
+$IO.Write(~(k has duck)) // prints true
+
+// note, that means 'has' does not evaluate the right side like a variable
+@someVar : "duck"
+$IO.Write(~(k has someVar)) // prints false - there is no k["someVar"]
+
+// if you want to check whether a struct has a variable key, you can use $Map.Has()
+$IO.Write(~k.$Map.Has(someVar)) // prints true
+
+
+// there are a number of other functions in the standard library to help work with structs
+// some expect that you have a struct of a certain format of keys/values
+// these may error or behave erratically given data that doesn't conform
+
+// you can get a list of the keys of a struct
+@m : dim("a" : "value")
+@n : m.$Obj.Keys() // creates a new struct where n[0] : "a"
+
+// $List functions work with structs that use numeric keys in the format that dim(a,b,c) can make
+@o : dim("a", "b", "c")
+o.$List.Add("d") // adds to the end, so o[3] : "d"
+$IO.Write(~o.$List.Contains("c")) // prints true

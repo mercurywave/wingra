@@ -10,4 +10,21 @@ data Warrior : dim
     Cost : 2
 
 // you can reference Data objects statically, with the $ sign
-$IO.Write(~$Warrior.Cost)
+$IO.Write(~$Warrior.Cost) // prints 2
+
+
+// if you have a set of possible values, you can create an 'enum'
+enum DayOfWeek
+    Monday; Tuesday; Wednesday; Thursday; Friday; Saturday; Sunday
+
+// you can also build an enum where the enum value itself contains data
+enum CardSuits
+    Hearts : "♥"
+    Diamonds : "♦"
+    Clubs : "♣"
+    Spades : "♠"
+
+// references to enum values are a special type of variable
+// they contain the unique static path to the enum value (e.g. $CardSuits.Clubs)
+// but the contents can be retrieved using the '~' operator
+$IO.Write(~$CardSuits.Clubs) // prints "♣"
