@@ -480,4 +480,11 @@ namespace Wingra.Interpreter
 		public RuntimeException(string message) : base(message) { }
 		public RuntimeException(string message, Job owner) : this(message) { Owner = owner; }
 	}
+
+	public class CatchableError : Exception
+	{
+		public Variable? Contents;
+		public CatchableError() {  }
+		public CatchableError(Variable contents) { Contents = contents; }
+	}
 }

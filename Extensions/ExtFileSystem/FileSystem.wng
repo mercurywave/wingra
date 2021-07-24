@@ -1,0 +1,4 @@
+﻿
+library File
+    extern ::ReadText(file => async throw text)
+    

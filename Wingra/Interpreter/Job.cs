@@ -57,6 +57,12 @@ namespace Wingra.Interpreter
 
 		protected void HandleError(Exception ex)
 		{
+			var trap = ex as CatchableError;
+			if (trap != null)
+			{
+				ThrowObject(trap.Contents);
+				return;
+			}
 			var rex = ex as RuntimeException;
 			if (rex != null)
 			{
@@ -510,14 +516,18 @@ namespace Wingra.Interpreter
 				{
 					var line = CurrentScope.AdvanceLinePointer();
 					var act = Code.Instructions[line];
-					act(this);
-					if (_task != null && !_task.IsCompleted && !_task.IsCanceled)
+					try
 					{
-						await _task;
-						_task = null;
-						if (Runtime.ShuttingDown)
-							return;
+						act(this);
+						if (_task != null && !_task.IsCompleted && !_task.IsCanceled)
+						{
+							await _task;
+							_task = null;
+							if (Runtime.ShuttingDown)
+								return;
+						}
 					}
+					catch (Exception ex) { HandleError(ex); }
 				}
 			}
 			catch (Exception ex) { HandleError(ex); }
@@ -526,7 +536,7 @@ namespace Wingra.Interpreter
 		}
 		internal async Task RunToCompletionAsync()
 		{
-			if(_jobTask != null)
+			if (_jobTask != null)
 				await _jobTask;
 		}
 

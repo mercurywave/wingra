@@ -95,7 +95,7 @@ namespace Wingra.Parser
 			if (_isMethod) lamb.ReserveVariable("this");
 			if (_isThrow) lamb.CanThrow = true;
 			EmitChildren(compiler, file, lamb, asmStackLevel, errors);
-			if (compiler._isIDE && !compiler._isAsmDebug && lamb.GetStackDelta() != 0)
+			if (!compiler._isAsmDebug && lamb.GetStackDelta() != 0)
 				throw new CompilerException("function is leaking registers (compiler bug)", func.CurrentFileLine);
 			return lamb;
 		}

@@ -66,7 +66,14 @@ namespace Wingra.Interpreter
 		public ExternalFuncPointer(Action<Job, Variable?> act) { _act = act; }
 		public Scope BeginExecute(Job j, Variable? thisVar = null)
 		{
-			_act(j, thisVar);
+			try
+			{
+				_act(j, thisVar);
+			}
+			catch (CatchableError e)
+			{
+				j.ThrowObject(e.Contents);
+			}
 			return null;
 		}
 
@@ -89,7 +96,14 @@ namespace Wingra.Interpreter
 		{
 			var aj = j as AsyncJob;
 			if (aj == null) throw new RuntimeException("cannot call async function directly - use arun or await");
-			aj._task = _act(j, thisVar);
+			try
+			{
+				aj._task = _act(j, thisVar);
+			}
+			catch (CatchableError e)
+			{
+				j.ThrowObject(e.Contents);
+			}
 			return null;
 		}
 

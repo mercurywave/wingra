@@ -9,13 +9,16 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILanguage", "ILanguage\ILan
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WingraConsole", "WingraConsole\WingraConsole.csproj", "{C3D73754-B2B9-4441-8B82-87D23FF3B1E7}"
 	ProjectSection(ProjectDependencies) = postProject
+		{A6052B05-9CF0-4F74-B335-A037376DD83A} = {A6052B05-9CF0-4F74-B335-A037376DD83A}
 		{F014F424-A1A6-40B5-AD0D-4DDE14F23860} = {F014F424-A1A6-40B5-AD0D-4DDE14F23860}
 		{945DC848-5A0E-4B76-B815-BB70C829A7E8} = {945DC848-5A0E-4B76-B815-BB70C829A7E8}
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WingraAdvancedConsole", "Extensions\WingraAdvancedConsole\WingraAdvancedConsole.csproj", "{F014F424-A1A6-40B5-AD0D-4DDE14F23860}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExtConsole", "Extensions\WingraAdvancedConsole\ExtConsole.csproj", "{F014F424-A1A6-40B5-AD0D-4DDE14F23860}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StdLib", "Extensions\StdLib\StdLib.csproj", "{945DC848-5A0E-4B76-B815-BB70C829A7E8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StdLib", "Extensions\StdLib\StdLib.csproj", "{945DC848-5A0E-4B76-B815-BB70C829A7E8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExtFileSystem", "Extensions\ExtFileSystem\ExtFileSystem.csproj", "{A6052B05-9CF0-4F74-B335-A037376DD83A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -43,6 +46,10 @@ Global
 		{945DC848-5A0E-4B76-B815-BB70C829A7E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{945DC848-5A0E-4B76-B815-BB70C829A7E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{945DC848-5A0E-4B76-B815-BB70C829A7E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6052B05-9CF0-4F74-B335-A037376DD83A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6052B05-9CF0-4F74-B335-A037376DD83A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6052B05-9CF0-4F74-B335-A037376DD83A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6052B05-9CF0-4F74-B335-A037376DD83A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

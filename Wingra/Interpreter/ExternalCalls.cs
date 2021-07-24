@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Wingra.Interpreter
 {
@@ -59,20 +60,40 @@ namespace Wingra.Interpreter
 		{
 			foreach (var meth in calls)
 			{
-				ParseMethod(meth, out var _retConv, out var _convArr);
+				ParseMethod(meth, out var _retConv, out var _convArr, out var isAsync);
 
-				var lamb = new ExternalFuncPointer((j, t) =>
+				if (isAsync)
 				{
-					RunParseMethod(j, host, meth, _retConv, _convArr);
-				});
-				runtime.InjectStaticVar(MakeFuncPath(path, meth.Name), new Variable(lamb), Parser.eStaticType.External, "", -1);
+					var lamb = new ExternalAsyncFuncPointer(async (j, t) =>
+					{
+						// we have to wrap traps for this in a bunch of places because Method.Invoke seems to confuse it
+						try
+						{
+							await RunParseMethodAsync(j, host, meth, _retConv, _convArr);
+						}
+						catch (CatchableError e)
+						{
+							j.ThrowObject(e.Contents);
+						}
+					});
+					runtime.InjectStaticVar(MakeFuncPath(path, meth.Name), new Variable(lamb), Parser.eStaticType.External, "", -1);
+				}
+				else
+				{
+					var lamb = new ExternalFuncPointer((j, t) =>
+					{
+						RunParseMethod(j, host, meth, _retConv, _convArr);
+					});
+					runtime.InjectStaticVar(MakeFuncPath(path, meth.Name), new Variable(lamb), Parser.eStaticType.External, "", -1);
+				}
 			}
 		}
 
-		private static void ParseMethod(MethodInfo meth, out eConvert? _retConv, out eConvert[] _convArr)
+		private static void ParseMethod(MethodInfo meth, out eConvert? _retConv, out eConvert[] _convArr, out bool isAsync)
 		{
 			List<eConvert> _convList = new List<eConvert>();
 			_retConv = null;
+			isAsync = false;
 			foreach (var p in meth.GetParameters())
 			{
 				if (p.ParameterType == typeof(string))
@@ -99,28 +120,42 @@ namespace Wingra.Interpreter
 					_retConv = eConvert.single;
 				else if (typeof(Variable).IsAssignableFrom(meth.ReturnType))
 					_retConv = eConvert.none;
+				else if (meth.ReturnType == typeof(Task))
+				{
+					isAsync = true;
+				}
+				else if (meth.ReturnType == typeof(Task<string>))
+				{
+					isAsync = true;
+					_retConv = eConvert.str;
+				}
+				else if (meth.ReturnType == typeof(Task<int>))
+				{
+					isAsync = true;
+					_retConv = eConvert.integer;
+				}
+				else if (meth.ReturnType == typeof(Task<bool>))
+				{
+					isAsync = true;
+					_retConv = eConvert.boolean;
+				}
+				else if (meth.ReturnType == typeof(Task<float>))
+				{
+					isAsync = true;
+					_retConv = eConvert.single;
+				}
+				else if (meth.ReturnType == typeof(Task<Variable>))
+				{
+					isAsync = true;
+					_retConv = eConvert.none;
+				}
 			}
 		}
 
 		private static void RunParseMethod(Job j, object host, MethodInfo meth, eConvert? _retConv, eConvert[] _convArr)
 		{
 			List<object> inputs = new List<object>(j.TotalParamsPassing);
-			for (int i = 0; i < j.TotalParamsPassing; i++)
-			{
-				var pass = j.GetPassingParam(i);
-				var conv = _convArr[i];
-				object obj;
-				if (conv == eConvert.integer)
-					obj = pass.AsInt();
-				else if (conv == eConvert.boolean)
-					obj = pass.AsBool();
-				else if (conv == eConvert.single)
-					obj = pass.AsFloat();
-				else if (conv == eConvert.str)
-					obj = pass.AsString();
-				else obj = pass;
-				inputs.Add(obj);
-			}
+			GetInputs(j, _convArr, inputs);
 			var ret = meth.Invoke(host, inputs.ToArray());
 			if (_retConv.HasValue)
 			{
@@ -137,6 +172,85 @@ namespace Wingra.Interpreter
 				else throw new NotImplementedException();
 			}
 			else j.ReturnNothing();
+		}
+
+		private static void GetInputs(Job j, eConvert[] _convArr, List<object> inputs)
+		{
+			for (int i = 0; i < j.TotalParamsPassing; i++)
+			{
+				var pass = j.GetPassingParam(i);
+				var conv = _convArr[i];
+				object obj;
+				if (conv == eConvert.integer)
+					obj = pass.AsInt();
+				else if (conv == eConvert.boolean)
+					obj = pass.AsBool();
+				else if (conv == eConvert.single)
+					obj = pass.AsFloat();
+				else if (conv == eConvert.str)
+					obj = pass.AsString();
+				else obj = pass;
+				inputs.Add(obj);
+			}
+		}
+
+		private static async Task RunParseMethodAsync(Job j, object host, MethodInfo meth, eConvert? _retConv, eConvert[] _convArr)
+		{
+			List<object> inputs = new List<object>(j.TotalParamsPassing);
+			GetInputs(j, _convArr, inputs);
+			var tsk = meth.Invoke(host, inputs.ToArray());
+			if (_retConv.HasValue)
+			{
+				if (_retConv == eConvert.none)
+				{
+					var task = (Task<Variable>)tsk;
+					if (task.Exception != null)
+						throw task.Exception.InnerException;
+					var ret = await task;
+					j.PassReturn((Variable)ret);
+				}
+				else if (_retConv == eConvert.integer)
+				{
+					var task = (Task<int>)tsk;
+					if (task.Exception != null)
+						throw task.Exception.InnerException;
+					var ret = await task;
+					j.PassReturn(new Variable((int)ret));
+				}
+				else if (_retConv == eConvert.boolean)
+				{
+					var task = (Task<bool>)tsk;
+					if (task.Exception != null)
+						throw task.Exception.InnerException;
+					var ret = await task;
+					j.PassReturn(new Variable((bool)ret));
+				}
+				else if (_retConv == eConvert.single)
+				{
+					var task = (Task<float>)tsk;
+					if (task.Exception != null)
+						throw task.Exception.InnerException;
+					var ret = await task;
+					j.PassReturn(new Variable((float)ret));
+				}
+				else if (_retConv == eConvert.str)
+				{
+					var task = (Task<string>)tsk;
+					if (task.Exception != null)
+						throw task.Exception.InnerException;
+					var ret = await task;
+					j.PassReturn(new Variable((string)ret));
+				}
+				else throw new NotImplementedException();
+			}
+			else
+			{
+				var task = (Task)tsk;
+				if (task.Exception != null)
+					throw task.Exception.InnerException;
+				await task;
+				j.ReturnNothing();
+			}
 		}
 	}
 
