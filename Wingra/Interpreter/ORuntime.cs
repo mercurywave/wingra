@@ -390,6 +390,38 @@ namespace Wingra.Interpreter
 			// for now, this just helps async jobs shut down
 			ShuttingDown = true;
 		}
+
+		// Helpers for external libraries
+		public Variable MakeList(List<string> list)
+		{
+			var dl = Heap.CheckOutList(list.Count);
+			dl.Fill(list.Select(s => new Variable(s)).ToList());
+			return new Variable(dl, Heap);
+		}
+		public Variable MakeList(List<int> list)
+		{
+			var dl = Heap.CheckOutList(list.Count);
+			dl.Fill(list.Select(s => new Variable(s)).ToList());
+			return new Variable(dl, Heap);
+		}
+		public Variable MakeList(List<bool> list)
+		{
+			var dl = Heap.CheckOutList(list.Count);
+			dl.Fill(list.Select(s => new Variable(s)).ToList());
+			return new Variable(dl, Heap);
+		}
+		public Variable MakeList(List<float> list)
+		{
+			var dl = Heap.CheckOutList(list.Count);
+			dl.Fill(list.Select(s => new Variable(s)).ToList());
+			return new Variable(dl, Heap);
+		}
+		public Variable MakeList(List<Variable> list)
+		{
+			var dl = Heap.CheckOutList(list.Count);
+			dl.Fill(list);
+			return new Variable(dl, Heap);
+		}
 	}
 
 	public class FileCodeInstance : Dictionary<string, CodeBlock>

@@ -1,4 +1,4 @@
 ﻿
 library File
     extern ::ReadText(file => async throw text)
-    
+    extern ::ReadAllLines(file => async throw textArr)

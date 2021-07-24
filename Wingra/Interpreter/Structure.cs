@@ -301,6 +301,14 @@ namespace Wingra.Interpreter
 				_count++;
 			}
 		}
+		// primarily for external conversion into variable form
+		// assumes the list is empty and the right size! - does not clear existing content!
+		public void Fill(IList<Variable> list)
+		{
+			for (int i = 0; i < list.Count; i++)
+				_list[i] = list[i];
+			_count = list.Count;
+		}
 		public void Dispose()
 		{
 			for (int i = 0; i < _list.Length; i++)

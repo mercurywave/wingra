@@ -17,6 +17,14 @@ namespace Wingra.Interpreter
 		}
 	}
 
+	[AttributeUsage(AttributeTargets.Class)]
+	public class WingraLibrarySetup : Attribute
+	{
+		// The class is expected to have a function like this:
+		// public static void WingraInit(ORuntime run)
+		public WingraLibrarySetup() { }
+	}
+
 	public static class ExternalCalls
 	{
 		public static void LoadPlugin(ORuntime runtime, string path)
@@ -29,6 +37,13 @@ namespace Wingra.Interpreter
 			var types = assembly.GetTypes();
 			foreach (var t in types)
 			{
+				var setupClass = t.GetTypeInfo().GetCustomAttribute<WingraLibrarySetup>();
+				if (setupClass != null)
+				{
+					var f = t.GetMethod("WingraInit");
+					if (f != null)
+						f.Invoke(null, new object[] { runtime });
+				}
 				var classAttr = t.GetTypeInfo().GetCustomAttribute<WingraLibrary>();
 				if (classAttr != null)
 					AddDynamicLibrary(runtime, t, classAttr.Path);
