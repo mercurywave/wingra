@@ -290,6 +290,26 @@ namespace WingraLanguageServer.Services
 		//	return null;
 		//}
 
+		bool IsInTextData(WingraBuffer buffer, int line)
+		{
+			int indent = int.MaxValue;
+			for (int i = line; i >= 0; i--)
+			{
+				var lex = buffer.GetSyntaxMetadata(i);
+				if (lex.PreceedingWhitespace < indent)
+				{
+					indent = lex.PreceedingWhitespace;
+					if (lex.ContainsTextData)
+					{
+						return true;
+					}
+				}
+				if (lex.PreceedingWhitespace == 0)
+					break;
+			}
+			return false;
+		}
+
 		[JsonRpcMethod]
 		public CompletionList Completion(TextDocumentIdentifier textDocument, Position position, CompletionContext context)
 		{
@@ -301,6 +321,8 @@ namespace WingraLanguageServer.Services
 					var buffer = Session.Prj.GetFile(key);
 					if (position.Line < buffer.Lines)
 					{
+						if (IsInTextData(buffer, position.Line))
+							return new CompletionList();
 						var scopeTracker = Session._scopeTracker;
 						var staticMap = Session._staticMap;
 						var compiler = Session.Cmplr;
@@ -363,6 +385,13 @@ namespace WingraLanguageServer.Services
 						{
 							prev = null;
 							separator = null;
+						}
+
+						if (curr.HasValue)
+						{
+							if (curr.Value.Type == eToken.Comment
+								|| curr.Value.Type == eToken.LiteralString)
+								return new CompletionList();
 						}
 
 						string phrase = "";

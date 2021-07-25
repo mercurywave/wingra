@@ -28,3 +28,10 @@ enum CardSuits
 // they contain the unique static path to the enum value (e.g. $CardSuits.Clubs)
 // but the contents can be retrieved using the '~' operator
 $IO.Write(~$CardSuits.Clubs) // prints "♣"
+
+
+// if you need to create a lot of text, you can use the textdata scope inverter
+@a : textdata
+    the text in this scope will form an array of strings
+    each line is trimmed and is added to the array
+    extra blank lines at the end are ignored

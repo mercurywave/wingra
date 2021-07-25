@@ -63,6 +63,10 @@ async function activateLanguageServer(context: vscode.ExtensionContext) {
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
+    context.subscriptions.push(vscode.languages.registerDocumentSemanticTokensProvider(
+        { language: 'wingra'},
+        new DocumentSemanticTokensProvider(), legend));
+        
     let WTerminal: vscode.Terminal | null = null;
     var extPath = context.asAbsolutePath("");
     context.subscriptions.push(vscode.commands.registerCommand("wingra.run", async () => {
@@ -106,7 +110,7 @@ export async function activate(context: vscode.ExtensionContext) {
 function getWorkspaceConfig(): vscode.WorkspaceConfiguration | null {
 	const currentWorkspaceFolder = getWorkspaceFolder();
     if (!currentWorkspaceFolder) return null;
-	return vscode.workspace.getConfiguration('v', currentWorkspaceFolder.uri);
+	return vscode.workspace.getConfiguration('wingra', currentWorkspaceFolder.uri);
 }
 
 export function getWorkspaceFolder(uri?: vscode.Uri): vscode.WorkspaceFolder | null {
@@ -125,4 +129,95 @@ function getCurrentDocument(): vscode.TextDocument | null {
 // this method is called when your extension is deactivated
 export async function deactivate(): Promise<void> {
     client?.stop();
+}
+
+
+
+
+// specifically needed to support textdata correctly
+// modified from the MS vscode semantic tokens sample
+const tokenTypes = new Map<string, number>();
+const tokenModifiers = new Map<string, number>();
+const legend = (function () {
+	const tokenTypesLegend = [
+		'string'
+	];
+	tokenTypesLegend.forEach((tokenType, index) => tokenTypes.set(tokenType, index));
+
+	const tokenModifiersLegend: string[] = [];
+	tokenModifiersLegend.forEach((tokenModifier, index) => tokenModifiers.set(tokenModifier, index));
+
+	return new vscode.SemanticTokensLegend(tokenTypesLegend, tokenModifiersLegend);
+})();
+
+interface IParsedToken {
+	line: number;
+	startCharacter: number;
+	length: number;
+	tokenType: string;
+	tokenModifiers: string[];
+}
+
+class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensProvider {
+	async provideDocumentSemanticTokens(document: vscode.TextDocument, token: vscode.CancellationToken): Promise<vscode.SemanticTokens> {
+        
+		const allTokens = this._parseText(document.getText());
+		const builder = new vscode.SemanticTokensBuilder();
+		allTokens.forEach((token) => {
+			builder.push(token.line, token.startCharacter, token.length, this._encodeTokenType(token.tokenType), this._encodeTokenModifiers(token.tokenModifiers));
+		});
+		return builder.build();
+	}
+
+	private _encodeTokenType(tokenType: string): number {
+		if (tokenTypes.has(tokenType)) {
+			return tokenTypes.get(tokenType)!;
+		} else if (tokenType === 'notInLegend') {
+			return tokenTypes.size + 2;
+		}
+		return 0;
+	}
+
+	private _encodeTokenModifiers(strTokenModifiers: string[]): number {
+		let result = 0;
+		for (let i = 0; i < strTokenModifiers.length; i++) {
+			const tokenModifier = strTokenModifiers[i];
+			if (tokenModifiers.has(tokenModifier)) {
+				result = result | (1 << tokenModifiers.get(tokenModifier)!);
+			} else if (tokenModifier === 'notInLegend') {
+				result = result | (1 << tokenModifiers.size + 2);
+			}
+		}
+		return result;
+	}
+
+	private _parseText(text: string): IParsedToken[] {
+		const r: IParsedToken[] = [];
+		const lines = text.split(/\r\n|\r|\n/);
+        var textDataIndent = -1;
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+            const spaces = line.search(/\S/);
+            if (textDataIndent >= 0)
+            {
+                if (spaces <= textDataIndent) {
+                    textDataIndent = -1;
+                } else {
+                    r.push({
+                        line: i,
+                        startCharacter: spaces,
+                        length: line.length - spaces,
+                        tokenType: "string",
+                        tokenModifiers: []
+                    });
+                }
+            }
+            if (textDataIndent < 0){
+                // TODO: this is a very naive search for textdata
+                if(line.search("textdata") >= 0)
+                    textDataIndent = spaces;
+            }
+		}
+		return r;
+	}
 }
