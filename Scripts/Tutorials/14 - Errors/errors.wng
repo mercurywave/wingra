@@ -1,0 +1,57 @@
+
+// there are two types of runtime errors that a Wingra program might create
+// there are fatal errors and there are catchable errors
+
+// uncommenting this code and running would cause a fatal error
+//@a : 1/0
+
+// there are a number of other scenarios that will create fatal errors
+@b : dim("value")
+free b
+//@c : b[0] // fatal -- b is no longer a valid pointer
+
+@d : dim()
+//@e : d.doesntExist // fatal -- d does not contain a key of 'doesntExist'
+@f : d["doesntExist"] // note: this is not fatal -- [] access defaults to null if the key does not exist
+
+
+// on the other hand, there are errors you can catch
+// a function that can throw an error must be defined as part of the function definition
+::WillThrow(=> throw) // indicates this function can throw
+    throw // when this code run, throw tells Wingra to throw an error to the caller
+
+// when you call a function that can throw, you have to define what you want to do if that function throws
+// you can catch an error with the 'trap' keyword
+trap $WillThrow()
+    // this code runs if the statement threw an error
+    $IO.Write("WillThrow did throw")
+
+// you can use the 'try' keyword to call a function that might throw
+// if that function throws an error, that error is re-throw
+// that means that the calling function can also throw, and must indicate that in it's signature
+::Foo(=> throw)
+    try $WillThrow()
+
+
+// a throwing function can either return a value or throw
+::ThrowExpression(doThrow => throw value)
+    if doThrow \ throw
+    value : "some text"
+
+// you can use 'try' and 'catch' in an expression to use an alternative value upon throwing
+$IO.Write(try $ThrowExpression(false) catch "not printed") // prints 'some text'
+$IO.Write(try $ThrowExpression(true) catch "fallback") // prints 'fallback'
+
+
+// you can use the 'avow' keyword to promise the compiler that this function will not throw
+// if the function does actually throw, that will be a fatal and immediate error
+$IO.Write(avow $ThrowExpression(false)) // prints 'some text'
+
+
+// you can pass a variable to throw
+::ThrowString(=> throw)
+    throw "error message" // could pass a number or object as well
+
+// you can access this in the catching 'trap' block with the special 'error' variable
+trap $ThrowString()
+    $IO.Write(error) // prints 'error message'

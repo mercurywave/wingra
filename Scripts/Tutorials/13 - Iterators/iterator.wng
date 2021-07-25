@@ -1,0 +1,25 @@
+
+@a : dim ("a", "b", "c", "d", "e")
+
+// you can write a loop over a struct like so
+for @val of a at @key
+    if $Math.Mod(key, 2) = 1 // odd index keys
+        $IO.Write(val)
+
+// say you need to write a loop like this many times throughtout your program
+// it would be nice to simplify this code and reuse the logic
+// this is one of the uses for an iterator
+// this is a special type of function that can be used with a loop
+::OddKeys(obj => yield val)
+    for @val of obj at @key
+        if $Math.Mod(key, 2) = 1 // odd index keys
+            yield val
+// this function takes a struct, and then returns an iterator to the values at odd index keys
+
+// you can then use this like this
+// this loop does the same thing as the first loop sample
+for @val : $OddKeys(a)
+    $IO.Write(val)
+
+// the iterator function itself returns an iterator object
+// this is a special reference data type in Wingra
