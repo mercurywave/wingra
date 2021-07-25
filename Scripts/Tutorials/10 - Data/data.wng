@@ -3,6 +3,11 @@
 $CONST : "fixed"
 $IO.Write($CONST) // prints 'fixed'
 
+// constants can also be defined as part of a library
+library SomeStuff
+    $CONST : "a constant value"
+
+
 // the data keyword lets you define more complicated static content as part of your program
 data Warrior : dim
     Attack : 5
@@ -35,3 +40,20 @@ $IO.Write(~$CardSuits.Clubs) // prints "♣"
     the text in this scope will form an array of strings
     each line is trimmed and is added to the array
     extra blank lines at the end are ignored
+
+
+// a special feature of data objects, is that they can be created without a name
+// this might sound unusual, as you cannot refer to the object if it doesn't have a name
+data : dim("no one can find me here")
+
+// during the creation of the object, you can register the object in a registry
+registry AllSpells // contains an empty struct by default
+data : ^AllSpells.$List.Add(dim)
+    displayName : "Fireball"
+    damage : 4
+
+// a registry is a special type of scratch variable that is available during data initialization
+// when data is registered in this way, you can query it, so you can access the data without a name
+for ^AllSpells
+    if it.damage >  4
+        // do something
