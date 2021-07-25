@@ -1,0 +1,44 @@
+
+// some operations, like loading a page from the web, can take a while to complete
+// using async features allows you to perform these long operations without blocking other parts of your program
+
+// you can define a function that will take a while with the async keyword
+::LongJob(=> async)
+    // an async function can call wait on other async functions with the await keyword
+    await $Job.Pause(250) // hold 250ms
+    // note: a non-async function cannot use await
+
+// when a normal main function runs to completion the program immediatly completes
+// that would be a problem if you have outstanding work to still be done
+// so instead of a normal $Main() function, you will want to use an async Main function
+global ::Main(=> async)
+    // now we can await for other functions to complete
+    await $LongJob()
+    // when this function ends running, all open jobs are immediately halted
+    // if you commented out the $LongJob() call, a message would print that open jobs were terminated
+
+
+::ParallelTask(delay => async)
+    await $Job.Pause(delay) // hold X ms
+    $IO.Write("waited for " + ~delay + "ms")
+
+// you can create a new async job with arun
+arun $ParallelTask(100)
+arun $ParallelTask(10) // creates a second job which will complete first
+// by default, jobs created this way will operate on the current thread while it is idle
+// the current task will run to a point where it is idle, and then other jobs will run to a similar stopping point
+
+// you can also create an ad-hoc jobs using 'arun lambda'
+arun lambda
+    await $ParallelTask(25)
+
+
+// arun returns a job ID
+@job : arun $ParallelTask(120)
+// you can check whether a job is complete with the $Job library
+$IO.Write(~job.$Job.IsComplete()) // prints false
+
+arun lambda
+    // you can also wait for another job to complete
+    await job.$Job.Wait()
+    $IO.Write("other job complete")
