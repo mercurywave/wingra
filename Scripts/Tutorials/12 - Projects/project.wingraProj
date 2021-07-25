@@ -1,0 +1,32 @@
+version=1
+
+; this project.wingraProj file contains settings related to this prject
+; lines starting with a ';' act as comments
+; the first line of the file should always contain a version number as shown above
+; this is the version of the wingraProj file format
+
+; there are several ways to reference other code
+; extensions are libraries that come with the base version of wingra
+; this setting includes the FileSystem extension with this project
+extension FileSystem
+extension Console
+
+; you can also include other folders via relative reference
+;requires ..\Other Folder\
+
+; you can integrate with a .net project using the plugin setting
+;plugin=..\MyProject.dll
+; the language extensions use this to provide advanced features
+
+
+; if you want to transpile the program output to javascript, use the following commands
+; jsExport tells the compiler where to generate the .js file
+;jsExport = out\code.js
+; jsFunc tells the compiler the name of the js initialization function to generate
+;jsFunc = SETUP
+
+
+; if you want to run tests as part of running, set this to true
+; enabling this will run the global $TestMain() function
+; see the Test Harness script folder to see how this can be used to generate unit tests
+;runTests = true

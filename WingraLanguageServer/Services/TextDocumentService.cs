@@ -201,7 +201,6 @@ namespace WingraLanguageServer.Services
 
 			doc.DocumentChanged += (sender, args) =>
 			{
-
 				if (session.Prj.IsFileLoaded(key))
 				{
 					var wb = session.Prj.GetFile(key);

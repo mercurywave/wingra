@@ -123,9 +123,10 @@ namespace Wingra
 		{
 			if (!IsFileWingra(key))
 				return await base._CreateNew(key);
-			var gel = new WingraBuffer(key);
-			_wingraFiles.Add(key, gel);
-			return gel;
+			var buff = new WingraBuffer(key);
+			_wingraFiles.Add(key, buff);
+			_allWingraFiles.Add(key, buff);
+			return buff;
 		}
 
 		public WingraBuffer GetFile(string key) => _allWingraFiles[key];

@@ -1,0 +1,6 @@
+
+// (see maing.wng for explanation)
+
+library OtherLib
+    ::Func()
+        // this is called from main.wng

@@ -1,0 +1,36 @@
+
+// when you run a Wingra program, you are selecting to run a folder
+// all .wng files within the folder (and subfolders) will execute
+
+// with the tutorials so far, all of the code we've been writing has been at that file level
+// this is convienent for simple use cases and single file work, but difficult to manage
+// files within the folder like this may be executed at an arbitrary order
+
+// with a complex project, you will likely want to sequence operations
+// if your project contains a global $Main() function, that will be executed after Wingra initializes
+global ::Main()
+    // global functions, like this one, are globally available from all files in your project
+    $IO.Write("begin Main function")
+
+    // when this function returns, your program is complete
+    
+// functions defined at the file level like this are private to this file
+::LocalFunction()
+    $IO.Write("local func")
+
+// functions, constants, enum, and data declared in library blocks are visible to other files
+library MainLib
+    ::Func()
+        $OtherLib.Func()
+    
+    $CONST : "a value"
+
+    data SomeData : dim
+        "something"
+    
+    enum eColor
+        Red; Green; Blue
+
+// named data objects are by default global
+data AvailableEverywhere : dim
+    "something global"
