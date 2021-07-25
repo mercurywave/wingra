@@ -431,6 +431,12 @@ namespace Wingra.Interpreter
 			public string DeclaredName;
 			public int StackLevel;
 			public string ShadowName;
+			public VarMap(string declaredName, int stackLevel, string shadowName)
+			{
+				DeclaredName = declaredName;
+				StackLevel = stackLevel;
+				ShadowName = shadowName;
+			}
 		}
 
 		void RegisterVar(string name, int asmLine, int asmStack)
@@ -479,6 +485,18 @@ namespace Wingra.Interpreter
 					_declaredVars.Remove(v.DeclaredName);
 				}
 			}
+		}
+
+		// effectively, looks backwards from current line until we hit the toAsmLevel and declares them at a higher level
+		// trap @a : $Foo()
+		// we want a to be declared at the ourter scope, and not inside the error trap
+		public void HoistDeclaredVars(int fromAsmLevel, int toAsmLevel)
+		{
+			var removing = _varMap.Where(v => v.StackLevel == fromAsmLevel).ToArray();
+			_varMap.RemoveAll(v => v.StackLevel == fromAsmLevel);
+
+			foreach (var v in removing)
+				_varMap.Add(new VarMap(v.DeclaredName, toAsmLevel, v.ShadowName));
 		}
 
 		public void ReserveVariable(string token)

@@ -1,0 +1,25 @@
+
+$FILE_NAME : "files.wng"
+
+global ::Main(=> async)
+    trap @text : await $File.ReadAllLines($FILE_NAME)
+        $IO.Write("oh no! " + error)
+        quit
+    for text
+        $IO.Write(it) // writes the contents of this file
+    
+    @path : "C:/folder/file.ext"
+    $IO.Write(path.$Path.GetDirName()) // C:/folder
+    $IO.Write(path.$Path.GetFileName()) // file.ext
+    $IO.Write(path.$Path.GetExtension()) // .ext
+    $IO.Write($Path.Join("C:/folder", "file.txt")) // C:/folder/file.ext
+
+    // write directories in parent directory
+    for avow "../".$Dir.GetDirectories()
+            $IO.Write(it)
+    // write files in current directory
+    for avow $Dir.WorkingDirectory().$Dir.GetFiles()
+        $IO.Write(it)
+    
+    // check whether this file exists
+    $IO.Write(~($FILE_NAME.$File.Exists())) // true

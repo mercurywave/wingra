@@ -2,9 +2,16 @@
 library File
     extern ::ReadText(file => async throw text)
     extern ::ReadAllLines(file => async throw textArr)
+    extern ::.Exists( => bool)
 
 library Path
     extern ::.GetDirName( => dir) // get directory from a file path
     extern ::.GetFileName( => file) // get file name with extension
     extern ::.GetExtension( => ext) // note: extension will include the "."
+    extern ::.GetAbsolute( => path) // convert a relative path to an absolute path
     extern ::Join(basePath, relPath => combined)
+
+library Dir
+    extern ::.GetDirectories( => throw subDirList)
+    extern ::.GetFiles( => throw fileList)
+    extern ::WorkingDirectory(=> dir)

@@ -6,12 +6,18 @@ using System.Text;
 
 namespace Wingra.Parser
 {
-	class STrapStatement : SScopeStatement
+	class STrapStatement : SScopeStatement, IDeclareVariablesAtScope
 	{
 		List<SStatement> _attempt;
 		public STrapStatement(int fileLine, List<SStatement> attempt) : base(fileLine)
 		{
 			_attempt = attempt;
+		}
+		internal override void OnAddedToTree(ParseContext context)
+		{
+			foreach (var c in _attempt)
+				c.OnAddedToTree(context);
+			base.OnAddedToTree(context);
 		}
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
@@ -19,6 +25,8 @@ namespace Wingra.Parser
 			func.Add(asmStackLevel, eAsmCommand.CreateErrorTrap, asmStackLevel + 1);
 			foreach (var child in _attempt)
 				child.EmitAssembly(compiler, file, func, asmStackLevel + 2, errors, this);
+			// any vars declared at that level need to be hoisted to the current level so they can persist onward
+			func.HoistDeclaredVars(asmStackLevel + 2, asmStackLevel);
 			func.Add(asmStackLevel + 2, eAsmCommand.Jump, asmStackLevel);
 			func.DeclareVariable("error", asmStackLevel + 1);
 			func.Add(asmStackLevel + 1, eAsmCommand.ClearErrorTrap, func.FindParentErrorTrap());
@@ -29,6 +37,17 @@ namespace Wingra.Parser
 			foreach (var state in _attempt)
 				foreach (var sub in state.IterExpressions())
 					yield return sub;
+		}
+
+		public IEnumerable<string> GetDeclaredSymbolsInside(SyntaxNode parent)
+		{
+			foreach(var state in _attempt)
+			{
+				var decl = state as IDeclareVariablesAtScope;
+				if (decl != null)
+					foreach (var sub in decl.GetDeclaredSymbolsInside(this))
+						yield return sub;
+			}
 		}
 	}
 

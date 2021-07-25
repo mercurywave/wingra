@@ -1,0 +1,17 @@
+version=1
+
+;extension Console
+extension FileSystem
+;requires ..\Standard Library\
+;requires ..\Advanced Console\
+;requires ..\Test Harness\
+;requires ..\Tests\
+
+; comment test
+
+; plugin=..\WingraAdvancedConsole\bin\Debug\netstandard2.0\WingraAdvancedConsole.dll
+
+;jsExport=..\Scratch Web\code.js
+;jsFunc=SETUP
+
+;runTests = true
