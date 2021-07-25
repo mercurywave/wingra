@@ -2,3 +2,9 @@
 library File
     extern ::ReadText(file => async throw text)
     extern ::ReadAllLines(file => async throw textArr)
+
+library Path
+    extern ::.GetDirName( => dir) // get directory from a file path
+    extern ::.GetFileName( => file) // get file name with extension
+    extern ::.GetExtension( => ext) // note: extension will include the "."
+    extern ::Join(basePath, relPath => combined)

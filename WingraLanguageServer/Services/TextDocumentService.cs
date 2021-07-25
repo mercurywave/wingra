@@ -207,7 +207,7 @@ namespace WingraLanguageServer.Services
 					var wb = session.Prj.GetFile(key);
 					lock (session.Lock)
 					{
-						wb.SyncFromExternal(doc.Document.Content.Split(Environment.NewLine).ToList());
+						wb.SyncFromExternal(doc.Document.Content.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None).ToList());
 						_needParse.Add(wb);
 					}
 

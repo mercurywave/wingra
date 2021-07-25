@@ -25,6 +25,13 @@ namespace Wingra.Interpreter
 		public WingraLibrarySetup() { }
 	}
 
+	[AttributeUsage(AttributeTargets.Method)]
+	public class WingraMethod : Attribute
+	{
+		// the first parameter of this function is passed in from wingra via obj.$Func()
+		public WingraMethod() { }
+	}
+
 	public static class ExternalCalls
 	{
 		public static void LoadPlugin(ORuntime runtime, string path)
@@ -75,7 +82,7 @@ namespace Wingra.Interpreter
 		{
 			foreach (var meth in calls)
 			{
-				ParseMethod(meth, out var _retConv, out var _convArr, out var isAsync);
+				ParseMethod(meth, out var _retConv, out var _convArr, out var isAsync, out var isMethod);
 
 				if (isAsync)
 				{
@@ -84,7 +91,7 @@ namespace Wingra.Interpreter
 						// we have to wrap traps for this in a bunch of places because Method.Invoke seems to confuse it
 						try
 						{
-							await RunParseMethodAsync(j, host, meth, _retConv, _convArr);
+							await RunParseMethodAsync(j, host, meth, _retConv, _convArr, isMethod, t);
 						}
 						catch (CatchableError e)
 						{
@@ -97,15 +104,16 @@ namespace Wingra.Interpreter
 				{
 					var lamb = new ExternalFuncPointer((j, t) =>
 					{
-						RunParseMethod(j, host, meth, _retConv, _convArr);
+						RunParseMethod(j, host, meth, _retConv, _convArr, isMethod, t);
 					});
 					runtime.InjectStaticVar(MakeFuncPath(path, meth.Name), new Variable(lamb), Parser.eStaticType.External, "", -1);
 				}
 			}
 		}
 
-		private static void ParseMethod(MethodInfo meth, out eConvert? _retConv, out eConvert[] _convArr, out bool isAsync)
+		private static void ParseMethod(MethodInfo meth, out eConvert? _retConv, out eConvert[] _convArr, out bool isAsync, out bool isMethod)
 		{
+			isMethod = (meth.GetCustomAttribute<WingraMethod>() != null);
 			List<eConvert> _convList = new List<eConvert>();
 			_retConv = null;
 			isAsync = false;
@@ -167,10 +175,10 @@ namespace Wingra.Interpreter
 			}
 		}
 
-		private static void RunParseMethod(Job j, object host, MethodInfo meth, eConvert? _retConv, eConvert[] _convArr)
+		private static void RunParseMethod(Job j, object host, MethodInfo meth, eConvert? _retConv, eConvert[] _convArr, bool isMethod, Variable? thisVar)
 		{
 			List<object> inputs = new List<object>(j.TotalParamsPassing);
-			GetInputs(j, _convArr, inputs);
+			GetInputs(j, _convArr, inputs, isMethod, thisVar);
 			var ret = meth.Invoke(host, inputs.ToArray());
 			if (_retConv.HasValue)
 			{
@@ -189,30 +197,38 @@ namespace Wingra.Interpreter
 			else j.ReturnNothing();
 		}
 
-		private static void GetInputs(Job j, eConvert[] _convArr, List<object> inputs)
+		private static void GetInputs(Job j, eConvert[] _convArr, List<object> inputs, bool isMethod, Variable? thisVar)
 		{
+			if (isMethod)
+				inputs.Add(ConvertWingraInputToObj(thisVar.Value, _convArr[0]));
 			for (int i = 0; i < j.TotalParamsPassing; i++)
 			{
 				var pass = j.GetPassingParam(i);
-				var conv = _convArr[i];
-				object obj;
-				if (conv == eConvert.integer)
-					obj = pass.AsInt();
-				else if (conv == eConvert.boolean)
-					obj = pass.AsBool();
-				else if (conv == eConvert.single)
-					obj = pass.AsFloat();
-				else if (conv == eConvert.str)
-					obj = pass.AsString();
-				else obj = pass;
+				var conv = _convArr[i + (isMethod ? 1 : 0)];
+				object obj = ConvertWingraInputToObj(pass, conv);
 				inputs.Add(obj);
 			}
 		}
 
-		private static async Task RunParseMethodAsync(Job j, object host, MethodInfo meth, eConvert? _retConv, eConvert[] _convArr)
+		private static object ConvertWingraInputToObj(Variable pass, eConvert conv)
+		{
+			object obj;
+			if (conv == eConvert.integer)
+				obj = pass.AsInt();
+			else if (conv == eConvert.boolean)
+				obj = pass.AsBool();
+			else if (conv == eConvert.single)
+				obj = pass.AsFloat();
+			else if (conv == eConvert.str)
+				obj = pass.AsString();
+			else obj = pass;
+			return obj;
+		}
+
+		private static async Task RunParseMethodAsync(Job j, object host, MethodInfo meth, eConvert? _retConv, eConvert[] _convArr, bool isMethod, Variable? thisVar)
 		{
 			List<object> inputs = new List<object>(j.TotalParamsPassing);
-			GetInputs(j, _convArr, inputs);
+			GetInputs(j, _convArr, inputs, isMethod, thisVar);
 			var tsk = meth.Invoke(host, inputs.ToArray());
 			if (_retConv.HasValue)
 			{

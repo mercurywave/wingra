@@ -40,4 +40,19 @@ namespace ExtFileSystem
 			}
 		}
 	}
+	[WingraLibrary("Path")]
+	public static class PathSystem
+	{
+		[WingraMethod]
+		public static string GetDirName(string dir)
+			=> Path.GetDirectoryName(dir) ?? "";
+		[WingraMethod]
+		public static string GetFileName(string dir)
+			=> Path.GetFileName(dir) ?? "";
+		[WingraMethod]
+		public static string GetExtension(string dir)
+			=> Path.GetExtension(dir) ?? "";
+		public static string Join(string basePath, string relPath)
+			=> Path.Combine(basePath, relPath);
+	}
 }
