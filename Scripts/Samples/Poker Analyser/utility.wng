@@ -1,0 +1,49 @@
+
+// some handy utility functions
+
+scratch RandSeed : 123456 // random seed to generate hands
+// very simple kinda-random number generator
+// not particularly robust - seems to loop after a while
+library Rand
+    ::_Next(=> val)
+        ^RandSeed : (^RandSeed + 37) * 6211
+        ^RandSeed : $Math.Mod(^RandSeed, 27361)
+        return ^RandSeed
+    // [min, max)
+    ::Int(min, max => val)
+        return min + $Math.Floor($Math.Mod($_Next(), max - min))
+
+library List
+    ::.Map(conversion => newList)
+        newList : dim()
+        for this
+            newList.$Add($(conversion, it))
+
+    ::.Join(?delim => str)
+        delim ?: ""
+        str : ""
+        for this
+            if str != "" \ str : str + delim
+            str : str + it
+
+    ::.Shuffle()
+        @cnt : this.$Obj.Count()
+        for @i : 0 to cnt
+            @j : $Rand.Int(0, cnt)
+            if i != j
+                @tmp : free? this[i]
+                this[i] : free? this[j]
+                this[j] : free? tmp
+
+    ::.FrequencyMap(mapFunc => freqMap)
+        freqMap : dim()
+        for this
+            freqMap.$Util.IncrementCount($(mapFunc, it))
+
+library Util
+    // helper function that increments a node of frequency map [key] : count
+    ::.IncrementCount(key)
+        if !this.$Map.Has(key)
+            this[key] : 1
+        else
+            this[key] : this[key] + 1
