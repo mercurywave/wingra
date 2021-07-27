@@ -38,7 +38,7 @@ library Obj
 	extern ::.ShallowCopy(=> dup)
 	extern ::.HasChildren(=> bool)
 		
-library Map
+library Set
 	extern ::.Has(key => exists)
 		
 library List
@@ -120,8 +120,8 @@ library Debug
 library List
 	::New( => list) => dim
 		
-library Map
-	::New( => map) => dim
+library Set
+	::New( => set) => dim
 	::.Add(key)
 		this[key] : true
 		

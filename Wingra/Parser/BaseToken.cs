@@ -301,8 +301,8 @@ namespace Wingra.Parser
 		{
 			switch (token)
 			{
-				case eToken.And:
 				case eToken.Or:
+				case eToken.And:
 					return 1;
 				case eToken.EqualSign:
 				case eToken.NotEquals:
@@ -318,8 +318,8 @@ namespace Wingra.Parser
 				case eToken.Multiply:
 				case eToken.Divide:
 					return 4;
-				//case eToken.Not: // unarys have to be special
-				//	return 5;
+				case eToken.QuestionMark:
+					return 5;
 				case eToken.LeftBracket: // function / array access
 				case eToken.LeftParen:
 				case eToken.Dot:
@@ -357,7 +357,21 @@ namespace Wingra.Parser
 				case eToken.Dot:
 				case eToken.DotQuestion:
 				case eToken.QuestionDot:
+				case eToken.QuestionMark:
 				case eToken.Has:
+					return true;
+				default: return false;
+			}
+		}
+
+		public bool DoesShortCircuit() => DoesShortCircuit(Type);
+		public static bool DoesShortCircuit(eToken token)
+		{
+			switch (token)
+			{
+				case eToken.And:
+				case eToken.Or:
+				case eToken.QuestionMark:
 					return true;
 				default: return false;
 			}

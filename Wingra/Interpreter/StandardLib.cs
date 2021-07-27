@@ -92,7 +92,7 @@ namespace Wingra.Interpreter
 				var child = inner.TryGetChild(key);
 				j.PassReturn(new Variable(child.HasValue));
 				j.CheckIn(t.Value);
-			}, "Has", "Map");
+			}, "Has", "Set");
 
 
 

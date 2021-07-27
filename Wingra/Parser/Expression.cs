@@ -383,6 +383,8 @@ namespace Wingra.Parser
 				cmd = eAsmCommand.And; // TODO: these aren't actually needed due to short circuit
 			else if (Type == eToken.Or)
 				cmd = eAsmCommand.Or;
+			else if (Type == eToken.QuestionMark)
+				cmd = eAsmCommand.NullCoalesce;
 			else throw new NotImplementedException();
 			func.Add(asmStackLevel, cmd);
 		}
@@ -401,20 +403,24 @@ namespace Wingra.Parser
 		}
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			//TODO: short circuit
 			_a.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
-			if (_op.Type == eToken.And)
+			if (BaseToken.DoesShortCircuit(_op.Type))
 			{
-				func.Add(asmStackLevel, eAsmCommand.ShortCircuitFalse);
-				asmStackLevel++;
+				if (_op.Type == eToken.And)
+					func.Add(asmStackLevel, eAsmCommand.ShortCircuitFalse);
+				else if (_op.Type == eToken.Or)
+					func.Add(asmStackLevel, eAsmCommand.ShortCircuitTrue);
+				else if (_op.Type == eToken.QuestionMark)
+					func.Add(asmStackLevel, eAsmCommand.ShortCircuitNotNull);
+				else throw new NotImplementedException();
+				func.Add(asmStackLevel + 1, eAsmCommand.Pop);
+				_b.EmitAssembly(compiler, file, func, asmStackLevel + 1, errors, this);
 			}
-			else if (_op.Type == eToken.Or)
+			else
 			{
-				func.Add(asmStackLevel, eAsmCommand.ShortCircuitTrue);
-				asmStackLevel++;
+				_b.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+				_op.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 			}
-			_b.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
-			_op.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 		}
 		public override IEnumerable<SExpressionComponent> IterExpChildren()
 		{

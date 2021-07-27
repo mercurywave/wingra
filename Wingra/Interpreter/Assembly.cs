@@ -965,10 +965,11 @@ namespace Wingra.Interpreter
 		KeyAssign,
 		StoreNewScratch, FreeScratch, SetFileContext,
 		PushInt, PushString, PushBool, PushFloat, PushNull,
-		DoIfTest, ShortCircuitTrue, ShortCircuitFalse, ShortCircuitNull, ShortCircuitPropNull,
+		DoIfTest, ShortCircuitTrue, ShortCircuitFalse, ShortCircuitNull, ShortCircuitPropNull, ShortCircuitNotNull,
 		Equals, NotEquals, HasValue, IsNull,
 		GreaterThan, LessThan, EqGreater, EqLess, ExceedInDirection,
-		And, Or, // not used - short circuiting commands handles their use case
+		And, Or, NullCoalesce, // TODO: not actually needed with short circuiting
+		Pop,
 		Not, Meh,
 		Return, ReadReturn, Quit,
 		Jump, Break, // param is stack level to jump to

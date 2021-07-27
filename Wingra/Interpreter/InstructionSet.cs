@@ -404,8 +404,19 @@ namespace Wingra.Interpreter
 			Register(eAsmCommand.Not, i => 1, o => 1, asm => j =>
 			{
 				var test = j.Registers.Pop();
-				j.Registers.Push(new Variable(!test.AsBool())); // technically this short circuits, but not in a useful way I'll regret
+				j.Registers.Push(new Variable(!test.AsBool()));
 				j.CheckIn(test);
+			});
+			Register(eAsmCommand.NullCoalesce, i => 2, o => 1, asm => j =>
+			{
+				PopPop(j, out var left, out var right);
+				j.Registers.Push(left.HasValue ? left : right);
+				j.CheckIn(left, right);
+			});
+			Register(eAsmCommand.Pop, i => 1, o => 0, asm => j =>
+			{
+				var pop = j.Registers.Pop();
+				j.CheckIn(pop); // given the current use, this shouldn't actually do anything
 			});
 			#endregion
 
@@ -467,7 +478,7 @@ namespace Wingra.Interpreter
 					}
 				};
 			});
-			Register(eAsmCommand.ShortCircuitNull, i => 1, o => 1, asm =>
+			Register(eAsmCommand.ShortCircuitNull, i => 0, o => 0, asm =>
 			{
 				var target = asm.FindNextStackLevelLine();
 				return j =>
@@ -478,6 +489,15 @@ namespace Wingra.Interpreter
 						j.Registers.ReplaceTop(Variable.NULL);
 						j.JumpShort(target);
 					}
+				};
+			});
+			Register(eAsmCommand.ShortCircuitNotNull, i => 1, o => 1, asm =>
+			{
+				var target = asm.FindNextStackLevelLine();
+				return j =>
+				{
+					if (j.Registers.Peek().HasValue)
+						j.JumpShort(target);
 				};
 			});
 

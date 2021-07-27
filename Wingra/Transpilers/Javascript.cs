@@ -368,6 +368,19 @@ namespace Wingra.Transpilers
 					case eAsmCommand.ShortCircuitFalse:
 						ShortCircuit(false);
 						break;
+					case eAsmCommand.ShortCircuitNotNull:
+						{
+							var secondTest = code.FindNextStackLevelLine(idx, line.AssemblyStackLevel);
+							sb.AppendLine("if(" + Pop() + " != null)");
+							//  this is pretty hacky - it assumes the last instruction is the output used
+							using (Braces(sb))
+								sb.AppendLine("var " + GetUniqVarName(secondTest - 1) + "=" + Pop() + ";");
+							sb.Append("else");
+							using (Braces(sb))
+								EmitCodeRange(sb, file, code, idx + 1, secondTest - 1);
+							idx = secondTest - 1;
+							break;
+						}
 					case eAsmCommand.ShortCircuitPropNull:
 						DoIf("OObj.HasChildKey(" + Pop() + "," + JsStr(line.Literal) + ")", "var " + GetUniqVarName(idx) + "=" + Pop() + ";");
 						break;
@@ -414,6 +427,10 @@ namespace Wingra.Transpilers
 					case eAsmCommand.Or:
 						Math(" || ");
 						break;
+					case eAsmCommand.NullCoalesce:
+						Math(" ?? ");
+						break;
+					case eAsmCommand.Pop: break;
 					case eAsmCommand.Not:
 						Push("!" + StackBacktrack(code, idx, 1));
 						break;
