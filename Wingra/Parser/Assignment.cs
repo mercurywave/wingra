@@ -119,21 +119,6 @@ namespace Wingra.Parser
 		}
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			if (_operator == eToken.OptionalAssign)
-			{
-				if (_left.Count != 1) { errors.LogError("?: expects a single assignment on left side", func.CurrentFileLine); return; }
-				var target = _left[0] as SIdentifier;
-				if (target == null) errors.LogError("?: only works with local variables", func.CurrentFileLine);
-				func.Add(asmStackLevel, eAsmCommand.TestIfUninitialized, target.Symbol);
-				func.Add(asmStackLevel + 1, eAsmCommand.DoIfTest);
-				EmitAssignment(compiler, file, func, asmStackLevel + 2, errors, parent);
-			}
-			else
-				EmitAssignment(compiler, file, func, asmStackLevel, errors, parent);
-		}
-
-		private void EmitAssignment(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
-		{
 			_right.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 			//if (_left.Count > 1)
 			//	func.Add(asmStackLevel, eAsmCommand.Decompose, _left.Count);
@@ -189,6 +174,90 @@ namespace Wingra.Parser
 		{
 			foreach (var left in _left)
 				yield return left;
+			yield return _right;
+		}
+
+		public bool TryEmitInline(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			_right.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+			return true;
+		}
+	}
+
+	class SOpAssign : SStatement, ICanEmitInline
+	{
+		internal SExpressionComponent _left;
+		protected SExpressionComponent _right;
+		eToken _operator; // operator is the math symbol here
+
+		public SOpAssign(int fileLine, SExpressionComponent left, eToken op, SExpressionComponent right) : base(fileLine)
+		{
+			_left = left;
+			_operator = op;
+			_right = right;
+		}
+		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			if (BaseToken.DoesShortCircuit(_operator))
+			{
+				var local = _left as SIdentifier;
+				if (local != null && _operator == eToken.QuestionMark)
+				{
+					// this is a potentially hot code path, but _maybe_ we don't need this special case command
+					func.Add(asmStackLevel, eAsmCommand.TestIfUninitialized, local.Symbol);
+					func.Add(asmStackLevel + 1, eAsmCommand.DoIfTest);
+					EmitAssignment(compiler, file, func, asmStackLevel + 2, errors, parent);
+				}
+				else
+				{
+					_left.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+					func.Add(asmStackLevel, getShortcutCmd(_operator));
+					func.Add(asmStackLevel + 1, eAsmCommand.Pop);
+					_right.EmitAssembly(compiler, file, func, asmStackLevel + 1, errors, this);
+					_left.EmitAsAssignment(compiler, file, func, asmStackLevel, errors, this);
+				}
+			}
+			else
+			{
+				_left.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+				_right.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+				func.Add(asmStackLevel, getCmd(_operator));
+				_left.EmitAsAssignment(compiler, file, func, asmStackLevel, errors, this);
+			}
+		}
+
+		eAsmCommand getShortcutCmd(eToken tok)
+		{
+			switch (tok)
+			{
+				case eToken.QuestionMark: return eAsmCommand.ShortCircuitNotNull;
+				case eToken.And: return eAsmCommand.ShortCircuitFalse;
+				case eToken.Or: return eAsmCommand.ShortCircuitTrue;
+				default: throw new NotImplementedException();
+			}
+		}
+
+		eAsmCommand getCmd(eToken tok)
+		{
+			switch (tok)
+			{
+				case eToken.Add: return eAsmCommand.Add;
+				case eToken.Subtract: return eAsmCommand.Subtract;
+				case eToken.Multiply: return eAsmCommand.Multiply;
+				case eToken.Divide: return eAsmCommand.Divide;
+				default: throw new NotImplementedException();
+			}
+		}
+
+		private void EmitAssignment(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			_right.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+			_left.EmitAsAssignment(compiler, file, func, asmStackLevel, errors, this);
+		}
+
+		public override IEnumerable<SExpressionComponent> IterExpressions()
+		{
+			yield return _left;
 			yield return _right;
 		}
 

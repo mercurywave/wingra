@@ -43,7 +43,4 @@ library List
 library Util
     // helper function that increments a node of frequency map [key] : count
     ::.IncrementCount(key)
-        if !this.$Map.Has(key)
-            this[key] : 1
-        else
-            this[key] : this[key] + 1
+        this[key] : (this[key] ? 0) + 1

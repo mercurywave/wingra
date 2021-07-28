@@ -28,12 +28,23 @@
 
 // & and | will short-circuit the right side of expressions when their value will not affect the result
 
+// to modify and save a value in one step, you can use an operator in conjuntion with the ':' assignment symbol
+@m : 1
+m +: 1 // a = 2
+m *: 6 // a = 12
+m -: 2 // a = 10
+m /: 2 // a = 5
+
+@n : false
+n |: true // n = true
+n &: false // n = false
+
 // you can append strings with the + operator
 // NOTE: this feature is under consideration for deprecation
-@m : "this" + "that" // thisthat
+@p : "this" + "that" // thisthat
 
 // if you have two values of different types, like a string and number, you cannot just combine them in the same way
 // @n : "test" + 2.2 // this would be a fatal exception
 // you should either use a function to perform the conversion explicitly, or you can use the ~ operator
-@n : "test" + ~2.2 // test2.2
+@q : "test" + ~2.2 // test2.2
 // this operator tells the program to attempt a lossy conversion on the value

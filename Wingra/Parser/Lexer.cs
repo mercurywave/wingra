@@ -167,8 +167,6 @@ namespace Wingra.Parser
 					return "//"; // comment
 				if (c == ':' && text[i] == '=')
 					return ":=";
-				if (c == '?' && text[i] == ':')
-					return "?:";
 				if (c == '.' && text[i] == '?')
 					return ".?";
 				if (c == '?' && text[i] == '.')
@@ -255,7 +253,6 @@ namespace Wingra.Parser
 			{ "!=", eToken.NotEquals },
 			{ "=", eToken.EqualSign },
 			{ "?", eToken.QuestionMark },
-			{ "?:", eToken.OptionalAssign },
 			{ ".?", eToken.DotQuestion },
 			{ "?.", eToken.QuestionDot },
 			{ "<", eToken.Less },

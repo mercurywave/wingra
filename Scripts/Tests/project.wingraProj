@@ -2,6 +2,8 @@ version=1
 
 requires ..\Test Harness\
 
+runTests = true
+
 ; export to javascript
 ;jsExport=..\Scratch Web\code.js
 jsFunc=SETUP

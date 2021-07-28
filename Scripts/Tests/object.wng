@@ -16,6 +16,6 @@
 	$assert(a?.a = null)
 	
 #test
-	@a : $Map.New()
-	a.$Map.Add(5)
-	$assert(a.$Map.Has(5))
+	@a : $Set.New()
+	a.$Set.Add(5)
+	$assert(a.$Set.Has(5))

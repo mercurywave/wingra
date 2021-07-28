@@ -48,7 +48,7 @@ $IO.Write(f.key) // prints "value"
 // these are symbols that read the child scope of a line (the lines of code indented below)
 // you can use this keyword as part of a larger expression, while having space to define the contents
 @h : $IO.Write(~(dim).$List.Contains("a"))  //prints true
-    "a"; "b"; "c"
+    "a"; "b"; "c" // this list of elements is part of the dim
 
 // note: you cannot use a scope inverter with a statement that also has a child scope
 //if (dim)[0] // this is invalid because it's ambiguous which keyword the child scope belongs to
@@ -85,8 +85,8 @@ $IO.Write(~(k has duck)) // prints true
 @someVar : "duck"
 $IO.Write(~(k has someVar)) // prints false - there is no k["someVar"]
 
-// if you want to check whether a struct has a variable key, you can use $Map.Has()
-$IO.Write(~k.$Map.Has(someVar)) // prints true
+// if you want to check whether a struct has a variable key, you can use $Set.Has()
+$IO.Write(~k.$Set.Has(someVar)) // prints true
 
 
 // there are a number of other functions in the standard library to help work with structs

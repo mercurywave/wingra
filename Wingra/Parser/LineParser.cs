@@ -139,10 +139,12 @@ namespace Wingra.Parser
 					ExpressionParser.ParseExpression(res.Context, res.GetTokens("value"))) ),
 			mp(Token(eToken.Throw),
 				res => new SThrowStatement(res.FileLine) ),
-			mp(SimpleExpression("ident", eToken.OptionalAssign) + Token(eToken.OptionalAssign) + SimpleExpression("value"),
-				res => new SAssign(res.FileLine,
-					ExpressionParser.ParseExpressionList(res.Context, res.GetTokens("ident")),
-					eToken.OptionalAssign,
+			mp(SimpleExpression("ident", eToken.QuestionMark, eToken.Add, eToken.Subtract, eToken.Multiply, eToken.Divide, eToken.And, eToken.Or) 
+				+ AnyOf("op", eToken.QuestionMark, eToken.Add, eToken.Subtract, eToken.Multiply, eToken.Divide, eToken.And, eToken.Or)
+				+ Token(eToken.Colon) + SimpleExpression("value"),
+				res => new SOpAssign(res.FileLine,
+					ExpressionParser.ParseExpression(res.Context, res.GetTokens("ident")),
+					res.GetToken("op").Token.Type,
 					ExpressionParser.ParseExpression(res.Context, res.GetTokens("value")))),
 			mp(Token(eToken.LeftParen) + ExpressionList("targets", eToken.RightParen) + Token(eToken.RightParen)
 				+ Token(eToken.Colon) + SimpleExpression("value"),
@@ -424,6 +426,15 @@ namespace Wingra.Parser
 			{
 				var t = tokens[begin].Token.Type;
 				bool r = (t == token);
+				return new MatchResult(r, begin, begin, key);
+			});
+		}
+		static ChainList AnyOf(string key, params eToken[] possible)
+		{
+			return new SingleMatch((context, tokens, begin) =>
+			{
+				var t = tokens[begin].Token.Type;
+				bool r = possible.Contains(t);
 				return new MatchResult(r, begin, begin, key);
 			});
 		}

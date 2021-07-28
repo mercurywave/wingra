@@ -7,7 +7,7 @@ using Str
 text : text.$ToLower()
 for 0 to text.$Len()
     @char : text.$SubStr(it, 1)
-    output : output + switch(char) + " "
+    output +: switch(char) + " "
         "a" : ".-"
         "b" : "-..."
         "c" : "-.-."

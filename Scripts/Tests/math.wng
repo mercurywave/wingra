@@ -9,3 +9,49 @@
 	
 	//$assert(3 / 2 = 1) // these have issues in js :(
 	//$assert(3 / 2.1 > 1)
+#test
+	$assert(true | 1/0)
+	$assert(!(false & 1/0))
+	$assert(null ? true)
+	$assert(true ? (1/0)) // ? has higher precedence than /
+
+#test
+	@a : 3
+	a +: 2
+	$assert(a = 5)
+
+#test
+	@a : 3
+	a -: 2
+	$assert(a = 1)
+
+#test
+	@a : 2
+	a *: 4
+	$assert(a = 8)
+
+#test
+	@a : 4
+	a /: 2
+	$assert(a = 2)
+
+#test
+	@a : null
+	a ?: dim()
+	$assert(a != null)
+
+#test
+	@a : dim()
+	a ?: null
+	$assert(a != null)
+
+
+#test
+	@a : false
+	a &: 1/0
+	$assert(!a)
+	
+#test
+	@a : true
+	a |: 1/0
+	$assert(a)

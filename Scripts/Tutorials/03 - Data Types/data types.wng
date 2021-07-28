@@ -43,13 +43,16 @@ h["key"] : true
 h[0] : "a value"
 
 // you can access the values within the variable the same way
-$IO.Log(h[0]) // a value
+$IO.Write(h[0]) // a value
 
 // you can access values with a string key with the dot operator
-$IO.Log(h.key) // true
+$IO.Write(~h.key) // true
 
-// attempting to access a key that does not exist will fail
-//$IO.Log(h.fakeKey) // this would cause a runtime error
+// attempting to access a key that does not exist via '.' will fail
+//$IO.Write(h.fakeKey) // this would cause a runtime error
+// with [], you will get back null instead, but your code can continue
+@i : h["doesn't exist"] // i = null
+
 
 // these structs can represent many different relationships between data
 // we will explore these in future samples

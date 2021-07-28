@@ -26,7 +26,7 @@ global ::Main()
         hand.$Add(deck[it])
     @result : $Analyze(hand)
     stats.$IncrementCount(result)
-    $IO.Write(hand.$List.Map(`it.Card + it.Suit`).$Join(" ") + "  " + result)
+    $IO.Write(hand.$Map(`it.Card + it.Suit`).$Join(" ") + "  " + result)
 
 
 ::BuildDeck(=> deck)
@@ -58,7 +58,7 @@ global ::Main()
 
 ::RoyalFlush(suits,nums => bool)
     // if it's a straight flush that involves the ace, but not the 2
-    => $StraightFlush(suits,nums) & nums.$Map.Has($Cards[0]) & !nums.$Map.Has($Cards[1])
+    => $StraightFlush(suits,nums) & nums.$Set.Has($Cards[0]) & !nums.$Set.Has($Cards[1])
 
 ::StraightFlush(suits, nums => bool)
     => $Flush(suits) & $Straight(nums)
@@ -69,7 +69,7 @@ global ::Main()
 ::FullHouse(nums => bool)
     // we want the frequency of the frequency, for number of ones, pairs, triples, etc
     @freq : nums.$List.FrequencyMap(`it`)[2]
-    bool : freq[2] = 1 & freq[3] = 1
+    return freq[2] = 1 & freq[3] = 1
 
 ::Flush(suits => bool)
     => suits.$Obj.Count() = 1

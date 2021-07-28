@@ -38,7 +38,6 @@ namespace Wingra.Parser
 		FunctionDef,
 		Arrow, // =>
 		QuestionMark,
-		OptionalAssign, // ?: for defaulting
 		DotQuestion, // .? - null if the property doesn't exist (useful for retrieval without 'has' check)
 		QuestionDot, // ?. - halt if left side is null (useful for method chaining)
 		Meh, // ~
