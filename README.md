@@ -69,11 +69,11 @@ I would welcome feedback and suggestions through GitHub or Twitter.
 
 #### Roadmap
 - [ ] Additional extension libraries
+- [ ] Aliasing/isolating external references
 - [ ] Improved compiler errors
-- [ ] Interpreter performance improvements
 - [ ] C# transpiler
-- [ ] Rewrite parser for better AST
-- [ ] (potentially) gradual typing?
+- [ ] (Potentially) web-based package management?
+- [ ] (Potentially) gradual typing?
 
 ### Where does the name come from?
 Wingra is named for [Lake Wingra](https://en.wikipedia.org/wiki/Lake_Wingra), which itself takes its name from the word for "duck" in the language of the Ho-Chunk Nation.
