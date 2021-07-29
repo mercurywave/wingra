@@ -635,6 +635,8 @@ namespace Wingra.Interpreter
 				AddSingleReturnParam(GetUniqueTemp("return"));
 		}
 		public string GetReturnParamByIdx(int idx) => _returnParams[idx];
+		public bool HasDefinedReturns => _returnParams.Count > 0;
+		public int DefinedReturnCount => _returnParams.Count;
 
 		bool _doesYield = false;
 		public void SetupIterator(int expectedParams)

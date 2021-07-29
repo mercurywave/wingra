@@ -183,8 +183,30 @@ namespace Wingra.Parser
 		{
 			if (_ret == null)
 			{
+				if (func.HasDefinedReturns)
+					throw new CompilerException("Function has defined returns, use 'quit' instead to exit the function", func.CurrentFileLine);
 				func.InjectDeferrals(asmStackLevel);
 				func.Add(asmStackLevel, eAsmCommand.Return);
+			}
+			else if (func.HasDefinedReturns)
+			{
+				if(func.DefinedReturnCount != _ret.Count)
+					throw new CompilerException("Mismatch between number of output parameters and number of return expressions", func.CurrentFileLine);
+				for (int i = 0; i < _ret.Count; i++)
+				{
+					var par = _ret[i];
+					var ident = par as SIdentifier;
+					var sym = func.GetReturnParamByIdx(i);
+					if (ident == null || ident.Symbol != sym)
+					{
+						par.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+						func.Add(asmStackLevel, eAsmCommand.StoreLocal, sym);
+					}
+					// do nothing if the the expected output is 'a' and you return 'a'
+					// we don't want to re-assign, as that would lose data ownership
+				}
+				func.InjectDeferrals(asmStackLevel);
+				func.Add(asmStackLevel, eAsmCommand.Quit);
 			}
 			else
 			{
