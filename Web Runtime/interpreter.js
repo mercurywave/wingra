@@ -32,7 +32,7 @@ class ORuntime {
 		this.AddExternalMethod("Obj.HasChildren", function () { return OObj.ChildCount(this) > 0; });
 		this.AddExternalMethod("Obj.ShallowCopy", function () { return new OObj(null, { ...this.inner }) });
 
-		this.AddExternalMethod("Map.Has", function (val) { return OObj.HasChildKey(this, val); });
+		this.AddExternalMethod("Set.Has", function (val) { return OObj.HasChildKey(this, val); });
 
 		this.AddExternalMethod("List.Add", function (val) {
 			const len = OObj.ChildCount(this);
