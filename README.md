@@ -34,7 +34,7 @@ Wingra is a high-level procedural programming language which emphasizes static s
 
 ## Why Use Wingra?
 
-#### Get the benefits of dynamic typing without the common downsides
+#### Get the benefits of dynamic typing without the common development downsides
 Static function resolution means language tooling can provide good auto-completion, signatures, and definitions.
 
 <img src="images/definition.png" alt="Example showing function definition in VSCode" width="221px" />
@@ -70,7 +70,6 @@ I would welcome feedback and suggestions through GitHub or Twitter.
 #### Roadmap
 - [ ] Additional extension libraries
 - [ ] Aliasing/isolating external references
-- [ ] Improved compiler errors
 - [ ] C# transpiler
 - [ ] (Potentially) web-based package management?
 - [ ] (Potentially) gradual typing?
