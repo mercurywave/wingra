@@ -180,9 +180,9 @@ class ORuntime {
 			return Math.atan2(y, x);
 		});
 
-		this.AddExternalMethod("Debug.Break", function () { debugger; });
-		this.AddExternalMethod("Debug.ObjDebug", function (val) { console.log(val); });
-		this.AddExternalMethod("Debug.TypeName", function (val) { return typeof val; });
+		this.AddExternalFunction("Debug.Break", function () { debugger; });
+		this.AddExternalFunction("Debug.ObjDebug", function (val) { return "" + val; });
+		this.AddExternalFunction("Debug.TypeName", function (val) { return typeof val; });
 	}
 
 	InitByteCode(booter) {
