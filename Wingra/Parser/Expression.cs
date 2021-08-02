@@ -511,6 +511,7 @@ namespace Wingra.Parser
 		{
 			return LineParser.TryParseStatement(context, currLine, out node, out usedTokens);
 		}
+		public void AddBlankLine() { }
 		public void AddChild(SyntaxNode node)
 		{
 			_scope.Add(node);
@@ -539,6 +540,7 @@ namespace Wingra.Parser
 		{
 			return LineParser.TryParseStatement(context, currLine, out node, out usedTokens);
 		}
+		public void AddBlankLine() { }
 
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
@@ -577,6 +579,7 @@ namespace Wingra.Parser
 		{
 			return LineParser.TryParseStatement(context, currLine, out node, out usedTokens);
 		}
+		public void AddBlankLine() { }
 
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{

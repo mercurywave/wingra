@@ -228,7 +228,11 @@ namespace Wingra.Parser
 				ParseSingleLine(context, lineTokes, lexline.PreceedingWhitespace, tracker);
 				buffLine += j;
 			}
-			else buffLine++; // empty line
+			else
+			{
+				scope.Peek().AddBlankLine();
+				buffLine++; // empty line
+			}
 			return true;
 		}
 

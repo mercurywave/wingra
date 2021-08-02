@@ -117,7 +117,7 @@ function getWorkspaceConfig() {
     const currentWorkspaceFolder = getWorkspaceFolder();
     if (!currentWorkspaceFolder)
         return null;
-    return vscode.workspace.getConfiguration('v', currentWorkspaceFolder.uri);
+    return vscode.workspace.getConfiguration('wingra', currentWorkspaceFolder.uri);
 }
 function getWorkspaceFolder(uri) {
     if (uri)
@@ -194,7 +194,7 @@ class DocumentSemanticTokensProvider {
             const line = lines[i];
             const spaces = line.search(/\S/);
             if (textDataIndent >= 0) {
-                if (spaces <= textDataIndent) {
+                if (spaces <= textDataIndent && line.trim().length > 0) {
                     textDataIndent = -1;
                 }
                 else {

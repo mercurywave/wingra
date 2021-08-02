@@ -200,7 +200,7 @@ class DocumentSemanticTokensProvider implements vscode.DocumentSemanticTokensPro
             const spaces = line.search(/\S/);
             if (textDataIndent >= 0)
             {
-                if (spaces <= textDataIndent) {
+                if (spaces <= textDataIndent && line.trim().length > 0) {
                     textDataIndent = -1;
                 } else {
                     r.push({

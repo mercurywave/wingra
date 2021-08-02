@@ -111,6 +111,7 @@ namespace Wingra.Parser
 			=> _children.Add(node as SEnumValue);
 		public bool TryParseChild(ParseContext context, RelativeTokenReference[] currLine, out SyntaxNode node, out int usedTokens)
 			=> LineParser.TryParseEnumChild(context, currLine, out node, out usedTokens);
+		public void AddBlankLine() { }
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
@@ -166,6 +167,10 @@ namespace Wingra.Parser
 			node = new STextDataLine(context.Buffer.TextAtLine(context.FileLine).Trim());
 			usedTokens = currLine.Length;
 			return true;
+		}
+		public void AddBlankLine()
+		{
+			_lines.Add(new STextDataLine(""));
 		}
 
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)

@@ -51,6 +51,7 @@ namespace Wingra.Parser
 		{
 			child.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 		}
+		public void AddBlankLine() { }
 		public IEnumerable<SyntaxNode> Children => _children;
 	}
 
@@ -77,6 +78,7 @@ namespace Wingra.Parser
 		{
 			child.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 		}
+		public void AddBlankLine() { }
 		public IEnumerable<SyntaxNode> Children => _children;
 	}
 	class SyntaxScopeHelper
@@ -165,6 +167,7 @@ namespace Wingra.Parser
 		{
 			_scope.EmitChildren(compiler, this, file, func, asmStackLevel, errors);
 		}
+		public virtual void AddBlankLine() { }
 		// anything that implements this must implement _EmitAssembly themselves and emit children as apporpriate
 		// there are too many edge cases for this to try and mask the complexity
 	}
@@ -190,7 +193,7 @@ namespace Wingra.Parser
 			}
 			else if (func.HasDefinedReturns)
 			{
-				if(func.DefinedReturnCount != _ret.Count)
+				if (func.DefinedReturnCount != _ret.Count)
 					throw new CompilerException("Mismatch between number of output parameters and number of return expressions", func.CurrentFileLine);
 				for (int i = 0; i < _ret.Count; i++)
 				{
@@ -320,6 +323,7 @@ namespace Wingra.Parser
 	{
 		bool TryParseChild(ParseContext context, RelativeTokenReference[] currLine, out SyntaxNode node, out int usedTokens);
 		void AddChild(SyntaxNode node);
+		void AddBlankLine(); // basically just for textdata
 	}
 
 	interface ICanBeProperty

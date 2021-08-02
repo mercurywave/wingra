@@ -20,6 +20,7 @@ namespace Wingra.Parser
 		{
 			return (LineParser.TryParseDimChild(context, currLine, out node, out usedTokens));
 		}
+		public void AddBlankLine() { }
 		public void AddChild(SyntaxNode node)
 		{
 			var dim = node as SDimElement;

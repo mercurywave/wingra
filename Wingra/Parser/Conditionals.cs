@@ -126,6 +126,7 @@ namespace Wingra.Parser
 		protected List<SyntaxNode> _children = new List<SyntaxNode>();
 		public IEnumerable<SyntaxNode> Children => _children;
 		public void AddChild(SyntaxNode node) => _children.Add(node);
+		public void AddBlankLine() { }
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
@@ -223,6 +224,7 @@ namespace Wingra.Parser
 
 		protected List<SSwitchExpressionCase> _children = new List<SSwitchExpressionCase>();
 		public IEnumerable<SSwitchExpressionCase> Children => _children;
+		public void AddBlankLine() { }
 		public void AddChild(SyntaxNode node)
 		{
 			if (!(node is SSwitchExpressionCase)) throw new ParserException("unexpected node type"); // probably shouldn't ever be hit...
