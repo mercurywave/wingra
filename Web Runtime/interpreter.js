@@ -536,8 +536,8 @@ class OObj {
 		key = makeKey(key, obj);
 		if (!(obj instanceof OObj)) { return null; }
 		if (!(key in obj.inner)) { return null; }
-		if(parent.hasOwnProperty("keyMap"))
-			delete parent.keyMap[key];
+		if(obj.hasOwnProperty("keyMap"))
+			delete obj.keyMap[key];
 		obj.dirty = true;
 		var pop = obj.inner[key];
 		delete obj.inner[key];
@@ -707,4 +707,8 @@ function gtInner(obj) {return (obj instanceof OObj) ? obj.inner : obj; }
 
 function log(...p) { console.log(...p); }
 function fatalError() { trace("Fatal Error!"); }
-function trace(message) { log(message); console.trace(); throw null; }
+function trace(message) { 
+	if (message) log(message);
+	console.trace(); 
+	throw null; 
+}
