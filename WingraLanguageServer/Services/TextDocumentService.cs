@@ -309,6 +309,8 @@ namespace WingraLanguageServer.Services
 			return false;
 		}
 
+		
+
 		[JsonRpcMethod]
 		public CompletionList Completion(TextDocumentIdentifier textDocument, Position position, CompletionContext context)
 		{
@@ -329,7 +331,6 @@ namespace WingraLanguageServer.Services
 						List<CompletionItem> results = new List<CompletionItem>();
 
 						var currLineLex = buffer.GetSyntaxMetadata(position.Line);
-						//Debug(buffer.TextAtLine(position.Line));
 						BaseToken? curr = null;
 						BaseToken? separator = null;
 						BaseToken? prev = null;
@@ -348,6 +349,18 @@ namespace WingraLanguageServer.Services
 							separator = curr;
 							curr = tok;
 						}
+
+						int LexIndexOfOrEnd(LexLine lex, eToken toke)
+						{
+							for (int i = 0; i < lex.Tokens.Count; i++)
+								if (lex.Tokens[i].Type == toke)
+									return i;
+							return lex.Tokens.Count;
+						}
+						// there is a function definition on this line
+						bool inFunctionDef = !currLineLex.IsEmpty && currLineLex.Tokens.Any(t => t.Type == eToken.FunctionDef);
+						// we are in either the function name, parameters, or outputs
+						bool inFunctionDeclaration = inFunctionDef && currIdx < LexIndexOfOrEnd(currLineLex, eToken.RightParen);
 						staticPath = GetPathUnderCursor(position, buffer, out var expectDollar);
 						if (curr.HasValue && curr.Value.LineOffset + curr.Value.Length < position.Character)
 						{
@@ -363,7 +376,7 @@ namespace WingraLanguageServer.Services
 							|| separator.Value.Type == eToken.Library
 							|| separator.Value.Type == eToken.AtSign))
 						{
-							return new CompletionList();
+							return null;
 						}
 
 						// thing. => thing.?
@@ -390,7 +403,7 @@ namespace WingraLanguageServer.Services
 						{
 							if (curr.Value.Type == eToken.Comment
 								|| curr.Value.Type == eToken.LiteralString)
-								return new CompletionList();
+								return null;
 						}
 
 						string phrase = "";
@@ -473,7 +486,7 @@ namespace WingraLanguageServer.Services
 						}
 						if (!separator.HasValue)
 						{
-							if (!phrase.StartsWith("$"))
+							if (!inFunctionDeclaration && !phrase.StartsWith("$") && !phrase.StartsWith("#") && !phrase.StartsWith("^"))
 								results.AddRange(Session.StaticSuggestions);
 							if (phrase.StartsWith("#"))
 							{
@@ -483,6 +496,7 @@ namespace WingraLanguageServer.Services
 								foreach (var mac in compiler.BuiltInMacros())
 									AddResult(mac, CompletionItemKind.Snippet);
 							}
+							HashSet<string> usedTokes = new HashSet<string>();
 							// this region tries to scan outward in the scope from the cursor, looking for variables that may be accessible
 							void NaiveScanForLocals(int lineNumber, LexLine lex)
 							{
@@ -493,6 +507,7 @@ namespace WingraLanguageServer.Services
 									var tok = lex.Tokens[j];
 									if (tok.Type != eToken.Identifier) continue;
 									if (!tok.Token.ToLower().StartsWith(phrase)) continue;
+									if (usedTokes.Contains(tok.Token)) continue;
 									if (lineNumber != position.Line && j > 0 && lex.Tokens[j - 1].Type == eToken.AtSign)
 										AddResult(tok.Token, CompletionItemKind.Variable, "local");
 									else if (j < lex.Tokens.Count - 1 && lex.Tokens[j + 1].Type == eToken.Colon)
@@ -503,6 +518,8 @@ namespace WingraLanguageServer.Services
 										AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
 									else if (lineNumber != position.Line && j > 2 && j < colonSplit && lex.Tokens[0].Type == eToken.Template) // this isn't a thing anymore...
 										AddResult(tok.Token, CompletionItemKind.Variable, "template parameter");
+									else continue;
+									usedTokes.Add(tok.Token);
 								}
 								// naive way to look for local functions/properties in the current template
 								if (lex.PreceedingWhitespace > 0 && lex.Tokens.Count >= 2)
@@ -512,7 +529,7 @@ namespace WingraLanguageServer.Services
 									{
 										if (lex.Tokens[0].Type == eToken.Dot)
 											AddResult(tok.Token, CompletionItemKind.Property);
-										else if (lex.Tokens[0].Type == eToken.FunctionDef)
+										else if (lex.Tokens.Any(t=>t.Type == eToken.FunctionDef))
 											AddResult(tok.Token, CompletionItemKind.Method);
 									}
 								}
@@ -520,19 +537,22 @@ namespace WingraLanguageServer.Services
 							int currentIndent = currLineLex.PreceedingWhitespace;
 							int highWaterReadAhead = position.Line + 1;
 							// reads upwards till it hits file scope
-							if (!phrase.StartsWith("$"))
+							if (!phrase.StartsWith("$") && !phrase.StartsWith("#") && !phrase.StartsWith("^"))
 								for (int i = position.Line - 1; i >= 0; i--)
 								{
 									var lex = buffer.GetSyntaxMetadata(i);
 									if (lex.PreceedingWhitespace > currentIndent || lex.IsEmpty)
 										continue;
 									else if (lex.PreceedingWhitespace == currentIndent)
+									{
+										if (lex.Tokens.Any(t => t.Type == eToken.FunctionDef)) continue;
 										NaiveScanForLocals(i, lex);
+									}
 									else if (lex.PreceedingWhitespace < currentIndent)
 									{
 										NaiveScanForLocals(i, lex);
 										currentIndent = lex.PreceedingWhitespace;
-										if (currentIndent == 0) break;
+										if (lex.Tokens.Any(t => t.Type == eToken.FunctionDef)) break;
 										// scan ahead at the same scope we found when we collapsed a level
 										for (; highWaterReadAhead < buffer.Lines; highWaterReadAhead++)
 										{
@@ -544,31 +564,9 @@ namespace WingraLanguageServer.Services
 											NaiveScanForLocals(highWaterReadAhead, readAhead);
 										}
 									}
-									if (currentIndent == 0) break;
-								}
-
-							foreach (var pair in parsedFiles)
-							{
-								if (pair.Key == buffer)
-								{
-									foreach (var fileChild in pair.Value.Children)
-									{
-										//if (fileChild is SfunctionDef)
-										//MaybeAdd((fileChild as SfunctionDef).Identifier, pair.Key.ShortFileName, eMatchQuality.Good);
-										if (fileChild is IDeclareVariablesAtScope)
-											foreach (var sub in (fileChild as IDeclareVariablesAtScope).GetDeclaredSymbolsInside(pair.Value))
-												AddResult(sub, CompletionItemKind.Variable, "local");
-									}
+									if (currentIndent == 0 && currentIndent > 0) break;
 
 								}
-								else
-									foreach (var fileChild in pair.Value.Children)
-									{
-										if (fileChild is IExportGlobalSymbol)
-											foreach (var symbol in (fileChild as IExportGlobalSymbol).GetExportableSymbolsInside(fileChild).ToArray())
-												AddResult(symbol, CompletionItemKind.Field, pair.Key.ShortFileName); // is this a thing?
-									}
-							}
 
 						}
 
