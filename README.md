@@ -3,6 +3,8 @@
 # Wingra
 Wingra is a high-level procedural programming language which emphasizes static structural code flow.
 
+Originally created to support game development, the language is general purpose and can have a variety of other applications. The language has been used to create [Defenders On Deck](https://mercurywave.itch.io/defenders-on-deck), and prototype versions of the languages were used to develop [other](https://mercurywave.itch.io/brinebeards-folly) [games](https://mercurywave.itch.io/file-47-an-incident-in-the-exclusion-zone).
+
 ## Primary Features
 - Dynamic typing
 - Block-based significant indentation
