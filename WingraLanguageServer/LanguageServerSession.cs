@@ -29,6 +29,8 @@ namespace WingraLanguageServer
 		internal Dictionary<WingraBuffer, STopOfFile> _parsedFiles = new Dictionary<WingraBuffer, STopOfFile>();
 		internal Dictionary<WingraBuffer, FileScopeTracker> _scopeTracker = new Dictionary<WingraBuffer, FileScopeTracker>();
 		internal StaticMapping _staticMap = new StaticMapping();
+		List<WingraBuffer> _needLinting = new List<WingraBuffer>();
+		bool _needRecompile = true;
 
 		internal List<CompletionItem> StaticSuggestions = new List<CompletionItem>();
 
@@ -82,6 +84,7 @@ namespace WingraLanguageServer
 					});
 			}
 			BuildCache();
+			_ = Task.Delay(200).ContinueWith(t => Task.Run(SlowlyLint), TaskScheduler.Current);
 		}
 		void BuildCache()
 		{
@@ -110,10 +113,72 @@ namespace WingraLanguageServer
 				var tracker = new FileScopeTracker();
 				_parsedFiles[file] = Cmplr.Parse(file, log, tracker);
 				_scopeTracker[file] = tracker;
+				QueueDirtyFiles(file);
 			}
 			catch (Exception e)
 			{
 				// do nothing?
+			}
+		}
+
+		async Task SlowlyLint()
+		{
+			while (true)
+			{
+				await Task.Delay(200);
+				try
+				{
+					if (_needRecompile)
+						Prj.CompileAll(Cmplr);
+					await AsyncLintNext();
+				}
+				catch (Exception e)
+				{
+					await Client.Window.ShowMessage(MessageType.Error, e.ToString());
+				}
+			}
+		}
+
+		internal void QueueDirtyFiles(WingraBuffer first)
+		{
+			lock (Lock)
+			{
+				_needRecompile = true;
+				var used = _needLinting.ToHashSet();
+				foreach (var pair in _parsedFiles)
+					if (!used.Contains(pair.Key))
+						_needLinting.Add(pair.Key);
+				_needLinting.Remove(first);
+				_needLinting.Insert(0, first);
+			}
+		}
+
+		internal async Task AsyncLintNext()
+		{
+			WingraBuffer next;
+			lock (Lock)
+			{
+				if (_needLinting.Count == 0) return;
+				next = _needLinting[0];
+				_needLinting.RemoveAt(0);
+			}
+			await LintOne(next);
+		}
+
+		internal async Task LintOne(WingraBuffer file)
+		{
+			try
+			{
+				ICollection<Diagnostic> diag;
+				lock (Lock)
+				{
+					diag = DiagnosticProvider.LintDocument(this, file.Key);
+				}
+				await Client.Document.PublishDiagnostics(fileUtils.FileToUri(file.Key), diag);
+			}
+			catch (Exception e)
+			{
+				Client.Window.ShowMessage(MessageType.Error, e.ToString());
 			}
 		}
 	}

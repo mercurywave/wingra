@@ -255,8 +255,6 @@ namespace Wingra
 		{
 			try
 			{
-				if (CompileErrors.Errors.Any()) return null;
-
 				var parse = compiler.Parse(file, CompileErrors.GetFileLogger(file));
 				if (CompileErrors.Errors.Any()) return null;
 
@@ -271,7 +269,6 @@ namespace Wingra
 
 		void CompileFile(Compiler compiler, WingraBuffer file, STopOfFile parse, WingraCompile comp, WingraSymbols symbols)
 		{
-			if (CompileErrors.Errors.Any()) return;
 			try
 			{
 				var assm = compiler.Compile(file.ShortFileName, file.Key, parse, CompileErrors.GetFileLogger(file));

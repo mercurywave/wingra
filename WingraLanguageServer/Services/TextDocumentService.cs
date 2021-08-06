@@ -210,28 +210,17 @@ namespace WingraLanguageServer.Services
 						_needParse.Add(wb);
 					}
 
-					_ = Task.Delay(200).ContinueWith(t => Task.Run(async () =>
+					_ = Task.Delay(200).ContinueWith(t => Task.Run(() =>
 					{
 						try
 						{
-							ICollection<Diagnostic> diag;
 							lock (session.Lock)
 							{
 								if (_needParse.Count == 0) return;
 								foreach (var file in _needParse)
 									session.UpdateFileCache(file);
 								_needParse.Clear();
-
-								var prj = session.Prj;
-								if (!prj.CheckForErrors())
-								{
-									prj.CompileAll(session.Cmplr);
-								}
-
-								var prov = session.DiagnosticProvider;
-								diag = prov.LintDocument(session, key);
 							}
-							await session.Client.Document.PublishDiagnostics(doc.Document.Uri, diag);
 						}
 						catch (Exception e)
 						{
@@ -309,7 +298,7 @@ namespace WingraLanguageServer.Services
 			return false;
 		}
 
-		
+
 
 		[JsonRpcMethod]
 		public CompletionList Completion(TextDocumentIdentifier textDocument, Position position, CompletionContext context)
@@ -497,6 +486,14 @@ namespace WingraLanguageServer.Services
 									AddResult(mac, CompletionItemKind.Snippet);
 							}
 							HashSet<string> usedTokes = new HashSet<string>();
+							void TryAdd(string varName, CompletionItemKind kind, string type)
+							{
+								if (!usedTokes.Contains(varName))
+								{
+									usedTokes.Add(varName);
+									AddResult(varName, kind, type);
+								}
+							}
 							// this region tries to scan outward in the scope from the cursor, looking for variables that may be accessible
 							void NaiveScanForLocals(int lineNumber, LexLine lex)
 							{
@@ -529,7 +526,7 @@ namespace WingraLanguageServer.Services
 									{
 										if (lex.Tokens[0].Type == eToken.Dot)
 											AddResult(tok.Token, CompletionItemKind.Property);
-										else if (lex.Tokens.Any(t=>t.Type == eToken.FunctionDef))
+										else if (lex.Tokens.Any(t => t.Type == eToken.FunctionDef))
 											AddResult(tok.Token, CompletionItemKind.Method);
 									}
 								}
@@ -563,6 +560,10 @@ namespace WingraLanguageServer.Services
 												continue;
 											NaiveScanForLocals(highWaterReadAhead, readAhead);
 										}
+										if (lex.Tokens[0].Type == eToken.For)
+											TryAdd("it", CompletionItemKind.Variable, "local");
+										else if (lex.Tokens[0].Type == eToken.Trap)
+											TryAdd("error", CompletionItemKind.Variable, "local");
 									}
 									if (currentIndent == 0 && currentIndent > 0) break;
 
