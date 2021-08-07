@@ -27,16 +27,14 @@
         ["\"", "\""],
         ["`", "`"]
     ],
-    "indentationRules": {
-		"increaseIndentPattern": "^((?!\\/\\/).)*(?![^\"]*\")((\\b(if|else|switch|for|while|library|enum|trap|#def|lambda|textdata|case)\\b[^\\\\]*)|(::.*\\(.*\\)(?!.*=>)[^\\\\]*)|(\\bdim(\\s)*(?!\\()[^\\\\]*))$",
-        // this applies an unindent to the current line, not the following line, which is what we would want
-        // should match nothing - if we don't include decreaseIndentPattern, increaseIndentPattern does nothing
-        "decreaseIndentPattern": "$a"
-	},
     "onEnterRules": [
         {
             "beforeText": "^((?!\\/\\/).)*(?![^\"]*\")\\b(quit\\b|(return\\b(?!.*\\bswitch\\b|(.*\\bdim\\b(?!(\\s)*\\())))).*$",
             "action": { "indent": "outdent" }
+        },
+        {
+            "beforeText": "^((?!\\/\\/).)*(?![^\"]*\")((\\b(if|else|switch|for|while|library|enum|trap|#def|lambda|textdata|case)\\b[^\\\\]*)|(::.*\\(.*\\)(?!.*=>)[^\\\\]*)|(\\bdim(\\s)*(?!\\()[^\\\\]*))$",
+            "action": { "indent": "indent" }
         }
     ]
 }

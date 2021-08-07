@@ -129,7 +129,8 @@ namespace WingraLanguageServer
 				try
 				{
 					if (_needRecompile)
-						Prj.CompileAll(Cmplr);
+						lock (Lock)
+							Prj.CompileAll(Cmplr);
 					await AsyncLintNext();
 				}
 				catch (Exception e)

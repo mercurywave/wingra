@@ -48,8 +48,7 @@
                 ],
                 "extensions": [
                     ".wingraProj"
-                ],
-                "configuration": "./language-configuration.json"
+                ]
             }
         ],
         "grammars": [
