@@ -123,15 +123,21 @@ namespace WingraLanguageServer
 
 		async Task SlowlyLint()
 		{
+			bool fast = false;
 			while (true)
 			{
-				await Task.Delay(200);
+				await Task.Delay(fast ? 200 : 500);
 				try
 				{
-					if (_needRecompile)
-						lock (Lock)
+					lock (Lock)
+					{
+						if (_needRecompile)
+						{
 							Prj.CompileAll(Cmplr);
-					await AsyncLintNext();
+							_needRecompile = false;
+						}
+					}
+					fast = await LintNextAsync();
 				}
 				catch (Exception e)
 				{
@@ -154,16 +160,17 @@ namespace WingraLanguageServer
 			}
 		}
 
-		internal async Task AsyncLintNext()
+		internal async Task<bool> LintNextAsync()
 		{
 			WingraBuffer next;
 			lock (Lock)
 			{
-				if (_needLinting.Count == 0) return;
+				if (_needLinting.Count == 0) return false;
 				next = _needLinting[0];
 				_needLinting.RemoveAt(0);
 			}
 			await LintOne(next);
+			return true;
 		}
 
 		internal async Task LintOne(WingraBuffer file)
