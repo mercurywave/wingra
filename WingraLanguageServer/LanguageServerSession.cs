@@ -24,11 +24,10 @@ namespace WingraLanguageServer
 		internal WingraProject Prj = null;
 		public object Lock = new object();
 		internal Compiler Cmplr => Prj.IncrementalDebugCompiler;
-		internal DocFileServer FileServer = new DocFileServer();
 		internal string _folderPath;
 		internal Dictionary<WingraBuffer, STopOfFile> _parsedFiles = new Dictionary<WingraBuffer, STopOfFile>();
 		internal Dictionary<WingraBuffer, FileScopeTracker> _scopeTracker = new Dictionary<WingraBuffer, FileScopeTracker>();
-		internal StaticMapping _staticMap = new StaticMapping();
+		internal StaticMapping _staticMap;
 		List<WingraBuffer> _needLinting = new List<WingraBuffer>();
 		bool _needRecompile = true;
 
@@ -70,21 +69,53 @@ namespace WingraLanguageServer
 		}
 		internal async Task _InitializeAsync()
 		{
-			Prj = await Loader.LoadProject(_folderPath, FileServer);
-			Prj.IncrementalDebugCompiler = new Compiler(_staticMap, false, false, true, true)
+			await Build();
+
+			lock (Lock)
+			{
+				foreach (var sug in Suggestion.GetBuiltIns(_staticMap))
+				{
+					if (sug.Type == eSuggestionType.Keyword)
+						StaticSuggestions.Add(new CompletionItem(sug.Function, CompletionItemKind.Keyword, null)
+						{
+							CommitCharacters = new List<char>() { ' ', '(', ';' }
+						});
+				}
+				_ = Task.Delay(200).ContinueWith(t => Task.Run(SlowlyLint), TaskScheduler.Current);
+			}
+		}
+		internal async Task Rebuild()
+		{
+			await Task.Delay(500);
+			await Build();
+		}
+		internal async Task Build()
+		{
+			try
+			{
+				var newPrj = await LoadProj(_folderPath);
+				lock (Lock)
+				{
+					_needLinting.Clear();
+					Prj = newPrj;
+					_staticMap = newPrj.IncrementalDebugCompiler.StaticMap;
+					_parsedFiles.Clear();
+					_scopeTracker.Clear();
+					BuildCache();
+					_needRecompile = true;
+				}
+			}
+			catch (Exception e) { Client.Window.ShowMessage(MessageType.Error, "extension couldn't reload project!: " + e.ToString()); }
+		}
+		internal async Task<WingraProject> LoadProj(string folderPath)
+		{
+			var newPrj = await Loader.LoadProject(folderPath, new DocFileServer());
+			var staticMap = new StaticMapping();
+			newPrj.IncrementalDebugCompiler = new Compiler(staticMap, false, false, true, true)
 			{
 				Optimizations = false
 			};
-			foreach (var sug in Suggestion.GetBuiltIns(_staticMap))
-			{
-				if (sug.Type == eSuggestionType.Keyword)
-					StaticSuggestions.Add(new CompletionItem(sug.Function, CompletionItemKind.Keyword, null)
-					{
-						CommitCharacters = new List<char>() { ' ', '(', ';' }
-					});
-			}
-			BuildCache();
-			_ = Task.Delay(200).ContinueWith(t => Task.Run(SlowlyLint), TaskScheduler.Current);
+			return newPrj;
 		}
 		void BuildCache()
 		{
@@ -97,6 +128,7 @@ namespace WingraLanguageServer
 		}
 		internal void UpdateFileCache(WingraBuffer file)
 		{
+			if (!Prj.IsFileLoaded(file.Key)) return; // possible race condition - editing an old copy
 			Prj.ClearFileErrors(file);
 			var log = Prj.GetFileErrorLogger(file);
 			try

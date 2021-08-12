@@ -244,10 +244,8 @@ namespace WingraLanguageServer.Services
 		[JsonRpcMethod(IsNotification = true)]
 		public void WillSave(TextDocumentIdentifier textDocument, TextDocumentSaveReason reason)
 		{
-			// TODO: changing the wingraProj file should probably trigger some sort of reload, or at least a warning
-
-			//Client.Window.LogMessage(MessageType.Log, "-----------");
-			//Client.Window.LogMessage(MessageType.Log, Documents[textDocument].Content);
+				if (WingraProject.IsFileWingraProject(fileUtils.UriTRoPath(textDocument.Uri)))
+					_ = Session.Rebuild();
 		}
 
 		[JsonRpcMethod(IsNotification = true)]

@@ -12,7 +12,7 @@ namespace Wingra
 	public class WingraProject : ILanguage.CodeProject
 	{
 		const string EXTENSION = "wng";
-		const string PROJ_EXTENSION = "wingraProj";
+		const string PROJ_EXTENSION = "wingraproj";
 
 		SortedDictionary<string, WingraBuffer> _wingraFiles = new SortedDictionary<string, WingraBuffer>();
 		SortedDictionary<string, WingraBuffer> _allWingraFiles = new SortedDictionary<string, WingraBuffer>();

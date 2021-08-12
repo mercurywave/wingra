@@ -49,7 +49,7 @@ function activateLanguageServer(context) {
         // Options to control the language client
         let clientOptions = {
             // Register the server for plain text documents
-            documentSelector: ["wingra"],
+            documentSelector: ["wingra", "wingraProj"],
             synchronize: {
                 // Synchronize the setting section 'languageServerExample' to the server
                 configurationSection: "wingraLanguageServer",
@@ -57,6 +57,7 @@ function activateLanguageServer(context) {
                 fileEvents: [
                     vscode.workspace.createFileSystemWatcher("**/.clientrc"),
                     vscode.workspace.createFileSystemWatcher("**/.wng"),
+                    vscode.workspace.createFileSystemWatcher("**/.wingraProj"),
                 ]
             },
         };
