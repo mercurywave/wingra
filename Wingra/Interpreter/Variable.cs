@@ -24,6 +24,7 @@ namespace Wingra.Interpreter
 			Pointer = 8,
 			Bool = 9,
 			Enum = 10,
+			ExternalObject = 11,
 			IsChild = 16, // everything here and larger is a bitflag
 			IsGlobal = 32,
 			IsReadonly = 64,
@@ -97,12 +98,26 @@ namespace Wingra.Interpreter
 			_int = _ref.GenerationID;
 		}
 
-		internal Variable(string path, Variable enumValue)
+		internal Variable(string path, Variable enumValue, Malloc heap)
 		{
 			_float = 0; _int = 0;
 			_string = path;
 			_flag = eVar.Enum | eVar.IsGlobal;
-			_ref = new EnumPointer(enumValue);
+			_ref = heap.CheckOutEnumPointer(enumValue);
+		}
+		internal Variable(ExternalWrapper extObj)
+		{
+			_ref = extObj;
+			_int = _ref.GenerationID;
+			_flag = eVar.ExternalObject;
+			_float = 0; _string = null;
+		}
+
+		internal static Variable FromExternalObject(object extObj, Malloc heap)
+		{
+			var wrap = heap.CheckOutExternalWrapper();
+			wrap.Internal = extObj;
+			return new Variable(wrap);
 		}
 
 		public static Variable NULL => new Variable() { _flag = eVar.Null };
@@ -235,11 +250,12 @@ namespace Wingra.Interpreter
 		public bool IsRealLambda => _dataType == eVar.Lambda;
 		public bool IsStructLike => _dataType == eVar.Struct || (_dataType == eVar.Pointer && _ref is StructPointer) || (IsEnum && EnumContent.IsStructLike);
 		public bool IsRealStruct => _dataType == eVar.Struct;
-		public bool OwnsHeapContent => _dataType == eVar.Struct || _dataType == eVar.Lambda || _dataType == eVar.Iterator;
+		public bool OwnsHeapContent => _dataType == eVar.Struct || _dataType == eVar.Lambda || _dataType == eVar.Iterator || IsExternalObject;
 		public bool IsIteratorLike => _dataType == eVar.Iterator || (_dataType == eVar.Pointer && _ref is IteratorPointer);
 		public bool IsRealIterator => _dataType == eVar.Iterator;
+		public bool IsExternalObject => _dataType == eVar.ExternalObject;
 		public bool IsPointer => _dataType == eVar.Pointer || IsEnum;
-		internal bool HasHeapContent => IsStructLike || IsIteratorLike || IsLambdaLike;
+		internal bool HasHeapContent => IsStructLike || IsIteratorLike || IsLambdaLike || IsExternalObject;
 
 		public override string ToString()
 		{
@@ -261,6 +277,7 @@ namespace Wingra.Interpreter
 			if (_dataType == eVar.Enum) return "{" + _string + "}";
 			if (!IsPointerValid) return "!!!attempt to access already-freed object";
 			if (IsLambdaLike) return (IsPointer ? "*" : "") + "{lambda}";
+			if (IsExternalObject) return "ext:" + GetExternalContents().ToString();
 			if (IsStructLike)
 			{
 				if (depth > 4) return "[...]";
@@ -282,6 +299,8 @@ namespace Wingra.Interpreter
 		public string GetLambdaDebugCode() => GetLambdaInternal().GetDebugName();
 
 		#endregion
+
+		public object GetExternalContents() => (_ref as ExternalWrapper).Internal;
 
 
 		#region enums
@@ -397,6 +416,7 @@ namespace Wingra.Interpreter
 			if (prop.IsInt) return TryGetChild(prop._int);
 			if (prop.IsString) return TryGetChild(prop._string);
 			if (!IsStructLike) return null;
+			if (IsExternalObject) throw new RuntimeException("cannot access contents of external object");
 			if (!IsPointerValid) throw new RuntimeException("attempt to access already-freed object");
 			var array = GetStruct();
 			return array.TryGetChild(prop);
@@ -405,6 +425,7 @@ namespace Wingra.Interpreter
 		{
 			if (!IsStructLike) return null;
 			if (!IsPointerValid) throw new RuntimeException("attempt to access already-freed object");
+			if (IsExternalObject) throw new RuntimeException("cannot access contents of external object");
 			var array = GetStruct();
 			return array.TryGetChild(prop);
 		}
@@ -412,6 +433,7 @@ namespace Wingra.Interpreter
 		{
 			if (!IsStructLike) return null;
 			if (!IsPointerValid) throw new RuntimeException("attempt to access already-freed object");
+			if (IsExternalObject) throw new RuntimeException("cannot access contents of external object");
 			var array = GetStruct();
 			return array.TryGetChild(index);
 		}
@@ -420,6 +442,7 @@ namespace Wingra.Interpreter
 		{
 			if (!IsStructLike) throw new RuntimeException("cannot save to non-struct");
 			if (!IsPointerValid) throw new RuntimeException("attempt to save to already-freed object");
+			if (IsExternalObject) throw new RuntimeException("cannot access contents of external object");
 			var array = GetStruct();
 			array.SetChild(key, value, heap);
 		}
@@ -428,6 +451,7 @@ namespace Wingra.Interpreter
 		{
 			if (!IsStructLike) throw new RuntimeException("cannot free non-struct");
 			if (!IsPointerValid) throw new RuntimeException("attempt to free already-freed object");
+			if (IsExternalObject) throw new RuntimeException("cannot access contents of external object");
 			var array = GetStruct();
 			return array.DeletePopChild(key);
 		}
@@ -443,6 +467,7 @@ namespace Wingra.Interpreter
 		{
 			if (!IsStructLike) return new Variable();
 			if (!IsPointerValid) throw new RuntimeException("attempt to access already-freed object");
+			if (IsExternalObject) throw new RuntimeException("cannot access contents of external object");
 			var inner = GetStruct();
 			return inner.GetFirstKey(heap);
 		}
@@ -450,6 +475,7 @@ namespace Wingra.Interpreter
 		{
 			if (!IsStructLike) return new Variable();
 			if (!IsPointerValid) throw new RuntimeException("attempt to access already-freed object");
+			if (IsExternalObject) throw new RuntimeException("cannot access contents of external object");
 			var inner = GetStruct();
 			return inner.GetNextKey(key, heap);
 		}
@@ -457,6 +483,7 @@ namespace Wingra.Interpreter
 		{
 			if (!IsStructLike) return new Variable();
 			if (!IsPointerValid) throw new RuntimeException("attempt to access already-freed object");
+			if (IsExternalObject) throw new RuntimeException("cannot access contents of external object");
 			var inner = GetStruct();
 			return inner.GetLastKey(heap);
 		}

@@ -34,7 +34,7 @@ namespace WingraConsole
 			try
 			{
 				if (args.Verbose)
-				Console.WriteLine("Load " + Environment.CurrentDirectory);
+					Console.WriteLine("Load " + Environment.CurrentDirectory);
 				vm.InitializeNow(prj, symbols, args.Verbose);
 				if (prj.CheckForErrors())
 					PrintCompilerErrors(prj);

@@ -20,6 +20,7 @@ namespace Wingra.Interpreter
 			GenerationID++;
 			Contents.Release(memory);
 			memory.CheckIn(Contents);
+			memory.CheckIn(this);
 		}
 
 		public void SetChild(Variable key, Variable value, Malloc heap)
@@ -192,6 +193,7 @@ namespace Wingra.Interpreter
 
 		public void Release(Malloc memory)
 		{
+			memory.CheckIn(this);
 		}
 	}
 

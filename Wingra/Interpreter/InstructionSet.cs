@@ -869,7 +869,7 @@ namespace Wingra.Interpreter
 				return j =>
 				{
 					var obj = j.Registers.Pop();
-					obj = new Variable(path, obj);
+					obj = new Variable(path, obj, j.Heap);
 					j.Code.FileCode.SaveConstant(path, obj, j.Heap);
 				};
 			});
@@ -880,7 +880,7 @@ namespace Wingra.Interpreter
 				return j =>
 				{
 					var obj = j.Registers.Pop();
-					obj = new Variable(path, obj);
+					obj = new Variable(path, obj, j.Heap);
 					// file key isn't really relevant here
 					j.Runtime.LoadStaticVar(path, obj);
 				};

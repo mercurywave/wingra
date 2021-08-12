@@ -71,6 +71,22 @@ namespace Wingra.Interpreter
 			throw new NotImplementedException();
 		}
 
+		FastStack<EnumPointer> _enums = new FastStack<EnumPointer>();
+		public void CheckIn(EnumPointer obj) => _enums.Push(obj);
+		public EnumPointer CheckOutEnumPointer(Variable contents)
+		{
+			if (_enums.IsEmpty) return new EnumPointer(contents);
+			return _enums.Pop();
+		}
+
+		FastStack<ExternalWrapper> _extObjs = new FastStack<ExternalWrapper>();
+		public void CheckIn(ExternalWrapper obj) => _extObjs.Push(obj);
+		public ExternalWrapper CheckOutExternalWrapper()
+		{
+			if (_extObjs.IsEmpty) return new ExternalWrapper();
+			return _extObjs.Pop();
+		}
+
 		FastStack<LambdaPointer> _funcs = new FastStack<LambdaPointer>();
 		public void CheckIn(LambdaPointer func) => _funcs.Push(func);
 		public LambdaPointer CheckOutFuncPoint()

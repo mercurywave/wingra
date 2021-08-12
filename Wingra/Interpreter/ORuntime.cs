@@ -67,6 +67,9 @@ namespace Wingra.Interpreter
 		public bool HasOpenJobs => _activeJobs.Any();
 		public int OpenJobs => _activeJobs.Count;
 
+		// for debugging
+		public List<Job> GetActiveJobs() => _activeJobs.Select(p => p.Value as Job).ToList();
+
 		public void CheckIn(Variable var) => var.Dispose(Heap);
 
 		public void RegisterFiles(AssemblyFile file) => _filesToInit.Add(new FileCodeInstance(file, Heap));

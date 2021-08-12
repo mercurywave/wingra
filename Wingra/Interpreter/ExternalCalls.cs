@@ -77,7 +77,7 @@ namespace Wingra.Interpreter
 			ParseReflectionHelper(runtime, MakeFuncPath(libraryName, function), new List<MethodInfo>() { meth }, host);
 		}
 
-		enum eConvert { none, str, integer, boolean, single }
+		enum eConvert { none, str, integer, boolean, single, extObj }
 		static private void ParseReflectionHelper(ORuntime runtime, string path, IEnumerable<MethodInfo> calls, object host)
 		{
 			foreach (var meth in calls)
@@ -127,8 +127,10 @@ namespace Wingra.Interpreter
 					_convList.Add(eConvert.boolean);
 				else if (p.ParameterType == typeof(float))
 					_convList.Add(eConvert.single);
-				else
+				else if(p.ParameterType == typeof(Variable))
 					_convList.Add(eConvert.none);
+				else
+					_convList.Add(eConvert.extObj);
 			}
 			_convArr = _convList.ToArray();
 			if (meth.ReturnType != null)
@@ -172,6 +174,7 @@ namespace Wingra.Interpreter
 					isAsync = true;
 					_retConv = eConvert.none;
 				}
+				else _retConv = eConvert.extObj;
 			}
 		}
 
@@ -192,7 +195,8 @@ namespace Wingra.Interpreter
 					j.PassReturn(new Variable((float)ret));
 				else if (_retConv == eConvert.str)
 					j.PassReturn(new Variable((string)ret));
-				else throw new NotImplementedException();
+				else
+					j.PassReturn(Variable.FromExternalObject(ret, j.Heap));
 			}
 			else j.ReturnNothing();
 		}
@@ -221,6 +225,8 @@ namespace Wingra.Interpreter
 				obj = pass.AsFloat();
 			else if (conv == eConvert.str)
 				obj = pass.AsString();
+			else if (conv == eConvert.extObj)
+				obj = pass.GetExternalContents();
 			else obj = pass;
 			return obj;
 		}
@@ -272,6 +278,14 @@ namespace Wingra.Interpreter
 					var ret = await task;
 					j.PassReturn(new Variable((string)ret));
 				}
+				else if (_retConv == eConvert.extObj)
+				{
+					var task = (Task<object>)tsk;
+					if (task.Exception != null)
+						throw task.Exception.InnerException;
+					var ret = await task;
+					j.PassReturn(Variable.FromExternalObject(ret, j.Heap));
+				}
 				else throw new NotImplementedException();
 			}
 			else
@@ -285,5 +299,16 @@ namespace Wingra.Interpreter
 		}
 	}
 
+	class ExternalWrapper : IManageReference
+	{
+		public object Internal;
+		public int GenerationID { get ; set ; }
+
+		public void Release(Malloc memory)
+		{
+			GenerationID++;
+			memory.CheckIn(this);
+		}
+	}
 
 }

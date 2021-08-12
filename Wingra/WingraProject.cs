@@ -69,7 +69,7 @@ namespace Wingra
 			if (idx < 0) return false;
 			key = util.BoundedSubstr(text, 0, idx).Trim();
 			value = util.BoundedSubstr(text, idx + 1, text.Length).Trim();
-			if (value == "" || value == "") return false;
+			if (value == "") return false;
 			return true;
 		}
 		bool _ReadRequirement(string text, out string path)
