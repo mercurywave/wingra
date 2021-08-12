@@ -72,6 +72,10 @@ namespace Wingra.Interpreter
 
 			return file;
 		}
+		public override string ToString()
+		{
+			return Name + "::" + Key;
+		}
 	}
 
 
@@ -957,6 +961,11 @@ namespace Wingra.Interpreter
 
 		public int GetStackDelta()
 			=> _lines.Sum(ln => ln.GetStackDelta());
+
+		public override string ToString()
+		{
+			return UniqNameInFile + "::" + FileKey;
+		}
 	}
 
 	public enum eAsmCommand

@@ -8,10 +8,4 @@
     <ProjectReference Include="..\ILanguage\ILanguage.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="StdLib\StdLib.wng">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>
