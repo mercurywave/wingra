@@ -112,12 +112,24 @@ namespace Wingra.Interpreter
 			_flag = eVar.ExternalObject;
 			_float = 0; _string = null;
 		}
+		internal Variable(IManageReference extObj)
+		{
+			_ref = extObj;
+			_int = _ref.GenerationID;
+			_flag = eVar.Pointer;
+			_float = 0; _string = null;
+		}
 
 		internal static Variable FromExternalObject(object extObj, Malloc heap)
 		{
-			var wrap = heap.CheckOutExternalWrapper();
-			wrap.Internal = extObj;
-			return new Variable(wrap);
+			if (extObj is IManageReference)
+				return new Variable(extObj as IManageReference);
+			else
+			{
+				var wrap = heap.CheckOutExternalWrapper();
+				wrap.Internal = extObj;
+				return new Variable(wrap);
+			}
 		}
 
 		public static Variable NULL => new Variable() { _flag = eVar.Null };
@@ -300,7 +312,12 @@ namespace Wingra.Interpreter
 
 		#endregion
 
-		public object GetExternalContents() => (_ref as ExternalWrapper).Internal;
+		public object GetExternalContents()
+		{
+			if(_ref is ExternalWrapper)
+				return (_ref as ExternalWrapper).Internal;
+			return _ref;
+		}
 
 
 		#region enums
@@ -374,15 +391,17 @@ namespace Wingra.Interpreter
 		internal void Dispose(Malloc memory)
 		{
 			if (IsDisposed) return; // TODO: this shouln't be neccessary, but I think there is a variable leak
-			if (_ref != null && OwnsHeapContent)
-				_ref.Release(memory);
+			var rel = _ref as IReleaseMemory;
+			if (rel != null && OwnsHeapContent)
+				rel.Release(memory);
 			_flag = eVar.Disposed;
 		}
 		internal void FreeContents(Malloc memory)
 		{
 			if (IsDisposed) return; // TODO: this shouln't be neccessary, but I think there is a variable leak
-			if (_ref != null)
-				_ref.Release(memory);
+			var rel = _ref as IReleaseMemory;
+			if (rel != null)
+				rel.Release(memory);
 			_flag = eVar.Disposed;
 		}
 

@@ -437,7 +437,7 @@ namespace Wingra.Interpreter
 		{
 			if (!lambda.IsExecutable) throw new RuntimeException("expected lambda", this);
 			var topOtheStack = CallStack.Depth;
-			var targetLine = CallStack.Peek(0)._nextLinePointer;
+			var targetLine = topOtheStack == 0 ? 0 : CallStack.Peek(0)._nextLinePointer;
 			_paramStack.Clear();
 			var exec = lambda.GetLambdaInternal();
 			exec.BeginExecute(this);
@@ -449,7 +449,7 @@ namespace Wingra.Interpreter
 				var act = Code.Instructions[line];
 				act(this);
 			}
-			if (CallStack.Depth < topOtheStack - 1 || CurrentScope._nextLinePointer != targetLine)
+			if (CallStack.Depth < topOtheStack - 1 || (topOtheStack > 0 && CurrentScope._nextLinePointer != targetLine))
 				return null; // we hit an error trap instead of a normal exit
 			if (_paramStack.Count == 0) return null;
 			return _paramStack[0];

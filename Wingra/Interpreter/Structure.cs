@@ -6,7 +6,7 @@ using System.Diagnostics;
 
 namespace Wingra.Interpreter
 {
-	class StructPointer : IManageReference
+	class StructPointer : IReleaseMemory
 	{
 		public enum eKeyType { Int, String, Var, Queue }
 		IStructure Contents;
@@ -181,7 +181,7 @@ namespace Wingra.Interpreter
 		}
 	}
 
-	class EnumPointer : IManageReference
+	class EnumPointer : IReleaseMemory
 	{
 		public int GenerationID { get => 0; set { } }
 		public Variable Contents;
@@ -934,9 +934,12 @@ namespace Wingra.Interpreter
 		}
 	}
 
-	interface IManageReference
+	public interface IManageReference
 	{
 		int GenerationID { get; set; }
+	}
+	internal interface IReleaseMemory : IManageReference
+	{
 		void Release(Malloc memory);
 	}
 

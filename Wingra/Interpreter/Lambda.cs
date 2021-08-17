@@ -118,7 +118,7 @@ namespace Wingra.Interpreter
 		}
 	}
 
-	interface ILambda : IManageReference
+	interface ILambda : IReleaseMemory
 	{
 		// returns null from external calls!
 		Scope BeginExecute(Job j, Variable? thisVar = null);

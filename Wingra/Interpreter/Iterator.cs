@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Wingra.Interpreter
 {
-	class IteratorPointer : IManageReference
+	class IteratorPointer : IReleaseMemory
 	{
 		internal IIterate _iterator;
 

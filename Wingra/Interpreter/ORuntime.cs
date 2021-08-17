@@ -286,6 +286,12 @@ namespace Wingra.Interpreter
 			jb = temp;
 			return new ODisposable(() => CheckIn(temp));
 		}
+		ODisposable MakeTempJob(out Job jb)
+		{
+			var temp = CheckOutJob();
+			jb = temp;
+			return new ODisposable(() => CheckIn(temp));
+		}
 
 		Variable? _RunExp(CodeBlock code)
 		{
@@ -385,6 +391,24 @@ namespace Wingra.Interpreter
 
 		public async Task RunAsync(TaskTemplate qt)
 			=> await _RunAsyncTask(qt.GetEntryPoint(this));
+
+		public Variable? RunLambda(Variable lamb)
+		{
+			using (MakeTempJob(out var job))
+				return job.RunLambda(lamb);
+		}
+
+		public Variable? RunLambda(Variable lamb, string name1, Variable value1)
+		{
+			using (MakeTempJob(out var job))
+				return job.RunLambda(lamb, name1, value1);
+		}
+
+		public Variable? RunLambda(Variable lamb, string name1, Variable value1, string name2, Variable value2)
+		{
+			using (MakeTempJob(out var job))
+				return job.RunLambda(lamb, name1, value1, name2, value2);
+		}
 		#endregion
 
 		public void ShutDown()
@@ -519,7 +543,7 @@ namespace Wingra.Interpreter
 	public class CatchableError : Exception
 	{
 		public Variable? Contents;
-		public CatchableError() {  }
+		public CatchableError() { }
 		public CatchableError(Variable contents) { Contents = contents; }
 	}
 }

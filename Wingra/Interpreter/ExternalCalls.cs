@@ -299,7 +299,7 @@ namespace Wingra.Interpreter
 		}
 	}
 
-	class ExternalWrapper : IManageReference
+	class ExternalWrapper : IReleaseMemory
 	{
 		public object Internal;
 		public int GenerationID { get ; set ; }
