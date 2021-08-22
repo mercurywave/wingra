@@ -333,7 +333,7 @@ namespace Wingra.Interpreter
 		internal bool IsPointerValid
 			=> !IsPointer || _int == _ref.GenerationID;
 
-		internal Variable MakePointer()
+		public Variable MakePointer()
 		{
 			if (!HasHeapContent || IsEnum) return this; // probably a pointer
 														//Debug.Assert(_ref == null || _ref.GenerationID == _int);

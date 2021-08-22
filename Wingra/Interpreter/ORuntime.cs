@@ -155,6 +155,13 @@ namespace Wingra.Interpreter
 			}
 		}
 
+		public Variable MakeScratchStruct()
+		{
+			var inner = Heap.CheckOutStruct();
+			inner.Reset(Heap.CheckOutList(4));
+			return new Variable(inner);
+		}
+
 		void SetupStandardHooks()
 		{
 			StandardLib.Setup(this);
