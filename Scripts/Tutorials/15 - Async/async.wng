@@ -42,3 +42,18 @@ arun lambda
     // you can also wait for another job to complete
     await job.$Job.Wait()
     $IO.Write("other job complete")
+
+// to communicate between threads, you can use pipes
+// these allow you to send various types of data and communicate state effectively
+@pipe : $Pipe.Create()
+
+arun lambda
+    if await pipe.$Pipe.ReadAsync()
+        $IO.Write("step 2")
+        avow pipe.$Pipe.Write("step 3") // passed to other job
+
+arun lambda
+    $IO.Write("step 1")
+    avow pipe.$Pipe.Write(true)
+    $IO.Write(await pipe.$Pipe.ReadAsync())
+    pipe.$Pipe.Kill() // pipes must be killed when they are done

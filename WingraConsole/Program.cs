@@ -41,6 +41,7 @@ namespace WingraConsole
 				else
 				{
 					await vm.RunMain(prj, symbols, args.Verbose);
+					await Task.Yield();
 					if (vm.HasOpenJobs)
 						Console.WriteLine("Main() completed with " + vm.OpenJobs + " open jobs running");
 				}

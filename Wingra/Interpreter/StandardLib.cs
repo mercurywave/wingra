@@ -327,6 +327,7 @@ namespace Wingra.Interpreter
 			runtime.InjectDynamicLibrary(new LScratch(runtime), "Scratch");
 			runtime.InjectDynamicLibrary(new LPromise(runtime), "Promise");
 			runtime.InjectDynamicLibrary(new LMath(runtime), "Math");
+			runtime.InjectDynamicLibrary(new LPipe(runtime), "Pipe");
 		}
 
 		private static void AddToListHelper(Job j, Variable? thisVar)
@@ -540,6 +541,147 @@ namespace Wingra.Interpreter
 				_idx++;
 				_waiters.Add(_idx, new TaskCompletionSource<bool>());
 				return _idx;
+			}
+		}
+
+		class LPipe
+		{
+			ORuntime _run;
+			Dictionary<OPipe, int> _activePipes = new Dictionary<OPipe, int>();
+			Dictionary<OPipe, TaskCompletionSource<bool>> _waiters = new Dictionary<OPipe, TaskCompletionSource<bool>>();
+			FastStack<OPipe> _reserve = new FastStack<OPipe>();
+
+			public LPipe(ORuntime run)
+			{
+				_run = run;
+
+				run.InjectExternalCall((j, t) =>
+				{
+					var pipe = t.Value.GetExternalContents() as OPipe;
+					lock (pipe)
+					{
+						bool isLive = _IsLive(pipe);
+						var data = pipe.PopContents();
+						if (isLive)
+							isLive = data.HasValue;
+						else
+							data = Variable.NULL;
+						j.PassReturn(data, new Variable(isLive));
+					}
+				}, "TryRead", "Pipe");
+			}
+
+			public OPipe Create()
+			{
+				OPipe pip;
+				lock (_activePipes)
+				{
+					if (_reserve.IsEmpty)
+						pip = new OPipe();
+					else
+						pip = _reserve.Pop();
+					_activePipes.Add(pip, pip.GenerationID);
+				}
+				return pip;
+
+			}
+			[WingraMethod]
+			public void Write(OPipe pipe, Variable data)
+			{
+				lock (pipe)
+				{
+					if (!_IsLive(pipe))
+						throw new CatchableError();
+					pipe.Contents.Dispose(_run.Heap);
+					pipe.Contents = data;
+					ResolveWait(pipe, true);
+				}
+			}
+
+			[WingraMethod]
+			public void Kill(OPipe pipe)
+			{
+				lock (pipe)
+				{
+					pipe._gen++;
+					pipe.PopContents().Dispose(_run.Heap);
+					lock (_activePipes)
+					{
+						if (!_activePipes.Remove(pipe))
+							throw new RuntimeException("pipe is already killed");
+						_reserve.Push(pipe);
+						ResolveWait(pipe, false);
+					}
+				}
+			}
+
+			void ResolveWait(OPipe pipe, bool success)
+			{
+				lock (_waiters)
+					if (_waiters.ContainsKey(pipe))
+					{
+						var tcs = _waiters[pipe];
+						_waiters.Remove(pipe);
+						tcs.TrySetResult(success);
+					}
+			}
+
+			bool _IsLive(OPipe pipe)
+			{
+				lock (_activePipes)
+					return _activePipes.ContainsKey(pipe) && _activePipes[pipe] == pipe.GenerationID;
+			}
+
+			[WingraMethod]
+			public bool IsLive(OPipe pipe)
+				=> _IsLive(pipe);
+
+			[WingraMethod]
+			public bool HasData(OPipe pipe)
+				=> _IsLive(pipe) && pipe.Contents.HasValue;
+
+			[WingraMethod]
+			public void Clear(OPipe pipe)
+			{
+				lock (pipe)
+					pipe.PopContents().Dispose(_run.Heap);
+			}
+
+			[WingraMethod]
+			public async Task<Variable> ReadAsync(OPipe pipe)
+			{
+				TaskCompletionSource<bool> tcs;
+				lock (pipe)
+				{
+					if (pipe.Contents.HasValue)
+						return pipe.PopContents();
+					if (!_IsLive(pipe))
+						return Variable.NULL;
+					lock (_waiters)
+					{
+						if (!_waiters.ContainsKey(pipe))
+							_waiters.Add(pipe, new TaskCompletionSource<bool>());
+						tcs = _waiters[pipe];
+					}
+				}
+				if (!await tcs.Task)
+					return Variable.NULL;
+				lock (pipe)
+					return pipe.PopContents();
+			}
+
+			public class OPipe : IManageReference
+			{
+				public int _gen = 0;
+				public int GenerationID { get => _gen; set => _gen = value; }
+				public Variable Contents = Variable.DISPOSED;
+
+				public Variable PopContents()
+				{
+					var temp = Contents;
+					Contents = Variable.DISPOSED;
+					return temp;
+				}
 			}
 		}
 	}

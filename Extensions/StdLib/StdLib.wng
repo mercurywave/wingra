@@ -93,6 +93,21 @@ library Promise
 	extern ::Create(=> id)
 	extern ::.Wait(=> async)
 	extern ::.Resolve()
+
+library Pipe
+	extern ::Create(=> pipe)
+	extern ::.Kill( => dat)
+	extern ::.IsLive( => live)
+	extern ::.Write(dat => throw)
+		// throws if pipe is already killed
+		// overwrites if anything there
+	extern ::.Clear()
+	extern ::.HasData(=> bool)
+	extern ::.ReadAsync(=> async dat)
+		// reading frees the data and returns it
+	extern ::.TryRead(=> dat, success)
+		// returns null if the pipe has no data / is killed
+		// frees contents on success
 			
 // only available for macros
 library Compiler

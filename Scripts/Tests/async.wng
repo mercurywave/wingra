@@ -21,3 +21,10 @@ using Job
 	@a : 5
 	await (arun lambda).$Wait()
 		$assert(a = 5)
+
+#test pipe
+	@pipe : $Pipe.Create()
+	arun lambda
+		await $Job.Yield()
+		avow pipe.$Pipe.Write(true)
+	$assert(await pipe.$Pipe.ReadAsync())
