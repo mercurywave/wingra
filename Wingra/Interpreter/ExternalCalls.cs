@@ -127,7 +127,7 @@ namespace Wingra.Interpreter
 					_convList.Add(eConvert.boolean);
 				else if (p.ParameterType == typeof(float))
 					_convList.Add(eConvert.single);
-				else if(p.ParameterType == typeof(Variable))
+				else if (p.ParameterType == typeof(Variable))
 					_convList.Add(eConvert.none);
 				else
 					_convList.Add(eConvert.extObj);
@@ -216,19 +216,24 @@ namespace Wingra.Interpreter
 
 		private static object ConvertWingraInputToObj(Variable pass, eConvert conv)
 		{
-			object obj;
-			if (conv == eConvert.integer)
-				obj = pass.AsInt();
-			else if (conv == eConvert.boolean)
-				obj = pass.AsBool();
-			else if (conv == eConvert.single)
-				obj = pass.AsFloat();
-			else if (conv == eConvert.str)
-				obj = pass.AsString();
-			else if (conv == eConvert.extObj)
-				obj = pass.GetExternalContents();
-			else obj = pass;
-			return obj;
+			try
+			{
+				object obj;
+				if (conv == eConvert.integer)
+					obj = pass.AsInt();
+				else if (conv == eConvert.boolean)
+					obj = pass.AsBool();
+				else if (conv == eConvert.single)
+					obj = pass.AsFloat();
+				else if (conv == eConvert.str)
+					obj = pass.AsString();
+				else if (conv == eConvert.extObj)
+					obj = pass.GetExternalContents();
+				else obj = pass;
+				return obj;
+			}
+			catch (Exception e)
+			{ throw new RuntimeException("extern parameter mismatch - " + e.ToString()); }
 		}
 
 		private static async Task RunParseMethodAsync(Job j, object host, MethodInfo meth, eConvert? _retConv, eConvert[] _convArr, bool isMethod, Variable? thisVar)
@@ -302,7 +307,7 @@ namespace Wingra.Interpreter
 	class ExternalWrapper : IReleaseMemory
 	{
 		public object Internal;
-		public int GenerationID { get ; set ; }
+		public int GenerationID { get; set; }
 
 		public void Release(Malloc memory)
 		{

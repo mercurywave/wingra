@@ -288,13 +288,13 @@ namespace Wingra.Interpreter
 			if (_dataType == eVar.Null) return "{null}";
 			if (_dataType == eVar.Enum) return "{" + _string + "}";
 			if (!IsPointerValid) return "!!!attempt to access already-freed object";
-			if (IsLambdaLike) return (IsPointer ? "*" : "") + "{lambda}";
-			if (IsExternalObject) return "ext:" + GetExternalContents().ToString();
+			if (IsLambdaLike) return (IsPointer ? "*" : "") + "{lambda " + GetLambdaInternal().GetDebugName() + "}";
+			if (IsExternalObject) return "ext:" + GetExternalContents()?.ToString();
 			if (IsStructLike)
 			{
 				if (depth > 4) return "[...]";
 				var st = GetStruct();
-				if (st.Count > 4) return "(" + st.Count + ")";
+				if (st.Count > 8) return "(" + st.Count + ")";
 				var pack = "";
 				foreach (var pair in st.IterateOrdered())
 					pack = util.AppendPiece(pack, ",", pair.Key._GetValueString(depth + 1) + ":" + pair.Value._GetValueString(depth + 1));

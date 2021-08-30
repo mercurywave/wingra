@@ -442,13 +442,16 @@ namespace Wingra.Interpreter
 			var exec = lambda.GetLambdaInternal();
 			exec.BeginExecute(this);
 			if (name1 != "") CurrentScope.TrySaveVariable(name1, value1.Value, Heap);
-			if (name2 != "") CurrentScope.TrySaveVariable(name2, value2.Value, Heap);
-			while (CallStack.Depth > topOtheStack)
+			if (name2 != "") CurrentScope.TrySaveVariable(name2, value2.Value, Heap); try
 			{
-				var line = CurrentScope.AdvanceLinePointer();
-				var act = Code.Instructions[line];
-				act(this);
+				while (CallStack.Depth > topOtheStack)
+				{
+					var line = CurrentScope.AdvanceLinePointer();
+					var act = Code.Instructions[line];
+					act(this);
+				}
 			}
+			catch (Exception ex) { HandleError(ex); }
 			if (CallStack.Depth < topOtheStack - 1 || (topOtheStack > 0 && CurrentScope._nextLinePointer != targetLine))
 				return null; // we hit an error trap instead of a normal exit
 			if (_paramStack.Count == 0) return null;
@@ -527,7 +530,7 @@ namespace Wingra.Interpreter
 								return;
 						}
 					}
-					catch (Exception ex) { HandleError(ex); }
+					catch (Exception ex) { HandleError(ex);  break; }
 				}
 			}
 			catch (Exception ex) { HandleError(ex); }
