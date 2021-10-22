@@ -1,8 +1,9 @@
 {
     "name": "wingralang",
-    "displayName": "wingraLang",
-    "description": "langauge support for Wingra programming language",
-    "version": "0.0.1",
+    "publisher": "MercuryWave",
+    "displayName": "Wingra Language",
+    "description": "Langauge support for Wingra programming language",
+    "version": "0.0.2",
     "engines": {
         "vscode": "^1.58.0"
     },
@@ -96,5 +97,9 @@
     },
     "dependencies": {
         "vscode-languageclient": "^7.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mercurywave/wingra"
     }
 }

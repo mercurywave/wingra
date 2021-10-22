@@ -49,15 +49,14 @@ The ownership passing model of memory management can avoid the performance penal
 ## Quick Start
 The quickest way to get started is to download the VSCode extension.
 1. Download [VSCode](https://code.visualstudio.com/) for windows
-2. Download the latest release .zip
-3. Extract the wingralang folder to %USERPROFILE%\\.vscode\\extensions
-4. Open VSCode to a new folder
-5. Add a new file called 'test.wng'
-6. Add the following code:
+2. Download the Wingra Language extension from the VSCode marketplace
+3. Open VSCode to a new folder
+4. Add a new file called 'test.wng'
+5. Add the following code:
     ```ts
     $IO.Write("Greetings from Lake Wingra!")
     ```
-8. Press ctrl+shift+p and select 'Wingra: Run current folder'
+6. Press ctrl+shift+p and select 'Wingra: Run current folder'
 
 ## Learning
 The [Scripts/Tutorial](Scripts/Tutorials) folder contains a number of guides to basic syntax.
