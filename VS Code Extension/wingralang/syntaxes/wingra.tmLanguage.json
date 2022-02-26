@@ -55,7 +55,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.wingra",
-				"match": "\\b(if|while|for|return|to|by|switch|select|else|case|at|in|of|has|copy|free|while|until|break|continue|yield|quit|new|dim|mixin|using|template|use|extern|trap|try|catch|throw|avow|async|await|arun|defer)\\b"
+				"match": "\\b(if|while|for|return|to|by|switch|select|else|case|at|in|of|has|copy|free|while|until|break|continue|yield|quit|new|dim|mixin|using|template|use|extern|trap|try|catch|throw|avow|async|await|arun|defer|textdata)\\b"
 			},
 			{
 				"name": "support.function.wingra",

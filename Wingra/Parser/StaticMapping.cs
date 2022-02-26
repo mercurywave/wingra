@@ -415,7 +415,7 @@ namespace Wingra.Parser
 				{
 					var close = SuggestHasPath(node, poss);
 					foreach (var hit in close)
-						addTo.Add(type + "." + hit.Key, hit.Value);
+						addTo[type + "." + hit.Key] = hit.Value;
 				}
 			}
 

@@ -8,4 +8,10 @@
     <ProjectReference Include="..\ILanguage\ILanguage.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include=".StdLib\StdLib.wng">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

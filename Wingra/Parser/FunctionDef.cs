@@ -65,11 +65,8 @@ namespace Wingra.Parser
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			if (!_isExtern)
-			{
-				var lamb = EmitBody(compiler, file, func, asmStackLevel, errors);
-				EmitRegister(compiler, file, func, lamb, asmStackLevel, errors, parent);
-			}
+			var lamb = EmitBody(compiler, file, func, asmStackLevel, errors);
+			EmitRegister(compiler, file, func, lamb, asmStackLevel, errors, parent);
 		}
 		internal FunctionFactory EmitBody(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors)
 		{

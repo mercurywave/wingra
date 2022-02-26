@@ -250,10 +250,28 @@ namespace Wingra.Parser
 				res => new SRequireSymbol(res.FileLine, res.GetTokens("ANYTHING"))),
 
 			
+			// data Path : value
+			mp( Token(eToken.Data) + Path(false, "name") + Token(eToken.Colon) + SimpleExpression(),
+				res => new SData( res.FileLine,
+					ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("value")),
+					new SStaticDeclaredPath(eStaticType.Data, res.GetTokens("name"))) ),
+
+			// global data Path : value
+			mp( Token(eToken.Global) + Token(eToken.Data) + Path(false, "name") + Token(eToken.Colon) + SimpleExpression(),
+				res => new SData( res.FileLine,
+					ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("value")),
+					new SStaticDeclaredPath(eStaticType.Data, res.GetTokens("name"), res.GetDeclaringNamespace())) ),
+			
 			// enum Path
 			mp( Token(eToken.Enum) + Path(false, "name"),
 				res => new SEnumType( res.FileLine,
 					new SStaticDeclaredPath(eStaticType.EnumType, res.GetTokens("name"))) ),
+			
+			// global enum Path
+			mp( Token(eToken.Global) + Token(eToken.Enum) + Path(false, "name"),
+				res => new SEnumType( res.FileLine,
+					new SStaticDeclaredPath(eStaticType.EnumValue, res.GetTokens("name"), res.GetDeclaringNamespace()),
+					true) ),
 
 			// $path : value
 			mp( Path(true) + Token(eToken.Colon) + SimpleExpression(),

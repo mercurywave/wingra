@@ -18,19 +18,19 @@ Originally created to support game development, the language is general purpose 
 ```ts
 ::CustomersWhoBought(product, ?atleast => customers)
     atleast ?: 1 // default to 1 if not passed
-    using Set
-    @set : $New()
+    @set : $Set.New()
+	using Set
     // find all completed orders
-    for @order of ^AllOrders.$List.Where(`it.complete`)
+    for @order of ^AllOrders.$List.Where(`it.isComplete`)
         // check quantity
-        if order.items[product] ? 0 >= atleast
+        if (order.items[product] ? 0) >= atleast
             // mark customer as having order
             set.$Add(order.customer)
     // flatten to list
     customers : set.$ToList()
 ```
 ### Syntax Features
-- Succint lambda expression syntax with \` \`
+- Succinct lambda expression syntax with \` \`
 - Multiple named output parameters from functions
 - Structural safety with async functions and error handling
 

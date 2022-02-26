@@ -25,7 +25,8 @@ namespace Wingra.Interpreter
 
 		public void SetChild(Variable key, Variable value, Malloc heap)
 		{
-			Debug.Assert(!value.IsDisposed);
+			if (value.IsDisposed)
+				throw new RuntimeException("cannot assign disposed variable to node");
 			if (key.IsInt)
 				SetChild(key.AsInt(), value, heap);
 			else if (key.IsString)
@@ -54,7 +55,8 @@ namespace Wingra.Interpreter
 		}
 		public void SetChild(int key, Variable value, Malloc heap)
 		{
-			Debug.Assert(!value.IsDisposed);
+			if (value.IsDisposed)
+				throw new RuntimeException("cannot assign disposed variable to node");
 			var result = Contents.TrySetChild(key, value, heap);
 			if (result == eAddResult.Success) return;
 			if (result == eAddResult.NoSpace)

@@ -17,7 +17,7 @@ namespace WingraConsole
 			var cache = new Dictionary<string, WingraProject>();
 			// StdLib always loads first
 			var libDir = Path.GetDirectoryName(Assembly.GetAssembly(typeof(Loader)).Location);
-			libDir = fileUtils.CombinePath(libDir, "StdLib");
+			libDir = fileUtils.CombinePath(libDir, ".StdLib");
 			var stdLib = await LoadProject(libDir, cache);
 			var prj = await LoadProject(path, cache, stdLib);
 			return prj;
@@ -93,7 +93,8 @@ namespace WingraConsole
 		static void AddFolderToTree(DirectoryInfo dir, WingraProject proj)
 		{
 			foreach (DirectoryInfo child in dir.GetDirectories())
-				AddFolderToTree(child, proj);
+				if (!child.Name.StartsWith('.'))
+					AddFolderToTree(child, proj);
 			foreach (FileInfo file in dir.GetFiles())
 			{
 				FileSystemInfo info = file;

@@ -25,7 +25,7 @@ namespace WingraLanguageServer.Services
 			{
 				HoverProvider = new HoverOptions(),
 				SignatureHelpProvider = new SignatureHelpOptions("()"),
-				CompletionProvider = new CompletionOptions(true, ".$"),
+				CompletionProvider = new CompletionOptions(true, ".$#"),
 				TextDocumentSync = new TextDocumentSyncOptions
 				{
 					OpenClose = true,

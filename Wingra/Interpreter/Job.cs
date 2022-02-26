@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -121,6 +122,28 @@ namespace Wingra.Interpreter
 			if (Registers.IsEmpty) return null;
 			return Registers.Peek();
 		}
+		// this is designed so the caller can effectively get a list back without the returned list variable being garbage collected
+		public IEnumerable<Variable> IterateExpressionResults()
+		{
+			try
+			{
+				while (CurrentScope._nextLinePointer < Code.Instructions.Count)
+				{
+					var line = CurrentScope.AdvanceLinePointer();
+					var act = Code.Instructions[line];
+					act(this);
+				}
+			}
+			catch (Exception ex) { HandleError(ex); }
+			if (Registers.IsEmpty) yield break;
+			var obj = Registers.Peek();
+			if (!obj.HasChildren()) yield break;
+			foreach (var child in obj.Children())
+				yield return child.Value;
+			CheckIn(obj);
+		}
+		// be very careful with this - the contents could have been garbage collected if they are dynamic
+		public List<Variable> RunList() => IterateExpressionResults().ToList();
 
 		//public Variable TraceRunExpression(out Trace trace)
 		//{

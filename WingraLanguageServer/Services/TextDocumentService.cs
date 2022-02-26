@@ -138,14 +138,14 @@ namespace WingraLanguageServer.Services
 			var currLineLex = buffer.GetSyntaxMetadata(cursor.Line);
 			BaseToken? curr = null;
 			var tokes = currLineLex.Tokens;
-			int currIdx = -1;
+			int currIdx = currLineLex.Tokens.Count - 1;
 
 			for (int i = 0; i < currLineLex.Tokens.Count; i++)
 			{
 				var tok = tokes[i];
-				if (tok.LineOffset + tok.Length >= cursor.Character)
+				if (cursor.Character <= tok.LineOffset)
 				{
-					currIdx = i;
+					currIdx = i - 1;
 					break;
 				}
 				curr = tok;
@@ -244,8 +244,8 @@ namespace WingraLanguageServer.Services
 		[JsonRpcMethod(IsNotification = true)]
 		public void WillSave(TextDocumentIdentifier textDocument, TextDocumentSaveReason reason)
 		{
-				if (WingraProject.IsFileWingraProject(fileUtils.UriTRoPath(textDocument.Uri)))
-					_ = Session.Rebuild();
+			if (WingraProject.IsFileWingraProject(fileUtils.UriTRoPath(textDocument.Uri)))
+				_ = Session.Rebuild();
 		}
 
 		[JsonRpcMethod(IsNotification = true)]
@@ -344,10 +344,8 @@ namespace WingraLanguageServer.Services
 									return i;
 							return lex.Tokens.Count;
 						}
-						// there is a function definition on this line
-						bool inFunctionDef = !currLineLex.IsEmpty && currLineLex.Tokens.Any(t => t.Type == eToken.FunctionDef);
 						// we are in either the function name, parameters, or outputs
-						bool inFunctionDeclaration = inFunctionDef && currIdx < LexIndexOfOrEnd(currLineLex, eToken.RightParen);
+						bool inFunctionDeclaration = IsDeclaringFunction(currLineLex, currIdx);
 						staticPath = GetPathUnderCursor(position, buffer, out var expectDollar);
 						if (curr.HasValue && curr.Value.LineOffset + curr.Value.Length < position.Character)
 						{
@@ -479,9 +477,9 @@ namespace WingraLanguageServer.Services
 							{
 								//this only handles the 99% case
 								foreach (var mac in compiler.IterMacroNames())
-									AddResult(mac, CompletionItemKind.Snippet);
+									AddResult(mac.Substring(1), CompletionItemKind.Snippet);
 								foreach (var mac in compiler.BuiltInMacros())
-									AddResult(mac, CompletionItemKind.Snippet);
+									AddResult(mac.Substring(1), CompletionItemKind.Snippet);
 							}
 							HashSet<string> usedTokes = new HashSet<string>();
 							void TryAdd(string varName, CompletionItemKind kind, string type)
@@ -497,6 +495,18 @@ namespace WingraLanguageServer.Services
 							{
 								var colonSplit = lex.Tokens.FindIndex(t => t.Type == eToken.Colon);
 								if (colonSplit < 0) colonSplit = lex.Tokens.Count;
+								int lamb = ScanLex(lex, 0, eToken.Lambda, eToken.LeftParen);
+								if(lamb >= 0) // if we are in a defined lambda, the available scope is limited
+								{
+									int end = ScanLex(lex, lamb, eToken.RightParen);
+									for (int i = lamb; i < end; i++)
+									{
+										var tok = lex.Tokens[i];
+										if (tok.Type == eToken.Identifier)
+											AddResult(tok.Token, CompletionItemKind.Variable, "parameter");
+									}
+									return;
+								}
 								for (int j = 0; j < lex.Tokens.Count; j++)
 								{
 									var tok = lex.Tokens[j];
@@ -532,7 +542,7 @@ namespace WingraLanguageServer.Services
 							int currentIndent = currLineLex.PreceedingWhitespace;
 							int highWaterReadAhead = position.Line + 1;
 							// reads upwards till it hits file scope
-							if (!phrase.StartsWith("$") && !phrase.StartsWith("#") && !phrase.StartsWith("^"))
+							if (!inFunctionDeclaration && !phrase.StartsWith("$") && !phrase.StartsWith("#") && !phrase.StartsWith("^"))
 								for (int i = position.Line - 1; i >= 0; i--)
 								{
 									var lex = buffer.GetSyntaxMetadata(i);
@@ -541,6 +551,7 @@ namespace WingraLanguageServer.Services
 									else if (lex.PreceedingWhitespace == currentIndent)
 									{
 										if (lex.Tokens.Any(t => t.Type == eToken.FunctionDef)) continue;
+										if (ScanLex(lex, 0, eToken.Lambda, eToken.LeftParen) >= 0) continue;
 										NaiveScanForLocals(i, lex);
 									}
 									else if (lex.PreceedingWhitespace < currentIndent)
@@ -548,6 +559,7 @@ namespace WingraLanguageServer.Services
 										NaiveScanForLocals(i, lex);
 										currentIndent = lex.PreceedingWhitespace;
 										if (lex.Tokens.Any(t => t.Type == eToken.FunctionDef)) break;
+										if (ScanLex(lex, 0, eToken.Lambda, eToken.LeftParen) >= 0) break;
 										// scan ahead at the same scope we found when we collapsed a level
 										for (; highWaterReadAhead < buffer.Lines; highWaterReadAhead++)
 										{
@@ -576,6 +588,50 @@ namespace WingraLanguageServer.Services
 			}
 			return new CompletionList(Session.StaticSuggestions);
 		}
+
+		bool IsDeclaringFunction(LexLine lex, int currIdx)
+		{
+			// this basically exists to stop suggesting things if you're clearly declaring something new
+			int Scan(int from, params eToken[] matches)
+				=> ScanLex(lex, from, matches);
+
+			bool IsBetween(eToken[] start, eToken ender)
+			{
+				int idx = 0;
+				while(idx >= 0)
+				{
+					idx = Scan(idx, start);
+					if (idx < 0 || currIdx < idx) return false; // passed the cursor
+					var end = Scan(idx + start.Length, ender);
+					if (end < 0 || currIdx <= end) return true;
+				}
+				return false;
+			}
+
+			eToken[] tl(params eToken[] tokes) => tokes;
+
+			return IsBetween(tl(eToken.FunctionDef, eToken.Identifier, eToken.LeftParen),eToken.RightParen)
+				|| IsBetween(tl(eToken.FunctionDef), eToken.LeftParen)
+				|| IsBetween(tl(eToken.Lambda, eToken.LeftParen), eToken.RightParen);
+		}
+
+		int ScanLex(LexLine lex, int from, params eToken[] matches)
+		{
+			if (from < 0) return -1;
+			for (int i = from; i < lex.Tokens.Count; i++)
+			{
+				bool found = true;
+				for (int j = 0; j < matches.Length && j + i < lex.Tokens.Count; j++)
+				{
+					if (lex.Tokens[j + i].Type != matches[j])
+						found = false;
+				}
+				if (found) return i;
+			}
+			return -1;
+		}
+
+
 
 
 		string GetPathUnderCursor(Position cursor, WingraBuffer buffer, out bool shouldUseDollar)

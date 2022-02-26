@@ -12,7 +12,7 @@ namespace WingraLanguageServer
 	static class Loader
 	{
 		internal static string AsmPath => Path.GetDirectoryName(Assembly.GetAssembly(typeof(Loader)).Location);
-		internal static string StdLibPath => Path.Combine(AsmPath, "..", "lang", "StdLib");
+		internal static string StdLibPath => Path.Combine(AsmPath, "..", "lang", ".StdLib");
 		internal static string ExtLibPath => Path.Combine(AsmPath, "..", "lang", "extensions");
 		public static async Task<WingraProject> LoadProject(string path, DocFileServer server)
 		{
@@ -96,7 +96,8 @@ namespace WingraLanguageServer
 		static void AddFolderToTree(DirectoryInfo dir, WingraProject proj)
 		{
 			foreach (DirectoryInfo child in dir.GetDirectories())
-				AddFolderToTree(child, proj);
+				if (!child.Name.StartsWith('.'))
+					AddFolderToTree(child, proj);
 			foreach (FileInfo file in dir.GetFiles())
 			{
 				FileSystemInfo info = file;

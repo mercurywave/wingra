@@ -94,15 +94,17 @@ namespace Wingra.Parser
 	{
 		SStaticDeclaredPath _path;
 		List<SEnumValue> _children = new List<SEnumValue>();
-		public SEnumType(int fileLine, SStaticDeclaredPath path) : base(fileLine)
+		bool _isGlobal;
+		public SEnumType(int fileLine, SStaticDeclaredPath path, bool isGlobal = false) : base(fileLine)
 		{
 			_path = path;
+			_isGlobal = isGlobal;
 		}
 
 		internal override void OnAddedToTree(ParseContext context)
 		{
 			_path.Reserve(context.Comp, context.FileKey, context.FileLine);
-			context.Scope.RegisterDeclaringNamespace(_path.ToText(), true, false);
+			context.Scope.RegisterDeclaringNamespace(_path.ToText(), true, _isGlobal);
 			context.Scope.RegisterUsingNamespaceRef(_path.ToText(), true);
 			base.OnAddedToTree(context);
 		}

@@ -26,6 +26,7 @@ namespace Wingra.Interpreter
 
 		List<FileCodeInstance> _filesToInit = new List<FileCodeInstance>();
 		Dictionary<string, FileCodeInstance> AllFiles = new Dictionary<string, FileCodeInstance>();
+		HashSet<string> _mappedExternFunctions = new HashSet<string>();
 
 		public ORuntime()
 		{
@@ -213,10 +214,12 @@ namespace Wingra.Interpreter
 			if (var.IsBool || var.IsString || var.IsInt || var.IsFloat || var.IsNull)
 				exp = new SCompileConst(var);
 			StaticMap.AddStaticGlobal(path, type, fileKey, fileLine, null, exp);
-			LoadStaticVar(path, var);
+			LoadStaticVar(path, var, true);
+			if(var.IsLambdaLike)
+				_mappedExternFunctions.Add(path);
 		}
 
-		internal void LoadStaticVar(string path, Variable var)
+		internal void LoadStaticVar(string path, Variable var, bool allowOverwrite = false)
 		{
 			var split = StaticMapping.SplitPath(path);
 			if (split.Length == 1)
@@ -240,7 +243,16 @@ namespace Wingra.Interpreter
 				else target = test.Value;
 			}
 			var last = split[split.Length - 1];
-			if (target.HasChildKey(last)) throw new Exception("doubled static assignment " + path);
+			if (target.HasChildKey(last) && _mappedExternFunctions.Contains(path))
+			{
+				if (!allowOverwrite)
+					// this is a little sketchy - you could inject a function externally that isn't marked external
+					// probably not the end of the world
+					// I suppose I could build what is elligible for the runtime during compile?
+					return; // extern function was injected early - don't overwrite
+				else
+					throw new Exception("doubled static assignment " + path);
+			}
 			target.SetChild(new Variable(last), var, Heap);
 		}
 
@@ -282,6 +294,9 @@ namespace Wingra.Interpreter
 			InjectStaticVar(ExternalCalls.MakeFuncPath(path, name), new Variable(lamb), eStaticType.External, "", -1);
 		}
 
+		public Variable MakeExternalVar(object obj)
+			=> Variable.FromExternalObject(obj, Heap);
+
 		#endregion
 
 		#region query runners
@@ -304,6 +319,50 @@ namespace Wingra.Interpreter
 		{
 			using (MakeTempJob(out var job, code))
 				return job.RunExpression();
+		}
+		List<Variable> _RunExpList(CodeBlock code)
+		{
+			using (MakeTempJob(out var job, code))
+				return job.RunList();
+		}
+		List<Variable> _RunExpList(CodeBlock code, string name1, Variable value1)
+		{
+			using (MakeTempJob(out var job, code))
+			{
+				job.InjectLocal(name1, value1);
+				return job.RunList();
+			}
+		}
+		List<Variable> _RunExpList(CodeBlock code, string name1, Variable value1, string name2, Variable value2)
+		{
+			using (MakeTempJob(out var job, code))
+			{
+				job.InjectLocal(name1, value1);
+				job.InjectLocal(name2, value2);
+				return job.RunList();
+			}
+		}
+		IEnumerable<Variable> _IterateExpressionResults(CodeBlock code)
+		{
+			using (MakeTempJob(out var job, code))
+				return job.IterateExpressionResults();
+		}
+		IEnumerable<Variable> _IterateExpressionResults(CodeBlock code, string name1, Variable value1)
+		{
+			using (MakeTempJob(out var job, code))
+			{
+				job.InjectLocal(name1, value1);
+				return job.IterateExpressionResults();
+			}
+		}
+		IEnumerable<Variable> _IterateExpressionResults(CodeBlock code, string name1, Variable value1, string name2, Variable value2)
+		{
+			using (MakeTempJob(out var job, code))
+			{
+				job.InjectLocal(name1, value1);
+				job.InjectLocal(name2, value2);
+				return job.IterateExpressionResults();
+			}
 		}
 		void _RunTask(CodeBlock code)
 		{
@@ -376,6 +435,22 @@ namespace Wingra.Interpreter
 			=> _RunExp(qt.GetEntryPoint(this), name1, value1);
 		public Variable? Run(QueryTemplate qt, string name1, Variable value1, string name2, Variable value2)
 			=> _RunExp(qt.GetEntryPoint(this), name1, value1, name2, value2);
+
+		// be careful with these - the list contents could be garbage collected
+		// if the script is returning a list that's created on the fly, you need to iterate on the results instead
+		public List<Variable> RunList(QueryTemplate qt)
+			=> _RunExpList(qt.GetEntryPoint(this));
+		public List<Variable> RunList(QueryTemplate qt, string name1, Variable value1)
+			=> _RunExpList(qt.GetEntryPoint(this), name1, value1);
+		public List<Variable> RunList(QueryTemplate qt, string name1, Variable value1, string name2, Variable value2)
+			=> _RunExpList(qt.GetEntryPoint(this), name1, value1, name2, value2);
+
+		public IEnumerable<Variable> IterateExpressionResults(QueryTemplate qt)
+			=> _IterateExpressionResults(qt.GetEntryPoint(this));
+		public IEnumerable<Variable> IterateExpressionResults(QueryTemplate qt, string name1, Variable value1)
+			=> _IterateExpressionResults(qt.GetEntryPoint(this), name1, value1);
+		public IEnumerable<Variable> IterateExpressionResults(QueryTemplate qt, string name1, Variable value1, string name2, Variable value2)
+			=> _IterateExpressionResults(qt.GetEntryPoint(this), name1, value1, name2, value2);
 
 		public void Run(TaskTemplate qt)
 			=> _RunTask(qt.GetEntryPoint(this));
