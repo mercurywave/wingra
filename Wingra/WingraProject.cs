@@ -287,7 +287,9 @@ namespace Wingra
 	}
 	public class WingraCompile
 	{
+		// these are sort of duplicates. it would probably be good to restructure this a bit
 		internal List<AssemblyFile> Assemblies = new List<AssemblyFile>();
+		internal List<List<AssemblyFile>> AssemblyLoadChunks = new List<List<AssemblyFile>>();
 
 		public StringBuilder ExportByteCode()
 		{
@@ -318,11 +320,11 @@ namespace Wingra
 		internal void SortLoadOrder()
 		{
 			var orig = Assemblies.ToList();
-			Assemblies = SortFiles(orig);
+			AssemblyLoadChunks = SortFiles(orig);
 		}
-		static List<AssemblyFile> SortFiles(List<AssemblyFile> orig)
+		static List<List<AssemblyFile>> SortFiles(List<AssemblyFile> orig)
 		{
-			List<AssemblyFile> output = new List<AssemblyFile>();
+			List<List<AssemblyFile>> output = new List<List<AssemblyFile>>();
 			List<AssemblyFile> toAdd = orig.ToList();
 			var required = new DualIndex<string, AssemblyFile>();
 			var declares = new DualIndex<string, AssemblyFile>();
@@ -357,9 +359,10 @@ namespace Wingra
 					throw new Exception("Circular initialization dependency detected:\n"
 						+ util.Join(toAdd.Select(p => p.Key), "\n"));
 
+				output.Add(new List<AssemblyFile>());
 				foreach (var file in free)
 				{
-					output.Add(file);
+					output[output.Count - 1].Add(file);
 					toAdd.Remove(file);
 					declares.KillValues(file);
 				}

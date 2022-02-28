@@ -24,7 +24,8 @@ namespace Wingra.Interpreter
 		internal bool ShuttingDown = false;
 		internal Compiler _compiler;
 
-		List<FileCodeInstance> _filesToInit = new List<FileCodeInstance>();
+		List<FileCodeInstance> _currentInitChunk = new List<FileCodeInstance>();
+		List<List<FileCodeInstance>> _initOrderChunks = new List<List<FileCodeInstance>>();
 		Dictionary<string, FileCodeInstance> AllFiles = new Dictionary<string, FileCodeInstance>();
 		HashSet<string> _mappedExternFunctions = new HashSet<string>();
 
@@ -73,16 +74,21 @@ namespace Wingra.Interpreter
 
 		public void CheckIn(Variable var) => var.Dispose(Heap);
 
-		public void RegisterFiles(AssemblyFile file) => _filesToInit.Add(new FileCodeInstance(file, Heap));
+		public void RegisterFiles(AssemblyFile file) => _initOrderChunks.Add(new List<FileCodeInstance>() { new FileCodeInstance(file, Heap) });
 
 		public void RegisterFiles(WingraCompile comp)
 		{
-			foreach (var code in comp.Assemblies)
+			foreach (var aChunk in comp.AssemblyLoadChunks)
 			{
+				var chunk = new List<FileCodeInstance>();
+				_initOrderChunks.Add(chunk);
+				foreach(var code in aChunk)
+				{
 				var fci = new FileCodeInstance(code, Heap);
-				_filesToInit.Add(fci);
+				chunk.Add(fci);
 				AllFiles.Add(fci.Key, fci);
 				ScratchScopes[fci.Key] = new VariableTable(Heap);
+				}
 			}
 		}
 
@@ -92,30 +98,56 @@ namespace Wingra.Interpreter
 		DualIndex<string, FileCodeInstance> _requiredSymbols = new DualIndex<string, FileCodeInstance>();
 		internal void RegisterRequiredSymbol(string symbol, FileCodeInstance fci) => _requiredSymbols.Set(symbol, fci);
 
-		internal bool _initialized = false;
+		internal bool _initialized => (_initPhase == eInitPhase.InitFunc);
+		enum eInitPhase { NotStarted, FuncDef, StaticInit, DataGlo, StructFunc, InitFunc, Initialized }
+		eInitPhase _initPhase = eInitPhase.NotStarted;
+		MapSet<eInitPhase, FileCodeInstance> _initializedFiles = new MapSet<eInitPhase, FileCodeInstance>();
 		public void Initialize(Compiler dynamicCompiler)
 		{
 			_compiler = dynamicCompiler;
-			List<FileCodeInstance> initOrder = _filesToInit; // already sorted after compile
 
-			foreach (var file in initOrder)
-				RunSingleSetupMethod(file.FuncDefFunc);
-
-			foreach (var file in initOrder)
-				RunSingleSetupMethod(file.StaticInitFunc);
-
-			foreach (var file in initOrder)
-				RunSingleSetupMethod(file.DataGloFunc);
-
-			foreach (var file in initOrder)
-				RunSingleSetupMethod(file.StructFunc);
-
+			RunInitStage(eInitPhase.FuncDef);
+			RunInitStage(eInitPhase.StaticInit);
+			RunInitStage(eInitPhase.DataGlo);
+			RunInitStage(eInitPhase.StructFunc);
 			BuildRegistries();
+			RunInitStage(eInitPhase.InitFunc);
 
-			foreach (var file in initOrder)
-				RunSingleSetupMethod(file.InitFunc);
+			_initPhase = eInitPhase.Initialized;
+			_initializedFiles = null;
+		}
 
-			_initialized = true;
+		void RunInitStage(eInitPhase phase)
+		{
+			_initPhase = phase;
+			foreach(var chunk in _initOrderChunks)
+			{
+				_currentInitChunk = chunk;
+				foreach (var file in chunk)
+					TryInitFileAtCurrentStage(file);
+			}
+		}
+
+		void TryInitFileAtCurrentStage(FileCodeInstance file)
+		{
+			if (!_initializedFiles.Contains(_initPhase, file))
+			{
+				_initializedFiles.Set(_initPhase, file);
+				RunSingleSetupMethod(GetFuncForPhase(file, _initPhase));
+			}
+		}
+
+		CodeBlock GetFuncForPhase(FileCodeInstance fci, eInitPhase phase)
+		{
+			switch (phase)
+			{
+				case eInitPhase.FuncDef: return fci.FuncDefFunc;
+				case eInitPhase.StaticInit: return fci.StaticInitFunc;
+				case eInitPhase.DataGlo: return fci.DataGloFunc;
+				case eInitPhase.StructFunc: return fci.StructFunc;
+				case eInitPhase.InitFunc: return fci.InitFunc;
+				default: throw new NotImplementedException();
+			}
 		}
 
 		public async Task RunMain()
@@ -181,7 +213,18 @@ namespace Wingra.Interpreter
 		{
 			var target = StaticScope.GetVarOrNull(split[0]);
 			if (target == null)
-				throw new RuntimeException("could not find static path " + util.Join(split, "."));
+			{
+				if (!_initialized)
+				{
+					// PERF: this could probably be faster if I had files export their external declared symbols
+					// as is, this means a slightly wonky n^2 worst case, but it only happens once, and probably isn't that bad
+					foreach (var fci in _currentInitChunk)
+						TryInitFileAtCurrentStage(fci);
+					target = StaticScope.GetVarOrNull(split[0]);
+				}
+				if (target == null)
+					throw new RuntimeException("could not find static path " + util.Join(split, "."));
+			}
 			for (int i = 1; i < split.Length; i++)
 			{
 				var next = target.Value.TryGetChild(split[i]);
@@ -215,7 +258,7 @@ namespace Wingra.Interpreter
 				exp = new SCompileConst(var);
 			StaticMap.AddStaticGlobal(path, type, fileKey, fileLine, null, exp);
 			LoadStaticVar(path, var, true);
-			if(var.IsLambdaLike)
+			if (var.IsLambdaLike)
 				_mappedExternFunctions.Add(path);
 		}
 
