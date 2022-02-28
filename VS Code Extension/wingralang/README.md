@@ -16,12 +16,12 @@ No settings currently
 
 ## Known Issues
 
-Occassionally, a race condition will lead to cryptic errors while typing about entries already added to a table. Extension is generally able to recover.
+None
 
 ## Release Notes
 
 The Wingra language is in an early alpha stage, and this extension is less stable
 
-### 0.0.1
+### 0.0.4
 
-Initial release of extension
+Language updates
