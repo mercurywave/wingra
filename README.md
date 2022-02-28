@@ -19,7 +19,7 @@ Originally created to support game development, the language is general purpose 
 ::CustomersWhoBought(product, ?atleast => customers)
     atleast ?: 1 // default to 1 if not passed
     @set : $Set.New()
-	using Set
+    using Set
     // find all completed orders
     for @order of ^AllOrders.$List.Where(`it.isComplete`)
         // check quantity
@@ -30,6 +30,7 @@ Originally created to support game development, the language is general purpose 
     customers : set.$ToList()
 ```
 ### Syntax Features
+- Static resolution with $ can be verified at dev-time
 - Succinct lambda expression syntax with \` \`
 - Multiple named output parameters from functions
 - Structural safety with async functions and error handling
