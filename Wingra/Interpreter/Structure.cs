@@ -112,7 +112,14 @@ namespace Wingra.Interpreter
 				SwitchStructure(eKeyType.Var, heap, Contents.Capacity + 1);
 		}
 		void MakeLarger(eKeyType targetType, Malloc heap)
-			=> SwitchStructure(targetType, heap, Contents.Capacity + 1);
+		{
+			var currType = GetIdealCurrType();
+			if (currType == eKeyType.Queue && targetType == eKeyType.Int)
+				targetType = eKeyType.Queue;
+			if (currType != targetType)
+				targetType = eKeyType.Var;
+			SwitchStructure(targetType, heap, Contents.Capacity + 1);
+		}
 		void SwitchStructure(eKeyType targetType, Malloc heap, int capacity)
 		{
 			IStructure next;
@@ -151,8 +158,19 @@ namespace Wingra.Interpreter
 		{
 			if (Contents is DList) return eKeyType.Int;
 			if (Contents is DObject) return eKeyType.String;
+			if (Contents is DQueue) return eKeyType.Queue;
 			//if (Contents is ) //TODO:
 			return eKeyType.Var;
+		}
+		eKeyType GetIdealCurrType()
+		{
+			if (Contents is DMixedStruct)
+			{
+				var mix = Contents as DMixedStruct;
+				if (mix.IsAllStringKeys())
+					return eKeyType.String;
+			}
+			return CurrType();
 		}
 		public Variable GetFirstKey(Malloc heap) => Contents.GetFirstKey(heap);
 		public Variable GetLastKey(Malloc heap) => Contents.GetLastKey(heap);
@@ -709,6 +727,9 @@ namespace Wingra.Interpreter
 			foreach (var pair in original)
 				_dict.Add(pair.Key, pair.Value);
 		}
+
+		public bool IsAllStringKeys()
+			=> _dict.Keys.All(k => k.IsString);
 	}
 
 	class DQueue : IStructure

@@ -602,8 +602,9 @@ namespace WingraLanguageServer.Services
 				{
 					idx = Scan(idx, start);
 					if (idx < 0 || currIdx < idx) return false; // passed the cursor
-					var end = Scan(idx + start.Length, ender);
+					var end = Scan(idx, ender);
 					if (end < 0 || currIdx <= end) return true;
+					idx++;
 				}
 				return false;
 			}
