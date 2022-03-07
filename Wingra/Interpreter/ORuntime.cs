@@ -37,7 +37,7 @@ namespace Wingra.Interpreter
 
 		public void CheckIn(Job jb)
 		{
-			if (!Debug) _jobPool.Push(jb);
+			if (!Debug && !ShuttingDown) _jobPool.Push(jb);
 		}
 		public Job CheckOutJob()
 		{
@@ -57,6 +57,7 @@ namespace Wingra.Interpreter
 		}
 		internal void CheckIn(AsyncJob jb)
 		{
+			if (Debug || ShuttingDown) return;
 			_activeJobs.Remove(jb.ID);
 			_bgJobPool.Push(jb);
 		}
@@ -82,12 +83,12 @@ namespace Wingra.Interpreter
 			{
 				var chunk = new List<FileCodeInstance>();
 				_initOrderChunks.Add(chunk);
-				foreach(var code in aChunk)
+				foreach (var code in aChunk)
 				{
-				var fci = new FileCodeInstance(code, Heap);
-				chunk.Add(fci);
-				AllFiles.Add(fci.Key, fci);
-				ScratchScopes[fci.Key] = new VariableTable(Heap);
+					var fci = new FileCodeInstance(code, Heap);
+					chunk.Add(fci);
+					AllFiles.Add(fci.Key, fci);
+					ScratchScopes[fci.Key] = new VariableTable(Heap);
 				}
 			}
 		}
@@ -120,7 +121,7 @@ namespace Wingra.Interpreter
 		void RunInitStage(eInitPhase phase)
 		{
 			_initPhase = phase;
-			foreach(var chunk in _initOrderChunks)
+			foreach (var chunk in _initOrderChunks)
 			{
 				_currentInitChunk = chunk;
 				foreach (var file in chunk)
@@ -229,7 +230,17 @@ namespace Wingra.Interpreter
 			{
 				var next = target.Value.TryGetChild(split[i]);
 				if (next.HasValue) target = next.Value;
-				else throw new RuntimeException("could not find static path " + util.Join(split, "."));
+				else
+				{
+					if (!_initialized)
+					{
+						foreach (var fci in _currentInitChunk)
+							TryInitFileAtCurrentStage(fci);
+						target = target.Value.TryGetChild(split[i]);
+					}
+					if (!target.HasValue)
+						throw new RuntimeException("could not find static path " + util.Join(split, "."));
+				}
 			}
 			return target.Value;
 		}
