@@ -165,7 +165,7 @@ namespace WingraLanguageServer
 					{
 						if (_needRecompile)
 						{
-							Prj.CompileAll(Cmplr);
+							Prj.CompileFromParse(Cmplr, _parsedFiles);
 							_needRecompile = false;
 						}
 					}

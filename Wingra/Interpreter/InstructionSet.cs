@@ -894,6 +894,10 @@ namespace Wingra.Interpreter
 					var obj = j.Runtime.LoadStaticGlobal(path);
 					j.Registers.Push(obj.MakePointer());
 				};
+			}, asm =>
+			{
+				var path = asm[0].Literal;
+				return j => j.Runtime.IsStaticGlobalInitialized(path);
 			});
 
 			Register(eAsmCommand.LoadPathFile, i => 0, o => 1, asm =>
@@ -901,9 +905,13 @@ namespace Wingra.Interpreter
 				var path = asm[0].Literal;
 				return j =>
 				{
-					var obj = j.Code.FileCode.Constants.GetPathOrNull(path) ?? new Variable();
-					j.Registers.Push(obj.MakePointer());
+					var obj = j.Code.FileCode.Constants.GetPathOrNull(path);
+					j.Registers.Push(obj.Value.MakePointer());
 				};
+			}, asm =>
+			{
+				var path = asm[0].Literal;
+				return j => j.Code.FileCode.Constants.GetPathOrNull(path).HasValue;
 			});
 			#endregion
 
@@ -1417,11 +1425,20 @@ namespace Wingra.Interpreter
 
 		void Register(eAsmCommand cmd
 			, Func<AssemblyCodeLine, int> pop, Func<AssemblyCodeLine, int> push
-			, Func<InstructionContext, Action<Job>> fallback, Func<Job, Action<Job>> optimize = null)
+			, Func<InstructionContext, Action<Job>> fallback)
 		{
 			_pops.Add(cmd, pop);
 			_pushes.Add(cmd, push);
-			Register(sing(cmd), fallback, optimize);
+			Register(sing(cmd), fallback);
+		}
+		void Register(eAsmCommand cmd
+			, Func<AssemblyCodeLine, int> pop, Func<AssemblyCodeLine, int> push
+			, Func<InstructionContext, Action<Job>> fallback
+			, Func<InstructionContext, Func<Job, bool>> canRun)
+		{
+			_pops.Add(cmd, pop);
+			_pushes.Add(cmd, push);
+			Register(sing(cmd), fallback, canRun);
 		}
 
 		void Register(eAsmCommand cmd)
@@ -1436,9 +1453,9 @@ namespace Wingra.Interpreter
 			_index.Add(pattern.Match, new Operation(pattern, asm => new Instruction(act(asm))));
 		}
 
-		void Register(OpPattern pattern, Func<InstructionContext, Action<Job>> fallback, Func<Job, Action<Job>> optimize)
+		void Register(OpPattern pattern, Func<InstructionContext, Action<Job>> fallback, Func<InstructionContext, Func<Job, bool>> canRun)
 		{
-			_index.Add(pattern.Match, new Operation(pattern, asm => new Instruction(fallback(asm), optimize)));
+			_index.Add(pattern.Match, new Operation(pattern, asm => new Instruction(fallback(asm), canRun(asm))));
 		}
 		#endregion
 

@@ -24,7 +24,6 @@ namespace Wingra.Interpreter
 		internal bool ShuttingDown = false;
 		internal Compiler _compiler;
 
-		List<FileCodeInstance> _currentInitChunk = new List<FileCodeInstance>();
 		List<List<FileCodeInstance>> _initOrderChunks = new List<List<FileCodeInstance>>();
 		Dictionary<string, FileCodeInstance> AllFiles = new Dictionary<string, FileCodeInstance>();
 		HashSet<string> _mappedExternFunctions = new HashSet<string>();
@@ -121,20 +120,40 @@ namespace Wingra.Interpreter
 		void RunInitStage(eInitPhase phase)
 		{
 			_initPhase = phase;
+			List<Job> jobs = new List<Job>();
 			foreach (var chunk in _initOrderChunks)
 			{
-				_currentInitChunk = chunk;
 				foreach (var file in chunk)
-					TryInitFileAtCurrentStage(file);
-			}
-		}
-
-		void TryInitFileAtCurrentStage(FileCodeInstance file)
-		{
-			if (!_initializedFiles.Contains(_initPhase, file))
-			{
-				_initializedFiles.Set(_initPhase, file);
-				RunSingleSetupMethod(GetFuncForPhase(file, _initPhase));
+				{
+					var fun = GetFuncForPhase(file, phase);
+					if (fun == null) continue;
+					var jb = CheckOutJob();
+					jb.Initialize(fun);
+					jobs.Add(jb);
+				}
+				bool didWork = true;
+				HashSet<Job> complete = new HashSet<Job>();
+				while (didWork)
+				{
+					didWork = false;
+					foreach (var jb in jobs)
+					{
+						var done = jb.RunContinueInit(out var iWorked);
+						didWork |= iWorked;
+						if (done)
+							complete.Add(jb);
+					}
+					foreach (var jb in complete)
+						CheckIn(jb);
+					jobs.RemoveAll(j => complete.Contains(j));
+					complete.Clear();
+				}
+				// this will probably error if there are any jobs - there is a deadlock between two initializations
+				foreach (var jb in jobs)
+				{
+					jb.RunToCompletion();
+					CheckIn(jb);
+				}
 			}
 		}
 
@@ -212,35 +231,24 @@ namespace Wingra.Interpreter
 			=> LoadStaticGlobal(StaticMapping.SplitPath(path));
 		Variable LoadStaticGlobal(string[] split)
 		{
+			var target = TryLoadStaticGlobal(split);
+			if (!target.HasValue)
+				throw new RuntimeException("could not find static path " + util.Join(split, "."));
+			return target.Value;
+		}
+		internal bool IsStaticGlobalInitialized(string path)
+			=> IsStaticGlobalInitialized(StaticMapping.SplitPath(path));
+		internal bool IsStaticGlobalInitialized(string[] split)
+			=> TryLoadStaticGlobal(split).HasValue;
+		Variable? TryLoadStaticGlobal(string[] split)
+		{
 			var target = StaticScope.GetVarOrNull(split[0]);
-			if (target == null)
-			{
-				if (!_initialized)
-				{
-					// PERF: this could probably be faster if I had files export their external declared symbols
-					// as is, this means a slightly wonky n^2 worst case, but it only happens once, and probably isn't that bad
-					foreach (var fci in _currentInitChunk)
-						TryInitFileAtCurrentStage(fci);
-					target = StaticScope.GetVarOrNull(split[0]);
-				}
-				if (target == null)
-					throw new RuntimeException("could not find static path " + util.Join(split, "."));
-			}
+			if (target == null) return null;
 			for (int i = 1; i < split.Length; i++)
 			{
 				var next = target.Value.TryGetChild(split[i]);
 				if (next.HasValue) target = next.Value;
-				else
-				{
-					if (!_initialized)
-					{
-						foreach (var fci in _currentInitChunk)
-							TryInitFileAtCurrentStage(fci);
-						target = target.Value.TryGetChild(split[i]);
-					}
-					if (!target.HasValue)
-						throw new RuntimeException("could not find static path " + util.Join(split, "."));
-				}
+				else return null;
 			}
 			return target.Value;
 		}

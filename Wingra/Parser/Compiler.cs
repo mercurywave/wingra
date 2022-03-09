@@ -45,7 +45,7 @@ namespace Wingra.Parser
 		{
 			InlineDepth = 0;
 			_macroRuntime = new ORuntime() { Debug = _isDebug, StaticMap = this.StaticMap };
-			_macroCompiler = new Compiler(_macroRuntime.StaticMap, this);
+			_macroCompiler = new Compiler(this.StaticMap, this);
 			LCompiler.Setup(_macroRuntime, this);
 		}
 

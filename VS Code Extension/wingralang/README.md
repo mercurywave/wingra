@@ -22,6 +22,6 @@ None
 
 The Wingra language is in an early alpha stage, and this extension is less stable
 
-### 0.0.6
+### 0.0.7
 
 Bug Fixes

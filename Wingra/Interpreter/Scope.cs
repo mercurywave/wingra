@@ -27,6 +27,7 @@ namespace Wingra.Interpreter
 			_nextLinePointer = CurrentLinePointer + 1;
 			return CurrentLinePointer;
 		}
+		public int PeekLinePointer() => _nextLinePointer;
 
 		// luckily, there can only be one trap at a time for the moment
 		internal int _errorTrapJump = -1;

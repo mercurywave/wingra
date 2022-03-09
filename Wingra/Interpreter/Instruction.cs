@@ -7,13 +7,13 @@ namespace Wingra.Interpreter
 	class Instruction
 	{
 		public Action<Job> FallBack;
-		public Func<Job, Action<Job>> Optimizer = null;
+		public Func<Job, bool> CanRun = null;
 
 		public Instruction(Action<Job> act) { FallBack = act; }
-		public Instruction(Action<Job> fallback, Func<Job, Action<Job>> optimize)
+		public Instruction(Action<Job> fallback, Func<Job, bool> canRun)
 		{
 			FallBack = fallback;
-			Optimizer = optimize;
+			CanRun = canRun;
 		}
 	}
 

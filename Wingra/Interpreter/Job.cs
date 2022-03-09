@@ -87,6 +87,26 @@ namespace Wingra.Interpreter
 			}
 		}
 
+		internal bool RunContinueInit(out bool didWork)
+		{
+			// returns true only when the job has reached completion
+			// returns false if the next operation requires some object that isn't initiaized
+			didWork = false;
+			while (!_stack.IsEmpty && CurrentScope._nextLinePointer < Code.Instructions.Count)
+			{
+				var line = CurrentScope.PeekLinePointer();
+				var check = Code.InstructionMetadata[line];
+				var act = Code.Instructions[line];
+				if (check.CanRun != null && !check.CanRun(this))
+					return false;
+				CurrentScope.AdvanceLinePointer();
+				try { act(this); } // TODO: the error trap should probably be moved outside the loop
+				catch (Exception ex) { HandleError(ex); break; }
+				didWork = true;
+			}
+			return true;
+		}
+
 		public enum eRunStatus { Complete, Halted }
 		public eRunStatus RunBoxed(int instructions = 1000)
 		{
@@ -553,7 +573,7 @@ namespace Wingra.Interpreter
 								return;
 						}
 					}
-					catch (Exception ex) { HandleError(ex);  break; }
+					catch (Exception ex) { HandleError(ex); break; }
 				}
 			}
 			catch (Exception ex) { HandleError(ex); }

@@ -210,11 +210,23 @@ namespace Wingra
 
 		public WingraCompile CompileAll(Compiler compiler, WingraSymbols symbols = null)
 		{
-			CompileErrors.Clear();
+			foreach (var child in GetProjectLoadOrder())
+				child.CompileErrors.Clear();
 			var comp = new WingraCompile();
 
 			foreach (var child in GetProjectLoadOrder())
 				child._CompileAll(comp, compiler, symbols);
+
+			comp.SortLoadOrder();
+			return comp;
+		}
+
+		public WingraCompile CompileFromParse(Compiler compiler, Dictionary<WingraBuffer, STopOfFile> parsedFiles, WingraSymbols symbols = null)
+		{
+			var comp = new WingraCompile();
+
+			foreach (var child in GetProjectLoadOrder())
+				child._CompileAllFromParse(comp, compiler, parsedFiles, symbols);
 
 			comp.SortLoadOrder();
 			return comp;
@@ -226,6 +238,7 @@ namespace Wingra
 			foreach (var file in files)
 			{
 				compiler.StaticMap.FlushFile(file.Key);
+				compiler.ClearMacroCacheForFile(file.Key);
 				PreCompileFile(compiler, file);
 			}
 			compiler.Bootstrap(CompileErrors.GetLogger());
@@ -237,6 +250,14 @@ namespace Wingra
 			for (int i = 0; i < files.Length; i++)
 				if (parsed[i] != null)
 					CompileFile(compiler, files[i], parsed[i], comp, symbols);
+		}
+
+		void _CompileAllFromParse(WingraCompile comp, Compiler compiler, Dictionary<WingraBuffer, STopOfFile> parsedFiles, WingraSymbols symbols = null)
+		{
+			var files = IterAllFiles().ToArray();
+			foreach (var file in files)
+				if (parsedFiles.ContainsKey(file))
+					CompileFile(compiler, file, parsedFiles[file], comp, symbols);
 		}
 
 		void PreCompileFile(Compiler compiler, WingraBuffer file)
