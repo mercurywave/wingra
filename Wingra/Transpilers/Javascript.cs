@@ -302,8 +302,9 @@ namespace Wingra.Transpilers
 						break;
 					case eAsmCommand.LoadPathFile:
 						{
-							var fk = GetShortFileKey(code.FileKey);
-							Push(Ref(RUNTIME + ".getStaticFile(" + fk + "," + JsStr(line.Literal) + ")"));
+							var path = util.Piece(line.Literal, "|", 1);
+							var fk = util.Piece(line.Literal, "|", 2);
+							Push(Ref(RUNTIME + ".getStaticFile(" + fk + "," + JsStr(path) + ")"));
 							break;
 						}
 					case eAsmCommand.LoadScratch:

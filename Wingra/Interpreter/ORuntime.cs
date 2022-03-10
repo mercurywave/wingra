@@ -252,6 +252,13 @@ namespace Wingra.Interpreter
 			}
 			return target.Value;
 		}
+		internal Variable LoadConstantFromFile(string path, string file)
+			=> TryLoadConstantFromFile(path, file).Value;
+		internal Variable? TryLoadConstantFromFile(string path, string file)
+		{
+			var fci= AllFiles[file];
+			return fci.Constants.GetPathOrNull(path);
+		}
 		public Variable LoadStaticFromFile(string path, string fileKey)
 			=> LoadStaticFromFile(StaticMapping.SplitPath(path), fileKey);
 		Variable LoadStaticFromFile(string[] split, string fileKey)

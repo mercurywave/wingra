@@ -49,7 +49,7 @@ namespace Wingra.Parser
 				if (type == StaticMapping.DATA_ABS)
 					func.Add(asmStackLevel, eAsmCommand.LoadPathData, path);
 				if (type == StaticMapping.FILE_ABS)
-					func.Add(asmStackLevel, eAsmCommand.LoadPathFile, path);
+					func.Add(asmStackLevel, eAsmCommand.LoadPathFile, util.Piece(fullPath, "|", 2, 3));
 				foreach (var dyn in dynamicPath)
 					func.Add(asmStackLevel, eAsmCommand.DotAccess, dyn);
 			}

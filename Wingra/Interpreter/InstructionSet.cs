@@ -902,16 +902,19 @@ namespace Wingra.Interpreter
 
 			Register(eAsmCommand.LoadPathFile, i => 0, o => 1, asm =>
 			{
-				var path = asm[0].Literal;
+				var path = util.Piece(asm[0].Literal, "|", 1);
+				var file = util.Piece(asm[0].Literal, "|", 2);
 				return j =>
 				{
-					var obj = j.Code.FileCode.Constants.GetPathOrNull(path);
-					j.Registers.Push(obj.Value.MakePointer());
+					var obj = j.Runtime.LoadConstantFromFile(path, file);
+					j.Registers.Push(obj.MakePointer());
 				};
 			}, asm =>
 			{
-				var path = asm[0].Literal;
-				return j => j.Code.FileCode.Constants.GetPathOrNull(path).HasValue;
+				var path = util.Piece(asm[0].Literal, "|", 1);
+				var file = util.Piece(asm[0].Literal, "|", 2);
+				return j =>
+					j.Runtime.TryLoadConstantFromFile(path, file).HasValue;
 			});
 			#endregion
 
