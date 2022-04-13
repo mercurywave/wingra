@@ -348,7 +348,7 @@ namespace Wingra.Parser
 			if (_optOnLeft)
 				func.Add(asmStackLevel, eAsmCommand.ShortCircuitNull);
 			else
-				func.Add(asmStackLevel, eAsmCommand.ShortCircuitPropNull, (_prop as IHaveIdentifierSymbol).Symbol);
+				func.Add(asmStackLevel, eAsmCommand.ShortCircuitPropNull, (_prop as IHaveLocalIdentifierSymbol).Symbol);
 
 			if (_prop is ICanBeProperty)
 				(_prop as ICanBeProperty).EmitPropertyAction(compiler, file, func, asmStackLevel + 1, errors, this);
@@ -362,12 +362,12 @@ namespace Wingra.Parser
 				func.Add(asmStackLevel, eAsmCommand.ShortCircuitNull);
 			else
 			{
-				var ident = (_prop as IHaveIdentifierSymbol)?.Symbol ?? "";
+				var ident = (_prop as IHaveLocalIdentifierSymbol)?.Symbol ?? "";
 				func.Add(asmStackLevel, eAsmCommand.ShortCircuitPropNull, ident);
 			}
 
-			if (_prop is IHaveIdentifierSymbol)
-				func.Add(asmStackLevel + 1, eAsmCommand.FreeProperty, (_prop as IHaveIdentifierSymbol).Symbol);
+			if (_prop is IHaveLocalIdentifierSymbol)
+				func.Add(asmStackLevel + 1, eAsmCommand.FreeProperty, (_prop as IHaveLocalIdentifierSymbol).Symbol);
 			else throw new ParserException("unexpected type for free");
 		}
 		public override IEnumerable<SExpressionComponent> IterExpChildren()

@@ -319,8 +319,9 @@ namespace Wingra.Interpreter
 			return sb.ToString();
 		}
 
-		public string DebugPrint(int bcLine)
+		public string DebugPrint(int bcLine, bool wide = false)
 		{
+			//TODO: doesn't account for float literals
 			var line = this[bcLine];
 			StringBuilder sb = new StringBuilder();
 			sb.Append(RJustify("" + bcLine, 6));
@@ -328,7 +329,7 @@ namespace Wingra.Interpreter
 			sb.Append(RJustify("" + line.AssemblyStackLevel, 4));
 			sb.Append(RJustify("" + line.Command.ToString(), 20));
 			sb.Append(RJustify("" + line.Param, 9));
-			var str = util.BoundedSubstr(line.Literal.Replace("\n", "\\n"), 0, 10);
+			var str = util.BoundedSubstr(line.Literal.Replace("\n", "\\n"), 0, wide ? 80 : 10);
 			str = LJustify(str, 10);
 			sb.Append("  " + str);
 			return sb.ToString();

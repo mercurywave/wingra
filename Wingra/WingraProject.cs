@@ -94,6 +94,7 @@ namespace Wingra
 
 		public bool DoRunTests => CheckConfigFlag("runTests");
 		public bool IsJsExport => CheckConfigString("jsExport") != "";
+		public bool DoAsmExport => CheckConfigString("asmDebugExport") != "";
 		public bool CheckConfigFlag(string key)
 		{
 			if (Config == null) return false;

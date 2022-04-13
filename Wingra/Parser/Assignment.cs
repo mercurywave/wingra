@@ -268,7 +268,7 @@ namespace Wingra.Parser
 		}
 	}
 
-	class SReserveIdentifier : SStatement, IHaveIdentifierSymbol, IDeclareVariablesAtScope
+	class SReserveIdentifier : SStatement, IHaveLocalIdentifierSymbol, IDeclareVariablesAtScope
 	{
 		internal RelativeTokenReference _source;
 		public SReserveIdentifier(RelativeTokenReference toke, int fileLine) : base(fileLine)

@@ -28,7 +28,11 @@ namespace Wingra.Parser
 			_ResetMacroRuntime();
 		}
 		// primarily for building the static map prior to export, where symbols won't be resolved during the compile
-		public Compiler(WingraProject proj, StaticMapping mapping, bool isSuggestion) : this(mapping, false, proj.DoRunTests, isSuggestion, false) { }
+		public Compiler(WingraProject proj, StaticMapping mapping, bool isSuggestion) : this(mapping, false, proj.DoRunTests, isSuggestion, false)
+		{
+			if (proj.CheckConfigFlag("disableOptimizations"))
+				Optimizations = false;
+		}
 		public Compiler(WingraProject proj, StaticMapping mapping) : this(proj, mapping, false) { }
 		public Compiler(WingraProject proj) : this(proj, new StaticMapping()) { }
 		Compiler(StaticMapping mapping, Compiler parent)
@@ -106,7 +110,7 @@ namespace Wingra.Parser
 					leadingTabs = true;
 				if (!leadingSpaces && lead.Contains(' '))
 					leadingSpaces = true;
-				if(leadingSpaces && leadingTabs)
+				if (leadingSpaces && leadingTabs)
 				{
 					errors.LogError("Mix of leading tabs and spaces - parsing might behave erratically", buffLine, null, eErrorType.Warning);
 					break;

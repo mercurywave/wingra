@@ -17,6 +17,8 @@ class ORuntime {
 		this._jobId = 1;
 		this._tasks = [];
 		this._taskId = 1;
+		this._pipes = [];
+		this._pipeId = 1;
 		this.setupStandardHooks();
 	}
 
@@ -28,7 +30,7 @@ class ORuntime {
 		this.AddExternalMethod("Obj.NextKey", function (val) { return OObj.getNextKey(this, val); });
 		this.AddExternalMethod("Obj.PrevKey", function (val) { return OObj.getPrevKey(this, val); });
 		this.AddExternalMethod("Obj.Count", function () { return OObj.ChildCount(this) });
-		this.AddExternalMethod("Obj.Keys", function () { return new OObj(null, Object.keys(this)); });
+		this.AddExternalMethod("Obj.Keys", function () { return new OObj(null, OObj.getKeys(this)); });
 		this.AddExternalMethod("Obj.HasChildren", function () { return OObj.ChildCount(this) > 0; });
 		this.AddExternalMethod("Obj.ShallowCopy", function () { return new OObj(null, { ...this.inner }) });
 
@@ -131,7 +133,7 @@ class ORuntime {
 
 		this.AddExternalFunction("Promise.Create", () => {
 			var id = this._taskId++;
-			this._tasks[id] = MakeDeferral(id);
+			_run._tasks[id] = MakeDeferral(id);
 			return id;
 		});
 		this.AddExternalMethod("Promise.Resolve", function () {
@@ -142,6 +144,49 @@ class ORuntime {
 		this.AddExternalMethodAsync("Promise.Wait", async function () {
 			var job = _run._tasks[this];
 			await job;
+		});
+
+		this.AddExternalFunction("Pipe.Create", () => {
+			var id = this._pipeId++;
+			_run._pipes[id] = MakeDeferral(id);
+			return id;
+		});
+		this.AddExternalMethod("Pipe.Kill", function () {
+			var job = _run._pipes[this];
+			job.KILLED = true;
+			job.Complete();
+			delete _run._pipes[this];
+		});
+		this.AddExternalMethod("Pipe.IsLive", function () {
+			return _run._pipes[this] && !_run._pipes[this].KILLED;
+		});
+		this.AddExternalMethod("Pipe.Write", function (data) {
+			var job = _run._pipes[this];
+			if(!job || job.KILLED) throw "pipe is already closed";
+			job.data = data;
+			job.Complete();
+			delete _run._pipes[this];
+		});
+		this.AddExternalMethod("Pipe.Clear", function () {
+			var job = _run._pipes[this];
+			if(!job || job.KILLED) return;
+			job.data = null;
+		});
+		this.AddExternalMethod("Pipe.HasData", function () {
+			var job = _run._pipes[this];
+			if(!job || job.KILLED) return false;
+			return job.data != null;
+		});
+		this.AddExternalMethodAsync("Pipe.ReadAsync", async function () {
+			var job = _run._pipes[this];
+			if(!job || job.KILLED) return null;
+			await job;
+			return job.data;
+		});
+		this.AddExternalMultiMethod("Pipe.TryRead", function () {
+			var job = _run._pipes[this];
+			if(!job || job.KILLED) return [null , false];
+			return [job.data, true];
 		});
 
 
@@ -201,33 +246,39 @@ class ORuntime {
 	}
 
 	AddExternalFunction(path, lamb) {
-		this.setStaticGlo(path, OObj.MakeFunc(function (_, ...args) { return [lamb.apply(null, args)]; }));
+		this.setStaticGlo(path, OObj.MakeFunc(function (_, ...args) { return [lamb.apply(null, args)]; }), true);
 	}
 	AddExternalMethod(path, lamb) {
 		this.setStaticGlo(path, OObj.MakeFunc(function (scope, ...args) {
 			return [lamb.apply(scope.__THIS, args)];
-		}));
+		}), true);
 	}
 
 	AddExternalMultiMethod(path, lamb) // ::Foo(=> x,y) // need to return array
 	{
 		this.setStaticGlo(path, OObj.MakeFunc(function (scope, ...args) {
 			return lamb.apply(scope.__THIS, args);
-		}));
+		}), true);
 	}
 
 	AddExternalFunctionAsync(path, lamb) {
 		this.setStaticGlo(path, OObj.MakeFunc(async function (_, ...args) {
 			return [await lamb.apply(null, args)];
-		}));
+		}), true);
 	}
 	AddExternalMethodAsync(path, lamb) {
 		this.setStaticGlo(path, OObj.MakeFunc(async function (scope, ...args) {
 			return [await lamb.apply(scope.__THIS, args)];
-		}));
+		}), true);
+	}
+	AddExternalMethodAsyncMulti(path, lamb) {
+		this.setStaticGlo(path, OObj.MakeFunc(async function (scope, ...args) {
+			return await lamb.apply(scope.__THIS, args);
+		}), true);
 	}
 
-	setStaticGlo(path, value) {
+	setStaticGlo(path, value, canOverwrite) {
+		if(!canOverwrite && this.StaticGlo[path] != null) return;
 		if (value instanceof OObj)
 			value.parent = this; // make sure this doesn't get stolen
 		this.StaticGlo[path] = value;
@@ -540,7 +591,13 @@ class OObj {
 			delete obj.keyMap[key];
 		obj.dirty = true;
 		var pop = obj.inner[key];
-		delete obj.inner[key];
+		if(Array.isArray(obj.inner) && obj.inner.length && key == obj.inner.length - 1) {
+			// special cast - arrays will leave empty elements, which is annoying at the end of the array
+			obj.inner.pop();
+		}
+		else {
+			delete obj.inner[key];
+		}
 		if ((pop instanceof OObj) && (pop.parent == obj)) {
 			pop.parent = null;
 			pop.owned = false;
@@ -566,10 +623,25 @@ class OObj {
 		return obj.inner[key];
 	}
 
+	static getKeys(obj) {
+		var inner = gtInner(obj);
+		if (Array.isArray(inner)) {
+			// this is finicky because empty array elements are a special case
+			var list = [];
+			for (const [index, element] of inner.entries()) {
+				if(element != undefined) {
+					list.push(index);
+				}
+			}
+			return list;
+		}
+		return Object.keys(inner);
+	}
+
 	static getFirstKey(obj) {
 		if (!(obj instanceof OObj)) { trace( "variable is not obj"); }
 		obj._checkDirty();
-		const keys = Object.keys(obj.inner);
+		const keys = OObj.getKeys(obj);
 		if (keys.length == 0) { return null; }
 		return OObj._exportKey(keys[0], obj);
 	}
@@ -577,7 +649,7 @@ class OObj {
 	static getLastKey(obj) {
 		if (!(obj instanceof OObj)) { trace( "variable is not obj"); }
 		obj._checkDirty();
-		const keys = Object.keys(obj.inner);
+		const keys = OObj.getKeys(obj);
 		if (keys.length == 0) { return null; }
 		const k = keys[keys.length - 1];
 		return OObj._exportKey(k, obj);
@@ -586,7 +658,7 @@ class OObj {
 	static getNextKey(obj, prev) {
 		if (!(obj instanceof OObj)) { trace( "variable is not obj"); }
 		obj._checkDirty();
-		const keys = Object.keys(obj.inner);
+		const keys = OObj.getKeys(obj);
 		if (prev === undefined) prev = "";
 		var idx = OObj._binarySearch(keys, "" + makeKey(prev, obj));
 		if (idx >= 0) { return OObj._exportKey(keys[idx + 1], obj); }
@@ -596,7 +668,7 @@ class OObj {
 	static getPrevKey(obj, prev) {
 		if (!(obj instanceof OObj)) { trace( "variable is not obj"); }
 		obj._checkDirty();
-		const keys = Object.keys(obj.inner);
+		const keys = OObj.getKeys(obj);
 		if (prev === undefined || prev === "") { return OObj.getLastKey(obj); }
 		var idx = OObj._binarySearch(keys, "" + makeKey(prev, obj));
 		if (idx > 0) { return OObj._exportKey(keys[idx - 1], obj); }

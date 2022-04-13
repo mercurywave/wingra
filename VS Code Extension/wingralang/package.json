@@ -3,7 +3,7 @@
     "publisher": "MercuryWave",
     "displayName": "Wingra Language",
     "description": "Langauge support for Wingra programming language",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "engines": {
         "vscode": "^1.58.0"
     },

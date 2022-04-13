@@ -22,6 +22,6 @@ None
 
 The Wingra language is in an early alpha stage, and this extension is less stable
 
-### 0.0.7
+### 0.0.8
 
-Bug Fixes
+Bug Fixes, support assembly debug output

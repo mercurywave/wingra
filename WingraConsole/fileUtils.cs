@@ -153,6 +153,16 @@ namespace WingraConsole
 			catch (Exception e) { throw new Exception("Error writing file " + filename + "\n" + e.ToString()); }
 		}
 
+		public static string FlattenRelativePath(string targetFolder, string key)
+		{
+			var dir = Directory.CreateDirectory(targetFolder);
+			FileInfo source = new FileInfo(key);
+			var rel = Path.GetRelativePath(Environment.CurrentDirectory, source.FullName);
+			var clean = rel.Replace("/", "_").Replace("\\", "_");
+			clean = Path.ChangeExtension(clean, ".wobj");
+			return Path.Combine(targetFolder, clean);
+		}
+
 		public string GetFileDirectoryDisplay(string key)
 		{
 			FileInfo file = new FileInfo(key);

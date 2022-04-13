@@ -22,14 +22,14 @@ namespace Wingra.Parser
 
 		public IEnumerable<string> GetDeclaredSymbolsInside(SyntaxNode parent)
 		{
-			var iter = _loopVar as IHaveIdentifierSymbol;
+			var iter = _loopVar as IHaveLocalIdentifierSymbol;
 			if (iter != null)
 				yield return iter.Symbol;
 		}
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			var localVar = _loopVar as IHaveIdentifierSymbol;
+			var localVar = _loopVar as IHaveLocalIdentifierSymbol;
 
 			void SaveToIter(int stack, eAsmCommand cmd)
 			{

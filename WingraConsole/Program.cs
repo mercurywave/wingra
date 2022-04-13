@@ -15,6 +15,8 @@ namespace WingraConsole
 			{
 				var parsedArgs = CommandLineArgs.Parse(args);
 				var prj = await Loader.LoadProject(Environment.CurrentDirectory);
+				if (prj.DoAsmExport)
+					await ExportAsm(prj);
 				if (prj.IsJsExport)
 					await ExportJs(prj);
 				else
@@ -77,6 +79,27 @@ namespace WingraConsole
 					Console.Write(sb);
 				else
 				{
+					await CodeFileServer.AsyncSaveFile(file, sb);
+					Console.WriteLine("Successfully wrote js file: " + file);
+				}
+			}
+		}
+
+		static async Task ExportAsm(WingraProject prj)
+		{
+			WingraSymbols symbols = new WingraSymbols();
+			var compiler = new Compiler(prj);
+			var result = prj.CompileAll(compiler, symbols);
+			if (prj.CheckForErrors())
+				PrintCompilerErrors(prj);
+			else
+			{
+				var sFolder = prj.CheckConfigString("asmDebugExport");
+				var trans = new Wingra.Transpilers.AsmDebug(result, symbols);
+				foreach(var source in prj.IterAllFiles())
+				{
+					var file = CodeFileServer.FlattenRelativePath(sFolder, source.Key);
+					var sb = trans.Output(source);
 					await CodeFileServer.AsyncSaveFile(file, sb);
 					Console.WriteLine("Successfully wrote js file: " + file);
 				}

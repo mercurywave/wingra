@@ -194,7 +194,7 @@ namespace Wingra.Parser
 		}
 	}
 
-	class SIdentifier : SExpressionComponent, ICanBeProperty, IHaveIdentifierSymbol
+	class SIdentifier : SExpressionComponent, ICanBeProperty, IHaveLocalIdentifierSymbol
 	{
 		internal RelativeTokenReference _source;
 		public SIdentifier(RelativeTokenReference toke)
@@ -693,7 +693,7 @@ namespace Wingra.Parser
 	// emits as a load, which is maybe funky
 	// this might be a very specialized thing
 	// I can't think of any other good use case for this beyond for loops
-	class SReserveIdentifierExp : SExpressionComponent, IHaveIdentifierSymbol, IDeclareVariablesAtScope
+	class SReserveIdentifierExp : SExpressionComponent, IHaveLocalIdentifierSymbol, IDeclareVariablesAtScope
 	{
 		internal RelativeTokenReference _source;
 		public SReserveIdentifierExp(RelativeTokenReference toke)
@@ -718,7 +718,7 @@ namespace Wingra.Parser
 		}
 	}
 
-	class SIgnoredVariable : SExpressionComponent, IHaveIdentifierSymbol, IDeclareVariablesAtScope
+	class SIgnoredVariable : SExpressionComponent, IHaveLocalIdentifierSymbol, IDeclareVariablesAtScope
 	{
 		RelativeTokenReference _token;
 		public SIgnoredVariable(RelativeTokenReference token) : base() { _token = token; }
@@ -738,7 +738,7 @@ namespace Wingra.Parser
 		}
 	}
 
-	class SFunctionCall : SExpressionComponent, ICanBeProperty, IHaveIdentifierSymbol, ICanAwait
+	class SFunctionCall : SExpressionComponent, ICanBeProperty, IHaveLocalIdentifierSymbol, ICanAwait
 	{
 		internal SIdentifier _name;
 		internal List<SExpressionComponent> _params; // may be null!
@@ -793,6 +793,9 @@ namespace Wingra.Parser
 			=> _isAsync = true;
 	}
 
+	interface IHaveLocalIdentifierSymbol : IHaveIdentifierSymbol
+	{
+	}
 	interface IHaveIdentifierSymbol
 	{
 		string Symbol { get; }

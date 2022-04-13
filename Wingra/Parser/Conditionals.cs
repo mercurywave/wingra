@@ -112,8 +112,6 @@ namespace Wingra.Parser
 		public SSwitchStatement(int fileLine, SExpressionComponent exp = null) : base(fileLine)
 		{
 			_test = exp;
-			if (exp is IHaveIdentifierSymbol)
-				_identifier = (exp as IHaveIdentifierSymbol).Symbol;
 		}
 
 		public virtual bool TryParseChild(ParseContext context, RelativeTokenReference[] currLine, out SyntaxNode node, out int usedTokens)
@@ -133,7 +131,9 @@ namespace Wingra.Parser
 			func.ClearAsmStack(asmStackLevel);
 			if (_test != null)
 			{
-				if (_identifier == "")
+				if (_test is SIdentifier)
+					_identifier = (_test as SIdentifier).Symbol;
+				else
 				{
 					_test.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 					_identifier = func.GetUniqueTemp("tmp");
@@ -141,6 +141,7 @@ namespace Wingra.Parser
 					func.Add(asmStackLevel, eAsmCommand.StoreLocal, _identifier);
 				}
 			}
+
 			// I don't think we need to validate there is an else clause - nothing happens if not present
 			foreach (var c in _children)
 				c.EmitAssembly(compiler, file, func, asmStackLevel + 1, errors, this);
@@ -213,8 +214,6 @@ namespace Wingra.Parser
 		public SSwitchExpression(SExpressionComponent exp = null) : base()
 		{
 			_test = exp;
-			if (exp is IHaveIdentifierSymbol)
-				_identifier = (exp as IHaveIdentifierSymbol).Symbol;
 		}
 
 		public virtual bool TryParseChild(ParseContext context, RelativeTokenReference[] currLine, out SyntaxNode node, out int usedTokens)
@@ -238,7 +237,9 @@ namespace Wingra.Parser
 			func.ClearAsmStack(asmStackLevel);
 			if (_test != null)
 			{
-				if (_identifier == "")
+				if (_test is IHaveLocalIdentifierSymbol)
+					_identifier = (_test as IHaveLocalIdentifierSymbol).Symbol;
+				else
 				{
 					_test.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 					_identifier = func.GetUniqueTemp("temp");
