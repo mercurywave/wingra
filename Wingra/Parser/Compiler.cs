@@ -9,6 +9,7 @@ namespace Wingra.Parser
 	public class Compiler
 	{
 		internal bool _isDebug, _isTest, _isSuggestion, _isIDE, _isBootstrap, _isAsmDebug;
+		internal bool _hideExternalFuncs;
 		public bool Optimizations = true;
 		public bool SanityChecks => _isDebug || _isIDE || _isTest; // additional compile-time checks
 		Dictionary<string, Tuple<string, CodeBlock>> _macros = new Dictionary<string, Tuple<string, CodeBlock>>();
@@ -32,6 +33,8 @@ namespace Wingra.Parser
 		{
 			if (proj.CheckConfigFlag("disableOptimizations"))
 				Optimizations = false;
+			if (proj.CheckConfigFlag("hideExternalFuncs") || proj.IsJsExport)
+				_hideExternalFuncs = true;
 		}
 		public Compiler(WingraProject proj, StaticMapping mapping) : this(proj, mapping, false) { }
 		public Compiler(WingraProject proj) : this(proj, new StaticMapping()) { }
@@ -112,7 +115,7 @@ namespace Wingra.Parser
 					leadingSpaces = true;
 				if (leadingSpaces && leadingTabs)
 				{
-					errors.LogError("Mix of leading tabs and spaces - parsing might behave erratically", buffLine, null, eErrorType.Warning);
+					errors.LogError("Mix of leading tabs and spaces - parsing might behave erratically", ePhase.PreParse, buffLine, null, eErrorType.Warning);
 					break;
 				}
 			}
@@ -249,7 +252,7 @@ namespace Wingra.Parser
 			if (!_macros.ContainsKey(ident.Token))
 			{
 				replacedLineCount = 0;
-				errors.LogError("Macro " + ident + " not found", buffLine, new RelativeTokenReference(ident, 0));
+				errors.LogError("Macro " + ident + " not found", ePhase.Macros, buffLine, new RelativeTokenReference(ident, 0));
 				return false;
 			}
 			var preceeding = lineText.Substring(0, lexline.Tokens[index].LineOffset);
@@ -278,7 +281,7 @@ namespace Wingra.Parser
 			var output = jb.RunGetReturn();
 			if (!output.IsStructLike)
 			{
-				errors.LogError("Macro " + ident + " did not generate valid code", buffLine, new RelativeTokenReference(ident, 0));
+				errors.LogError("Macro " + ident + " did not generate valid code", ePhase.Macros, buffLine, new RelativeTokenReference(ident, 0));
 				return false;
 			}
 			var outCode = output.AsList();
@@ -290,7 +293,7 @@ namespace Wingra.Parser
 			{
 				if (!expand.IsString)
 				{
-					errors.LogError("Macro " + ident + " did not generate valid list of strings", buffLine, new RelativeTokenReference(ident, 0));
+					errors.LogError("Macro " + ident + " did not generate valid list of strings", ePhase.Macros, buffLine, new RelativeTokenReference(ident, 0));
 					return false;
 				}
 				string padded = preceeding + expand.AsString();
@@ -433,7 +436,7 @@ namespace Wingra.Parser
 			}
 			catch (ParserException ex)
 			{
-				context.Errors.LogError(ex.Message, context.FileLine, ex.Token, ex.Type, ex.StackTrace);
+				context.Errors.LogError(ex.Message, ePhase.Parse, context.FileLine, ex.Token, ex.Type, ex.StackTrace);
 			}
 		}
 
@@ -447,7 +450,7 @@ namespace Wingra.Parser
 			}
 			catch (CompilerException ce)
 			{
-				errors.LogError(ce.Message, ce.Line, ce.Token, ce.Type);
+				errors.LogError(ce.Message, ePhase.Compile, ce.Line, ce.Token, ce.Type);
 			}
 			return new AssemblyFile("err", "key");
 		}
@@ -610,7 +613,7 @@ namespace Wingra.Parser
 		}
 		public void LogError(string err, RelativeTokenReference? token = null)
 		{
-			Errors.LogError(err, FileLine, token);
+			Errors.LogError(err, ePhase.Parse, FileLine, token);
 		}
 	}
 

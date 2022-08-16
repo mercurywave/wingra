@@ -42,13 +42,13 @@ namespace WingraLanguageServer
 									new Range(line, off, line, off + err.Token.Value.Token.Length),
 									buffer.Key,
 									code,
-									err.Text + "\n" + err.ExtraText));
+									err.Phase +":" + err.Text + "\n" + err.ExtraText));
 							}
 							else diag.Add(new Diagnostic(sever,
 								new Range(line, 0, line, 0),
 								buffer.Key,
 								code,
-								err.Text + "\n" + err.ExtraText));
+								err.Phase + ":" + err.Text + "\n" + err.ExtraText));
 						}
 					}
 				}

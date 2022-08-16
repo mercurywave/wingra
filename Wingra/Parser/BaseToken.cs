@@ -309,7 +309,6 @@ namespace Wingra.Parser
 				case eToken.EqGreater:
 				case eToken.Less:
 				case eToken.Greater:
-				case eToken.Has:
 					return 2;
 				case eToken.Add:
 				case eToken.Subtract:
@@ -319,6 +318,7 @@ namespace Wingra.Parser
 					return 4;
 				case eToken.QuestionMark:
 					return 5;
+				case eToken.Has:
 				case eToken.LeftBracket: // function / array access
 				case eToken.LeftParen:
 				case eToken.Dot:

@@ -799,7 +799,7 @@ namespace Wingra.Parser
 				if (used == 0) used++;
 				if (used >= copy.Length) break;
 				if (copy[used].Token.Type != eToken.SemiColon)
-					context.Errors.LogError("Expected semicolon", context.FileLine, copy[used]);
+					context.Errors.LogError("Expected semicolon", ePhase.Parse, context.FileLine, copy[used]);
 				else used++;
 				copy = util.RangeRemainder(copy, used);
 			}

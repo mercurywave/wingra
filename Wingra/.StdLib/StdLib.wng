@@ -37,6 +37,7 @@ library Obj
 	extern ::.Keys(=> keyList)
 	extern ::.ShallowCopy(=> dup)
 	extern ::.HasChildren(=> bool)
+	extern ::.Owns(key => bool)
 		
 library Set
 	extern ::.Has(key => exists)

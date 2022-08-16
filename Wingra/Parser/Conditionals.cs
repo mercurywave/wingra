@@ -56,7 +56,7 @@ namespace Wingra.Parser
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			if (!func.InIfElseScope(asmStackLevel + 1)) { errors.LogError("Elseif without preceeding if", FileLine); return; }
+			if (!func.InIfElseScope(asmStackLevel + 1)) { errors.LogError("Elseif without preceeding if", ePhase.Emit, FileLine); return; }
 			if (!func.IsBranchReachable(asmStackLevel + 1)) return;
 
 			var shortcut = _test.TryCompileTimeInlineBool(compiler, file, errors);
@@ -94,7 +94,7 @@ namespace Wingra.Parser
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			if (!func.InIfElseScope(asmStackLevel + 1)) { errors.LogError("Else without preceeding if", FileLine); return; }
+			if (!func.InIfElseScope(asmStackLevel + 1)) { errors.LogError("Else without preceeding if", ePhase.Emit, FileLine); return; }
 			if (!func.IsBranchReachable(asmStackLevel + 1)) return;
 			func.ClearAsmStack(asmStackLevel + 1);
 			EmitChildren(compiler, file, func, asmStackLevel + 1, errors);
@@ -232,7 +232,7 @@ namespace Wingra.Parser
 
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			if (!_children.Any(s => s is SSwitchExpressionElse)) errors.LogError("switch expression has no else case", compiler.FileLine);
+			if (!_children.Any(s => s is SSwitchExpressionElse)) errors.LogError("switch expression has no else case", ePhase.Emit, compiler.FileLine);
 			SaveToTemp = func.GetReserveUniqueTemp("sOut");
 			func.ClearAsmStack(asmStackLevel);
 			if (_test != null)

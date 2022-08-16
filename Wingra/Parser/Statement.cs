@@ -110,7 +110,7 @@ namespace Wingra.Parser
 			{
 				var line = ex.Line;
 				if (line < 0) line = FileLine;
-				errors.LogError(ex.Message, line, ex.Token, ex.Type);
+				errors.LogError(ex.Message, ePhase.Emit, line, ex.Token, ex.Type);
 			}
 		}
 		internal override void OnAddedToTree(ParseContext context)

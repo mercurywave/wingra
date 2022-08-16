@@ -65,6 +65,8 @@ namespace Wingra.Parser
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
+			if (_isExtern && compiler._hideExternalFuncs) 
+				return;
 			var lamb = EmitBody(compiler, file, func, asmStackLevel, errors);
 			EmitRegister(compiler, file, func, lamb, asmStackLevel, errors, parent);
 		}
@@ -231,7 +233,7 @@ namespace Wingra.Parser
 		protected override void EmitRegister(Compiler compiler, FileAssembler file, FunctionFactory func, FunctionFactory lamb, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
 			if (_identifier.Token.Token == "Main")
-				errors.LogError("Main function must be global to be run automatically", FileLine, _identifier, eErrorType.Warning);
+				errors.LogError("Main function must be global to be run automatically", ePhase.Emit, FileLine, _identifier, eErrorType.Warning);
 			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.PushString, 0, Identifier);
 			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.DeclareFunction, 0, lamb.UniqNameInFile);
 		}

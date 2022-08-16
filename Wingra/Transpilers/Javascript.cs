@@ -304,7 +304,7 @@ namespace Wingra.Transpilers
 						{
 							var path = util.Piece(line.Literal, "|", 1);
 							var fk = util.Piece(line.Literal, "|", 2);
-							Push(Ref(RUNTIME + ".getStaticFile(" + fk + "," + JsStr(path) + ")"));
+							Push(Ref(RUNTIME + ".getStaticFile(" + GetShortFileKey(fk) + "," + JsStr(path) + ")"));
 							break;
 						}
 					case eAsmCommand.LoadScratch:
@@ -384,6 +384,7 @@ namespace Wingra.Transpilers
 						}
 					case eAsmCommand.ShortCircuitPropNull:
 						DoIf("OObj.HasChildKey(" + Pop() + "," + JsStr(line.Literal) + ")", "var " + GetUniqVarName(idx) + "=" + Pop() + ";");
+						sb.AppendLine("else {var " + GetUniqVarName(idx) + "=null;}");
 						break;
 					case eAsmCommand.ShortCircuitNull:
 						DoIf(Pop() + " != null", "var " + GetUniqVarName(idx) + "=" + Pop() + ";");

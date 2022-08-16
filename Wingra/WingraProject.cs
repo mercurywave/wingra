@@ -197,6 +197,11 @@ namespace Wingra
 					return prj.CompileErrors.GetFileLogger(buff);
 			return CompileErrors.GetFileLogger(buff);
 		}
+		public void ClearAllErrors()
+		{
+			foreach (var child in GetProjectLoadOrder())
+				child.CompileErrors.Clear();
+		}
 		public void ClearFileErrors(WingraBuffer buff)
 			=> GetProjectLoadOrder().ForEach(prj => prj.CompileErrors.ClearForFile(buff));
 
@@ -211,8 +216,7 @@ namespace Wingra
 
 		public WingraCompile CompileAll(Compiler compiler, WingraSymbols symbols = null)
 		{
-			foreach (var child in GetProjectLoadOrder())
-				child.CompileErrors.Clear();
+			ClearAllErrors();
 			var comp = new WingraCompile();
 
 			foreach (var child in GetProjectLoadOrder())
@@ -225,6 +229,9 @@ namespace Wingra
 		public WingraCompile CompileFromParse(Compiler compiler, Dictionary<WingraBuffer, STopOfFile> parsedFiles, WingraSymbols symbols = null)
 		{
 			var comp = new WingraCompile();
+
+			foreach (var child in GetProjectLoadOrder())
+				child.CompileErrors.ClearForLaterPhases(ePhase.Compile);
 
 			foreach (var child in GetProjectLoadOrder())
 				child._CompileAllFromParse(comp, compiler, parsedFiles, symbols);
@@ -269,7 +276,7 @@ namespace Wingra
 			}
 			catch (Exception e)
 			{
-				CompileErrors.LogError("EXCEPTION (pre-parse):" + e.Message + "\n" + e.StackTrace, file);
+				CompileErrors.LogError("EXCEPTION (pre-parse):" + e.Message + "\n" + e.StackTrace, file, ePhase.PreParse);
 			}
 		}
 
@@ -284,7 +291,7 @@ namespace Wingra
 			}
 			catch (Exception e)
 			{
-				CompileErrors.LogError("EXCEPTION:" + e.Message + "\n" + e.StackTrace, file);
+				CompileErrors.LogError("EXCEPTION:" + e.Message + "\n" + e.StackTrace, file, ePhase.Parse);
 				return null;
 			}
 		}
@@ -303,7 +310,7 @@ namespace Wingra
 			}
 			catch (Exception e)
 			{
-				CompileErrors.LogError("EXCEPTION:" + e.Message + "\n" + e.StackTrace, file);
+				CompileErrors.LogError("EXCEPTION:" + e.Message + "\n" + e.StackTrace, file, ePhase.Compile);
 			}
 		}
 	}

@@ -81,6 +81,17 @@ namespace Wingra.Interpreter
 				j.CheckIn(t.Value);
 			}, "HasChildren", "Obj");
 
+			runtime.InjectExternalCall((j, t) =>
+			{
+				j.AssertPassingParams(1);
+				var inner = GetAssertStruct(t);
+				var key = j.GetPassingParam(0);
+				var child = inner.TryGetChild(key);
+				var result = (child.HasValue && child.Value.OwnsHeapContent);
+				j.PassReturn(new Variable(result));
+				j.CheckIn(t.Value);
+			}, "Owns", "Obj");
+
 
 
 

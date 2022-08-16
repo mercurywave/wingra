@@ -10,6 +10,8 @@ class ORuntime {
 		this.ScratchFile = {};
 		this.AllFiles = {};
 		this._initFuncs = [];
+		this._initIdx = 0;
+		this._doneInit = false;
 		this._requiredSymbols = {};
 		this._exportedSymbols = {};
 		this._afterInitTasks = [];
@@ -33,6 +35,7 @@ class ORuntime {
 		this.AddExternalMethod("Obj.Keys", function () { return new OObj(null, OObj.getKeys(this)); });
 		this.AddExternalMethod("Obj.HasChildren", function () { return OObj.ChildCount(this) > 0; });
 		this.AddExternalMethod("Obj.ShallowCopy", function () { return new OObj(null, { ...this.inner }) });
+		this.AddExternalMethod("Obj.Owns", function(key) { return OObj.Owns(this, key); });
 
 		this.AddExternalMethod("Set.Has", function (val) { return OObj.HasChildKey(this, val); });
 
@@ -88,7 +91,9 @@ class ORuntime {
 		this.AddExternalFunction("Queue.New", function (val) { return new OObj(); });
 
 
-		this.AddExternalMethod("Str.Replace", function (search, replace) { return this.replace(new RegExp(search, 'g'), replace); });
+		this.AddExternalMethod("Str.Replace", function (search, replace) { 
+			return this.replace(new RegExp(escapeRegEx(search), 'g'), escapeRegEx(replace)); 
+		});
 		this.AddExternalMethod("Str.Piece", function (delim, piece) {
 			const split = this.split(delim);
 			if (piece < 1 || piece > split.length) { return ""; }
@@ -152,6 +157,7 @@ class ORuntime {
 			return id;
 		});
 		this.AddExternalMethod("Pipe.Kill", function () {
+			if(_run._pipes[this] == null) return;
 			var job = _run._pipes[this];
 			job.KILLED = true;
 			job.Complete();
@@ -232,17 +238,24 @@ class ORuntime {
 
 	InitByteCode(booter) {
 		booter(this);
-		for (var fn of this._initFuncs) {
-			fn(null);
+		for(this._initIdx = 0; this._initIdx < this._initFuncs.length - 1; ){
+			this.runNextInitFunc();
 		}
-		var main = this.getStaticGlo("Main");
+		this._doneInit = true;
+		var main = this.tryGetStaticGlo("Main");
 		if(main) {
 			this.RunLambda(main);
 		}
-		var testMain = this.getStaticGlo("TestMain");
+		var testMain = this.tryGetStaticGlo("TestMain");
 		if(testMain) {
 			this.RunLambda(testMain);
 		}
+	}
+	runNextInitFunc() {
+		var fn = this._initFuncs[this._initIdx++];
+		if (this._initIdx >= this._initFuncs.length)
+			throw 'encountered cyclical initialization loop';
+		fn(null);
 	}
 
 	AddExternalFunction(path, lamb) {
@@ -322,8 +335,22 @@ class ORuntime {
 	}
 
 	getStaticGlo(path) {
-		if (this.StaticGlo[path])
+		var out = this.tryGetStaticGlo(path);
+		if (out == undefined)
+			throw 'dependency not loaded? ' + path;
+		return out;
+	}
+	tryGetStaticGlo(path) {
+		if (this.StaticGlo[path] != undefined)
 			return DU.Ref(this.StaticGlo[path]);
+		if(!this._doneInit){
+			while(this.StaticGlo[path] == undefined){
+				this.runNextInitFunc();
+				if (this.StaticGlo[path] != undefined)
+					return DU.Ref(this.StaticGlo[path]);
+			}
+		}
+		return undefined;
 	}
 	getStaticFile(file, path) {
 		return this.StaticFile[file][path];
@@ -504,6 +531,12 @@ class OObj {
 		obj.keyMap = [...this.keyMap];
 		return obj;
 	}
+	
+	static Owns(obj, key) {
+		if (!(obj instanceof OObj)) { return false; }
+		key = makeKey(key, obj);
+		return (key in obj.inner) && (obj.inner[key] instanceof OObj) && (obj.inner[key].parent.inner === obj.inner);
+	}
 
 	MakeRef() {
 		var obj = new OObj(this.parent, this.inner);
@@ -598,7 +631,7 @@ class OObj {
 		else {
 			delete obj.inner[key];
 		}
-		if ((pop instanceof OObj) && (pop.parent == obj)) {
+		if ((pop instanceof OObj) && (pop.parent.uniqId == obj.uniqId)) {
 			pop.parent = null;
 			pop.owned = false;
 		}
@@ -783,4 +816,8 @@ function trace(message) {
 	if (message) log(message);
 	console.trace(); 
 	throw null; 
+}
+
+function escapeRegEx(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

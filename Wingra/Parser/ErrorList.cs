@@ -28,11 +28,21 @@ namespace Wingra.Parser
 			if (_errors.Count != prev) evModified?.Invoke(_errors.Count);
 		}
 
-		public void LogError(string text, WingraBuffer buffer, int line = -1, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
+		public void ClearForLaterPhases(ePhase phase)
+		{
+			int prev = _errors.Count;
+			foreach (var err in _errors)
+				if (phase >= err.Phase)
+					err.Buffer.ClearError(err);
+			_errors.RemoveAll(e => e.Phase >= phase);
+			if (_errors.Count != prev) evModified?.Invoke(_errors.Count);
+		}
+
+		public void LogError(string text, WingraBuffer buffer, ePhase phase, int line = -1, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
 		{
 			if (token.HasValue)
 				line += token.Value.SubLine;
-			var err = new SyntaxError(text, buffer, line, token, type, extraText);
+			var err = new SyntaxError(text, buffer, phase, line, token, type, extraText);
 			_errors.Add(err);
 			if (buffer != null)
 				buffer.RegisterError(err);
@@ -48,7 +58,7 @@ namespace Wingra.Parser
 
 	public abstract class ErrorLogger
 	{
-		public virtual void LogError(string text, int line, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
+		public virtual void LogError(string text, ePhase phase, int line, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
 		{
 		}
 		public virtual bool AnyLogged => throw new NotImplementedException();
@@ -64,9 +74,9 @@ namespace Wingra.Parser
 			Master = master;
 			_buffer = buffer;
 		}
-		public override void LogError(string text, int line = -1, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
+		public override void LogError(string text, ePhase phase, int line = -1, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
 		{
-			Master.LogError(text, _buffer, line, token, type, extraText);
+			Master.LogError(text, _buffer, phase, line, token, type, extraText);
 		}
 		public override bool AnyLogged => Master.Errors.Any();
 		public override string ToString() => "Errors: " + Master.Errors.Count();
@@ -76,7 +86,7 @@ namespace Wingra.Parser
 	{
 		public bool EncounteredError = false;
 		public string FirstError = "";
-		public override void LogError(string text, int line = -1, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
+		public override void LogError(string text, ePhase phase, int line = -1, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
 		{
 			EncounteredError = true;
 			if (FirstError == "")
@@ -86,18 +96,21 @@ namespace Wingra.Parser
 	}
 
 	public enum eErrorType { Error, Warning, Test };
+	public enum ePhase { PreParse, Macros, Parse, Compile, Emit, Other };
 	public class SyntaxError
 	{
 		public string Text;
 		public WingraBuffer Buffer;
+		public ePhase Phase;
 		public int Line;
 		public RelativeTokenReference? Token;
 		public eErrorType Type;
 		public string ExtraText = "";
-		public SyntaxError(string text, WingraBuffer buffer, int line = -1, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
+		public SyntaxError(string text, WingraBuffer buffer, ePhase phase, int line = -1, RelativeTokenReference? token = null, eErrorType type = eErrorType.Error, string extraText = "")
 		{
 			Text = text;
 			Buffer = buffer;
+			Phase = phase;
 			Line = line;
 			Token = token;
 			Type = type;
