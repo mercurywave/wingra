@@ -5,24 +5,21 @@ using System.Text;
 
 namespace Wingra.Parser
 {
-	class SAwait : SExpressionComponent, IWillDecompose
+	class SAwait : SExpressionComponent, IDecompose
 	{
 		SExpressionComponent _exp;
-		int _toDecompose = 1;
 		public SAwait(SExpressionComponent exp) { _exp = exp; }
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			// this is pretty hacky. but this is the earliest we know what the value of this is
-			// the alternatives are to pass thing through multiple layers, which is also gross
-			if (parent is IWillDecompose)
-				_toDecompose = (parent as IWillDecompose).NumToDecompose;
 			_exp.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 		}
 		public override IEnumerable<SExpressionComponent> IterExpChildren()
 		{
 			yield return _exp;
 		}
-		public int NumToDecompose => _toDecompose;
+
+		public void RequestDecompose(int numRequested)
+			=> (_exp as IDecompose)?.RequestDecompose(numRequested);
 	}
 
 	class SArun : SExpressionComponent

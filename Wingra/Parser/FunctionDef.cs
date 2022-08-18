@@ -116,7 +116,6 @@ namespace Wingra.Parser
 			if (inner is SAssign)
 			{
 				var ass = inner as SAssign;
-				if (ass.NumToDecompose != 1) return false;
 				if (ass._left.Count != 1) return false;
 				if (ass._left[0] is SIdentifier)
 				{

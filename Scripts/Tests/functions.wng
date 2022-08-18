@@ -64,3 +64,14 @@
 	$Inline()
 	$assert($InlineReturn())
 	$assert($InlineReturn2())
+
+::RetMulti(a, b => x, y)
+	x : a
+	y : b
+
+#test
+	@a, @b : $RetMulti(true, false)
+	$assert(a)
+	$assert(!b)
+	$assert($RetMulti(true, false))
+	

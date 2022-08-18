@@ -103,19 +103,25 @@ namespace Wingra.Parser
 	}
 	#endregion
 
-	class SAssign : SStatement, IDeclareVariablesAtScope, IWillDecompose, ICanEmitInline
+	class SAssign : SStatement, IDeclareVariablesAtScope, ICanEmitInline
 	{
 		internal List<SExpressionComponent> _left;
 		protected SExpressionComponent _right;
 		eToken _operator;
-
-		public int NumToDecompose => _left.Count;
 
 		public SAssign(int fileLine, List<SExpressionComponent> left, eToken op, SExpressionComponent right) : base(fileLine)
 		{
 			_left = left;
 			_operator = op;
 			_right = right;
+		}
+		internal override void OnAddedToTree(ParseContext context)
+		{
+			if (_right is IDecompose)
+				(_right as IDecompose).RequestDecompose(_left.Count);
+			else if (_left.Count > 1)
+				context.LogError("requesting to assign more variables than expression will return");
+			base.OnAddedToTree(context);
 		}
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{

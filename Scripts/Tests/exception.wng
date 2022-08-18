@@ -50,3 +50,27 @@
 		$assert(error = "str")
 	trap $Switch(null)
 		$assert(true)
+
+::ReturnMulti(=> a, b)
+	a : false
+	b : true
+
+::ChainMulti(doThrow => throw a, b)
+	if doThrow \ throw
+	a : true
+	b : false
+
+#test decompose from avow
+	@a, @b : avow $ChainMulti(false)
+	$assert(a)
+	$assert(!b)
+
+#test decompose from try
+	@a, @b : try $ChainMulti(false) catch $ReturnMulti()
+	$assert(a)
+	$assert(!b)
+
+#test decompose from catch
+	@a, @b : try $ChainMulti(true) catch $ReturnMulti()
+	$assert(!a)
+	$assert(b)

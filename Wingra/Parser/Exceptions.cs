@@ -51,7 +51,7 @@ namespace Wingra.Parser
 		}
 	}
 
-	class STryExpression : SExpressionComponent
+	class STryExpression : SExpressionComponent, IDecompose
 	{
 		SExpressionComponent _try;
 		SExpressionComponent _catch;
@@ -89,9 +89,15 @@ namespace Wingra.Parser
 			}
 			func.Add(asmStackLevel, eAsmCommand.Load, saveToTemp);
 		}
+
+		public void RequestDecompose(int numRequested)
+		{
+			(_try as IDecompose)?.RequestDecompose(numRequested);
+			(_catch as IDecompose)?.RequestDecompose(numRequested);
+		}
 	}
 
-	class SAvowExpression : SExpressionComponent
+	class SAvowExpression : SExpressionComponent, IDecompose
 	{
 		SExpressionComponent _try;
 		public SAvowExpression(SExpressionComponent test)
@@ -115,6 +121,8 @@ namespace Wingra.Parser
 			func.Add(asmStackLevel + 1, eAsmCommand.FatalError);
 			func.Add(asmStackLevel, eAsmCommand.Load, saveToTemp);
 		}
+		public void RequestDecompose(int numRequested)
+			=> (_try as IDecompose)?.RequestDecompose(numRequested);
 	}
 
 	class SThrowStatement : SStatement

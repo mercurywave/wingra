@@ -281,12 +281,10 @@ namespace Wingra.Parser
 	}
 
 
-	class SScopeAccess : SExpressionComponent, ICanAwait, IWillDecompose, ICanBeProperty
+	class SScopeAccess : SExpressionComponent, ICanAwait, IDecompose, ICanBeProperty
 	{
 		SExpressionComponent _obj;
 		SExpressionComponent _prop;
-		int _decompose = 1;
-		public int NumToDecompose => _decompose;
 		public SScopeAccess(SExpressionComponent obj, SExpressionComponent prop)
 		{
 			if (prop == null) throw new ParserException("could not parse named property");
@@ -309,7 +307,6 @@ namespace Wingra.Parser
 		}
 		public void EmitPropAccess(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			if (parent is IWillDecompose) _decompose = (parent as IWillDecompose).NumToDecompose;
 			if (_prop is ICanBeProperty)
 				(_prop as ICanBeProperty).EmitPropertyAction(compiler, file, func, asmStackLevel, errors, this);
 			else throw new CompilerException("unexpected type for scope access", func.CurrentFileLine);
@@ -340,8 +337,10 @@ namespace Wingra.Parser
 			if (!(_prop is ICanAwait)) throw new ParserException("cannot await scoped property");
 			(_prop as ICanAwait).FlagAsAwaiting();
 		}
+		public void RequestDecompose(int numRequested)
+			=> (_prop as IDecompose)?.RequestDecompose(numRequested);
 	}
-	class SScopeMaybeAccess : SExpressionComponent, ICanAwait, ICanBeProperty
+	class SScopeMaybeAccess : SExpressionComponent, ICanAwait, ICanBeProperty, IDecompose
 	{
 		SExpressionComponent _obj;
 		SExpressionComponent _prop;
@@ -408,6 +407,8 @@ namespace Wingra.Parser
 			if (!(_prop is ICanAwait)) throw new ParserException("cannot await scoped property");
 			(_prop as ICanAwait).FlagAsAwaiting();
 		}
+		public void RequestDecompose(int numRequested)
+			=> (_prop as IDecompose)?.RequestDecompose(numRequested);
 	}
 
 	class SKeyAccess : SExpressionComponent, ICanBeProperty

@@ -168,7 +168,7 @@ namespace Wingra.Parser
 
 	}
 
-	class SStaticFunctionCall : SExpressionComponent, ICanBeProperty, ICanAwait
+	class SStaticFunctionCall : SExpressionComponent, ICanBeProperty, ICanAwait, IDecompose
 	{
 		RelativeTokenReference[] _path;
 		List<string> _usingPaths;
@@ -176,6 +176,7 @@ namespace Wingra.Parser
 		string _fileKey;
 		int _fileLine;
 		internal bool _isAsync = false;
+		int _numToDecompose = 1;
 		public SStaticFunctionCall(RelativeTokenReference[] path, List<string> usingPaths, List<SExpressionComponent> paramList)
 		{
 			if (path.Length < 1) throw new Exception("error parsing tokens for static path");
@@ -239,6 +240,9 @@ namespace Wingra.Parser
 
 				if (fn._isThrow && !func.IsInErrorTrap())
 					throw new CompilerException("function which throws is not trapped by caller", func.CurrentFileLine);
+
+				if (_numToDecompose > 1 && _numToDecompose > fn._returnParams.Count)
+					throw new CompilerException("function call asks for " + _numToDecompose + " return values, but function only returns " + fn._returnParams.Count, func.CurrentFileLine);
 			}
 
 			if (dynamicPath.Length > 0 || !TryEmitInline(compiler, file, func, asmStackLevel, errors, parent, asMethod, fn))
@@ -256,15 +260,14 @@ namespace Wingra.Parser
 					throw new NotImplementedException();
 				func.Add(asmStackLevel, GetCommand(type, asMethod), path);
 
-				int numToRead = 1;
-				if (parent is IWillDecompose) numToRead = ((IWillDecompose)parent).NumToDecompose;
-				func.Add(asmStackLevel, eAsmCommand.ReadReturn, numToRead);
+				func.Add(asmStackLevel, eAsmCommand.ReadReturn, _numToDecompose);
 			}
 		}
 		bool TryEmitInline(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent, bool asMethod, _SfunctionDef fn)
 		{
 			if (!compiler.Optimizations) return false;
 			if (fn == null) return false;
+			if (_numToDecompose > 1) return false;
 
 			var pcount = (_params == null) ? 0 : _params.Count;
 			if (!fn.CanBeInlined(pcount)) return false;
@@ -375,6 +378,8 @@ namespace Wingra.Parser
 					yield return p;
 		}
 
+		public void RequestDecompose(int numRequested)
+			=> _numToDecompose = numRequested;
 	}
 
 	class SUsing : SStatement

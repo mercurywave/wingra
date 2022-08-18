@@ -645,10 +645,11 @@ namespace Wingra.Parser
 		}
 	}
 
-	class SExecute : SExpressionComponent, ICanAwait
+	class SExecute : SExpressionComponent, ICanAwait, IDecompose
 	{
 		internal List<SExpressionComponent> _params; // may be null!
 		bool _isAsync;
+		int _numToDecompose = 1;
 		public SExecute(List<SExpressionComponent> param)
 		{
 			_params = param;
@@ -672,9 +673,7 @@ namespace Wingra.Parser
 			//TODO: else case!
 			// wait, what is the else case? Is there one?
 
-			int numToRead = 1;
-			if (parent is IWillDecompose) numToRead = ((IWillDecompose)parent).NumToDecompose;
-			func.Add(asmStackLevel, eAsmCommand.ReadReturn, numToRead);
+			func.Add(asmStackLevel, eAsmCommand.ReadReturn, _numToDecompose);
 		}
 
 		public override IEnumerable<SExpressionComponent> IterExpChildren()
@@ -687,6 +686,8 @@ namespace Wingra.Parser
 		{
 			_isAsync = true;
 		}
+		public void RequestDecompose(int numRequested)
+			=> _numToDecompose = numRequested;
 	}
 
 	// for @var : ...
@@ -738,11 +739,12 @@ namespace Wingra.Parser
 		}
 	}
 
-	class SFunctionCall : SExpressionComponent, ICanBeProperty, IHaveLocalIdentifierSymbol, ICanAwait
+	class SFunctionCall : SExpressionComponent, ICanBeProperty, IHaveLocalIdentifierSymbol, ICanAwait, IDecompose
 	{
 		internal SIdentifier _name;
 		internal List<SExpressionComponent> _params; // may be null!
 		bool _isAsync;
+		int _numToDecompose = 1;
 		public SFunctionCall(SIdentifier name, List<SExpressionComponent> param)
 		{
 			_name = name;
@@ -757,9 +759,7 @@ namespace Wingra.Parser
 			if (pct > 0) func.Add(asmStackLevel, eAsmCommand.PassParams, pct);
 			func.Add(asmStackLevel, eAsmCommand.CallFunc, 0, _name._source.Token.Token);
 
-			int numToRead = 1;
-			if (parent is IWillDecompose) numToRead = ((IWillDecompose)parent).NumToDecompose;
-			func.Add(asmStackLevel, eAsmCommand.ReadReturn, numToRead);
+			func.Add(asmStackLevel, eAsmCommand.ReadReturn, _numToDecompose);
 		}
 		public static void EmitParams(Compiler compiler, List<SExpressionComponent> pars, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
@@ -775,9 +775,7 @@ namespace Wingra.Parser
 			func.Add(asmStackLevel, eAsmCommand.PassParams, pct);
 			func.Add(asmStackLevel, eAsmCommand.CallMethod, 0, _name._source.Token.Token);
 
-			int numToRead = 1;
-			if (parent is IWillDecompose) numToRead = ((IWillDecompose)parent).NumToDecompose;
-			func.Add(asmStackLevel, eAsmCommand.ReadReturn, numToRead);
+			func.Add(asmStackLevel, eAsmCommand.ReadReturn, _numToDecompose);
 		}
 		public string Symbol => _name.Symbol;
 
@@ -791,6 +789,8 @@ namespace Wingra.Parser
 
 		public void FlagAsAwaiting()
 			=> _isAsync = true;
+		public void RequestDecompose(int numRequested)
+			=> _numToDecompose = numRequested;
 	}
 
 	interface IHaveLocalIdentifierSymbol : IHaveIdentifierSymbol
@@ -801,9 +801,9 @@ namespace Wingra.Parser
 		string Symbol { get; }
 	}
 
-	interface IWillDecompose
+	interface IDecompose
 	{
-		int NumToDecompose { get; }
+		void RequestDecompose(int numRequested);
 	}
 
 	interface ICanAwait
