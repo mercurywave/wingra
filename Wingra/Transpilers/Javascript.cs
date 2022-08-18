@@ -388,6 +388,7 @@ namespace Wingra.Transpilers
 						break;
 					case eAsmCommand.ShortCircuitNull:
 						DoIf(Pop() + " != null", "var " + GetUniqVarName(idx) + "=" + Pop() + ";");
+						sb.AppendLine("else {var " + GetUniqVarName(idx) + "=null;}");
 						break;
 					case eAsmCommand.Equals:
 						MathFunc("DU.AreEqual");

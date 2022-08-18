@@ -281,7 +281,7 @@ namespace Wingra.Parser
 	}
 
 
-	class SScopeAccess : SExpressionComponent, ICanAwait, IWillDecompose
+	class SScopeAccess : SExpressionComponent, ICanAwait, IWillDecompose, ICanBeProperty
 	{
 		SExpressionComponent _obj;
 		SExpressionComponent _prop;
@@ -295,8 +295,21 @@ namespace Wingra.Parser
 		}
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			if (parent is IWillDecompose) _decompose = (parent as IWillDecompose).NumToDecompose;
 			_obj.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+			EmitPropAccess(compiler, file, func, asmStackLevel, errors, parent);
+		}
+		public void EmitPropertyAction(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			// a.?b.c -> where this is "b.c"
+			var propLead = _obj as ICanBeProperty;
+			if (propLead == null)
+				throw new CompilerException("expected property", func.CurrentFileLine);
+			propLead.EmitPropertyAction(compiler, file, func, asmStackLevel, errors, parent);
+			EmitPropAccess(compiler, file, func, asmStackLevel, errors, parent);
+		}
+		public void EmitPropAccess(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			if (parent is IWillDecompose) _decompose = (parent as IWillDecompose).NumToDecompose;
 			if (_prop is ICanBeProperty)
 				(_prop as ICanBeProperty).EmitPropertyAction(compiler, file, func, asmStackLevel, errors, this);
 			else throw new CompilerException("unexpected type for scope access", func.CurrentFileLine);
@@ -328,31 +341,46 @@ namespace Wingra.Parser
 			(_prop as ICanAwait).FlagAsAwaiting();
 		}
 	}
-	class SScopeMaybeAccess : SExpressionComponent, ICanAwait
+	class SScopeMaybeAccess : SExpressionComponent, ICanAwait, ICanBeProperty
 	{
 		SExpressionComponent _obj;
 		SExpressionComponent _prop;
+		IHaveIdentifierSymbol _propSymbol;
 		bool _optOnLeft;
-		public SScopeMaybeAccess(SExpressionComponent obj, SExpressionComponent prop, bool optOnLeft)
+		public SScopeMaybeAccess(SExpressionComponent obj, SExpressionComponent prop, IHaveIdentifierSymbol propSymbol, bool optOnLeft)
 		{
 			if (prop == null) throw new ParserException("could not parse named property");
-			if (!optOnLeft && !(prop is IHaveIdentifierSymbol))
+			if (!optOnLeft && propSymbol == null)
 				throw new ParserException("expected named property");
+			if (!(prop is ICanBeProperty))
+				throw new ParserException("unexpected type for scope access");
 			_obj = obj;
 			_prop = prop;
+			_propSymbol = propSymbol;
 			_optOnLeft = optOnLeft;
 		}
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
 			_obj.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+			EmitPropAccess(compiler, file, func, asmStackLevel, errors, parent);
+		}
+		public void EmitPropertyAction(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			// a.?b.?c -> where this is "b.?c"
+			var propLead = _obj as ICanBeProperty;
+			if (propLead == null)
+				throw new CompilerException("expected property", func.CurrentFileLine);
+			propLead.EmitPropertyAction(compiler, file, func, asmStackLevel, errors, parent);
+			EmitPropAccess(compiler, file, func, asmStackLevel, errors, parent);
+		}
+		public void EmitPropAccess(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
 			if (_optOnLeft)
 				func.Add(asmStackLevel, eAsmCommand.ShortCircuitNull);
 			else
-				func.Add(asmStackLevel, eAsmCommand.ShortCircuitPropNull, (_prop as IHaveLocalIdentifierSymbol).Symbol);
+				func.Add(asmStackLevel, eAsmCommand.ShortCircuitPropNull, _propSymbol.Symbol);
 
-			if (_prop is ICanBeProperty)
-				(_prop as ICanBeProperty).EmitPropertyAction(compiler, file, func, asmStackLevel + 1, errors, this);
-			else throw new ParserException("unexpected type for scope access");
+			(_prop as ICanBeProperty).EmitPropertyAction(compiler, file, func, asmStackLevel + 1, errors, this);
 		}
 		internal override void EmitAsFree(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent, bool allowPointerSteal)
 		{
@@ -382,7 +410,7 @@ namespace Wingra.Parser
 		}
 	}
 
-	class SKeyAccess : SExpressionComponent
+	class SKeyAccess : SExpressionComponent, ICanBeProperty
 	{
 		internal SExpressionComponent _leftSide;
 		internal SParamList _params;
@@ -401,6 +429,16 @@ namespace Wingra.Parser
 		{
 			_leftSide.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 			_params.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+		}
+		public void EmitPropertyAction(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			// a.?b[c] -> where this is b[c]
+			var propLead = _leftSide as ICanBeProperty;
+			if (propLead == null)
+				throw new CompilerException("expected property", func.CurrentFileLine);
+			propLead.EmitPropertyAction(compiler, file, func, asmStackLevel, errors, parent);
+			_params.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+			func.Add(asmStackLevel, eAsmCommand.KeyAccess, _params.Count);
 		}
 		internal override void EmitAsAssignment(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{

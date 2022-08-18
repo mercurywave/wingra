@@ -19,3 +19,26 @@
 	@a : $Set.New()
 	a.$Set.Add(5)
 	$assert(a.$Set.Has(5))
+
+#test
+	@a : dim
+		b : dim
+			c : dim
+				d : true
+	@e : null
+	$assert(a?.b?.c?.d)
+	$assert(a.?b.?c.?d)
+	$assert(a?.b["c"]?.d)
+	$assert(a.?b["c"].?d)
+	$assert(a.?x.y.z ? true)
+	$assert(e?.x.y.z ? true)
+	a?.b?.c?.d.$Success()
+	a.?b.?c.?d.$Success()
+	a.?x.y.z.$Fail()
+	e?.x.y.z.$Fail()
+
+::.Success()
+	$assert(true)
+
+::.Fail()
+	$assert(false)

@@ -10,9 +10,9 @@ namespace Wingra.Parser
 		Unknown, // unexpected token
 		BeginString, EndString, TextData,  // "
 		LiteralNumber, LiteralString,
-		LeftParen, RightParen,
-		LeftBracket, RightBracket,
-		LeftBrace, RightBrace,
+		LeftParen, RightParen, // ( )
+		LeftBracket, RightBracket, // [ ]
+		LeftBrace, RightBrace, // { }
 		Comma,
 		Add, Subtract, Multiply, Divide,
 		EqualSign, NotEquals,
@@ -292,7 +292,7 @@ namespace Wingra.Parser
 					return 5;
 				case eToken.AtSign:
 				case eToken.Global:
-					return 7;
+					return 8;
 				default: throw new NotImplementedException("unexpected unary");
 			}
 		}
@@ -319,16 +319,27 @@ namespace Wingra.Parser
 				case eToken.QuestionMark:
 					return 5;
 				case eToken.Has:
+					return 6;
 				case eToken.LeftBracket: // function / array access
 				case eToken.LeftParen:
 				case eToken.Dot:
 				case eToken.DotQuestion:
 				case eToken.QuestionDot:
-					return 6;
+					return 7;
 				case eToken.LeftBrace:
 				case eToken.RightBrace:
-					return 7;
+					return 8;
 				default: throw new NotImplementedException("unexpected operator");
+			}
+		}
+		public static bool OpChainsRight(eToken token)
+		{
+			switch (token)
+			{
+				case eToken.DotQuestion:
+				case eToken.QuestionDot:
+					return true;
+				default: return false;
 			}
 		}
 

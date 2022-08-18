@@ -416,16 +416,22 @@ namespace Wingra.Parser
 				return next;
 
 			components.Pop();
-			var rightSide = CollapseExpression(components, BaseToken.OpPriority(op.Type));
+			SExpressionComponent nextExact = null;
+			if (components.Count > 0) nextExact = components.Peek();
+			
+			var readAheadPri = BaseToken.OpPriority(op.Type);
+			if (BaseToken.OpChainsRight(op.Type))
+				readAheadPri--;
+			var rightSide = CollapseExpression(components, readAheadPri);
 			SExpressionComponent combine;
 
 			// a+b*c+d, processing b(*)
 			if (op.Type == eToken.Dot)
 				combine = new SScopeAccess(next, rightSide);
 			else if (op.Type == eToken.DotQuestion)
-				combine = new SScopeMaybeAccess(next, rightSide, false);
+				combine = new SScopeMaybeAccess(next, rightSide, nextExact as IHaveIdentifierSymbol, false);
 			else if (op.Type == eToken.QuestionDot)
-				combine = new SScopeMaybeAccess(next, rightSide, true);
+				combine = new SScopeMaybeAccess(next, rightSide, nextExact as IHaveIdentifierSymbol, true);
 			else if (op.Type == eToken.LeftBracket)
 				combine = new SKeyAccess(next, rightSide as SParamList);
 			else if (op.Type == eToken.Has)
