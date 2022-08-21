@@ -1018,6 +1018,11 @@ namespace Wingra.Interpreter
 				j.Registers.Push(orig.DeepCopy(j.Heap));
 				j.CheckIn(orig);
 			});
+			Register(eAsmCommand.PushPeekDup, i => 0, o => 1, asm => j =>
+			{
+				var orig = j.Registers.Peek();
+				j.Registers.Push(orig.DuplicateAsRef());
+			});
 
 			Register(eAsmCommand.KeyAccess, i => i.Param + 1, o => 1, asm =>
 			{

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 
 namespace Wingra.Parser
 {
@@ -331,6 +332,32 @@ namespace Wingra.Parser
 				_comp[0].EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 				_comp[i].EmitAsAssignment(compiler, file, func, asmStackLevel, errors, this);
 			}
+		}
+	}
+	class SAssignExpression : SExpressionComponent, IDecompose
+	{
+		SExpressionComponent _source;
+		SExpressionComponent _target;
+		public SAssignExpression(SExpressionComponent source, SExpressionComponent target)
+		{
+			_source = source;
+			if (target is IDeclareVariablesAtScope)
+				if ((target as IDeclareVariablesAtScope).GetDeclaredSymbolsInside(this).Count() > 0)
+					throw new ParserException("cannot declare new variales withing expression");
+			_target = target;
+		}
+		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			_source.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+			func.Add(asmStackLevel, eAsmCommand.PushPeekDup);
+			_target.EmitAsAssignment(compiler, file, func, asmStackLevel, errors, this);
+		}
+		public void RequestDecompose(int numRequested)
+			=> (_source as IDecompose)?.RequestDecompose(numRequested);
+		public override IEnumerable<SExpressionComponent> IterExpChildren()
+		{
+			yield return _source;
+			yield return _target;
 		}
 	}
 }

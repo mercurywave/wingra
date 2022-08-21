@@ -436,6 +436,10 @@ namespace Wingra.Parser
 				combine = new SKeyAccess(next, rightSide as SParamList);
 			else if (op.Type == eToken.Has)
 				combine = new SHasProperty(next, rightSide);
+			else if (op.Type == eToken.ExpAssignLeft)
+				combine = new SAssignExpression(rightSide, next);
+			else if (op.Type == eToken.ExpAssignRight)
+				combine = new SAssignExpression(next, rightSide);
 			else
 				combine = new SOperation(next, op, rightSide);
 

@@ -37,6 +37,7 @@ namespace Wingra.Parser
 		Colon, SemiColon, BackSlash, Dollar,
 		FunctionDef,
 		Arrow, // =>
+		ExpAssignLeft, ExpAssignRight,
 		QuestionMark,
 		DotQuestion, // .? - null if the property doesn't exist (useful for retrieval without 'has' check)
 		QuestionDot, // ?. - halt if left side is null (useful for method chaining)
@@ -289,10 +290,10 @@ namespace Wingra.Parser
 				case eToken.Copy:
 				case eToken.Await:
 				case eToken.Arun:
-					return 5;
+					return 6;
 				case eToken.AtSign:
 				case eToken.Global:
-					return 8;
+					return 9;
 				default: throw new NotImplementedException("unexpected unary");
 			}
 		}
@@ -310,25 +311,28 @@ namespace Wingra.Parser
 				case eToken.Less:
 				case eToken.Greater:
 					return 2;
+				case eToken.ExpAssignLeft:
+				case eToken.ExpAssignRight:
+					return 3;
 				case eToken.Add:
 				case eToken.Subtract:
-					return 3;
+					return 4;
 				case eToken.Multiply:
 				case eToken.Divide:
-					return 4;
-				case eToken.QuestionMark:
 					return 5;
-				case eToken.Has:
+				case eToken.QuestionMark:
 					return 6;
+				case eToken.Has:
+					return 7;
 				case eToken.LeftBracket: // function / array access
 				case eToken.LeftParen:
 				case eToken.Dot:
 				case eToken.DotQuestion:
 				case eToken.QuestionDot:
-					return 7;
+					return 8;
 				case eToken.LeftBrace:
 				case eToken.RightBrace:
-					return 8;
+					return 9;
 				default: throw new NotImplementedException("unexpected operator");
 			}
 		}
@@ -356,6 +360,8 @@ namespace Wingra.Parser
 				case eToken.EqGreater:
 				case eToken.Less:
 				case eToken.Greater:
+				case eToken.ExpAssignLeft:
+				case eToken.ExpAssignRight:
 				case eToken.Add:
 				case eToken.Subtract:
 				case eToken.Multiply:

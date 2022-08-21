@@ -181,6 +181,10 @@ namespace Wingra.Parser
 					return "<=";
 				if (c == '>' && text[i] == '=')
 					return ">=";
+				if (c == '<' && text[i] == '<')
+					return "<<";
+				if (c == '>' && text[i] == '>')
+					return ">>";
 				if (c == '=' && text[i] == '>')
 					return "=>";
 			}
@@ -222,6 +226,8 @@ namespace Wingra.Parser
 			{ "new", eToken.New },
 			{ "dim", eToken.Dim },
 			{ "=>", eToken.Arrow },
+			{ "<<", eToken.ExpAssignLeft },
+			{ ">>", eToken.ExpAssignRight },
 			{ "mixin", eToken.Mixin },
 			{ "using", eToken.Using },
 			{ ",", eToken.Comma },

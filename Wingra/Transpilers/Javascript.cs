@@ -203,6 +203,7 @@ namespace Wingra.Transpilers
 				}
 				void Push(string value)
 					=> sb.AppendLine("var " + GetUniqVarName(idx) + "=" + value + ";");
+				string Peek() => StackBacktrack(code, idx);
 				string Pop() => StackBacktrack(code, idx);
 				string Pop2() => StackBacktrack(code, idx, 2);
 				string PopX(int depth) => StackBacktrack(code, idx, depth);
@@ -578,6 +579,9 @@ namespace Wingra.Transpilers
 						break;
 					case eAsmCommand.Copy:
 						Push("DU.Copy(" + Pop() + ")");
+						break;
+					case eAsmCommand.PushPeekDup:
+						Push("DU.Ref(" + Peek() + ")");	
 						break;
 					case eAsmCommand.KeyAccess:
 						{

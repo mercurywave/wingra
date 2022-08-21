@@ -1,0 +1,28 @@
+
+#test inline expression assignment left
+    @a
+    @b : dim
+        a << dim
+            1;2
+    $assert(b[0,0] = 1)
+    $assert(a[0] = 1)
+
+
+#test inline expression assignment right
+    @a : dim
+    @b : dim
+        dim >> a[1]
+            1;2
+    $assert(b[0,0] = 1)
+    $assert(a[1,0] = 1)
+
+::Multi(=> a, b)
+    a : 1
+    b : 2
+
+#test inline expression assignment pass-through decompose
+    @c
+    @a, @b : $Multi() >> c
+    $assert(a = 1)
+    $assert(b = 2)
+    $assert(c = 1)

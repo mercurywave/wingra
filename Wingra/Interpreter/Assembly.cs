@@ -976,7 +976,7 @@ namespace Wingra.Interpreter
 		Load, LoadPathData, LoadPathFile, LoadScratch, ShadowLoad,
 		KeyAssign,
 		StoreNewScratch, FreeScratch, SetFileContext,
-		PushInt, PushString, PushBool, PushFloat, PushNull,
+		PushInt, PushString, PushBool, PushFloat, PushNull, PushPeekDup,
 		DoIfTest, ShortCircuitTrue, ShortCircuitFalse, ShortCircuitNull, ShortCircuitPropNull, ShortCircuitNotNull,
 		Equals, NotEquals, HasValue, IsNull,
 		GreaterThan, LessThan, EqGreater, EqLess, ExceedInDirection,
