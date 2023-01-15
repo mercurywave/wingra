@@ -507,6 +507,8 @@ namespace Wingra.Interpreter
 
 		// be careful with these - the list contents could be garbage collected
 		// if the script is returning a list that's created on the fly, you need to iterate on the results instead
+		// inversely, if the script returns a static data list, you'll have the real struct and not a pointer
+		// maybe there is never a case where these can be used safely?
 		public List<Variable> RunList(QueryTemplate qt)
 			=> _RunExpList(qt.GetEntryPoint(this));
 		public List<Variable> RunList(QueryTemplate qt, string name1, Variable value1)

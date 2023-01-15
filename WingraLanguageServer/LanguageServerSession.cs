@@ -113,7 +113,7 @@ namespace WingraLanguageServer
 			var staticMap = new StaticMapping();
 			newPrj.IncrementalDebugCompiler = new Compiler(staticMap, false, false, true, true)
 			{
-				Optimizations = false
+				Optimizations = false,
 			};
 			return newPrj;
 		}

@@ -159,7 +159,7 @@ namespace Wingra.Interpreter
 			var obj = Registers.Peek();
 			if (!obj.HasChildren()) yield break;
 			foreach (var child in obj.Children())
-				yield return child.Value;
+				yield return child.Value.MakePointer();
 			CheckIn(obj);
 		}
 		// be very careful with this - the contents could have been garbage collected if they are dynamic
