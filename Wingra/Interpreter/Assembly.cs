@@ -409,7 +409,7 @@ namespace Wingra.Interpreter
 		}
 		public void Add(int asmStackLevel, eAsmCommand command, string literal)
 			=> Add(asmStackLevel, command, 0, literal);
-		public void Add(int asmStackLevel, eAsmCommand command, float literal) 
+		public void Add(int asmStackLevel, eAsmCommand command, float literal)
 			=> Add(asmStackLevel, command, 0, "", literal);
 		public void ClearAsmStack(int asmStackLevel)
 		{
@@ -844,6 +844,7 @@ namespace Wingra.Interpreter
 		{
 			AssemblyCode code = new AssemblyCode(FileKey, AllowInjection, IsAsync);
 			code.AddRange(_lines);
+			code.Add(new AssemblyCodeLine(-1, 0, eAsmCommand.NoOp)); // if an expression end could have a short circuited tail, jumps might need a reference point
 			code.Finalize(FindLocals(), _returnParams, _assumedVariables, _injectableParams);
 			return code;
 		}
