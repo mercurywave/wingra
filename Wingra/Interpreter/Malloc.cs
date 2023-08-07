@@ -44,7 +44,11 @@ namespace Wingra.Interpreter
 
 		FastStack<StructPointer> _structs = new FastStack<StructPointer>();
 
-		public void CheckIn(StructPointer pointer) => _structs.Push(pointer);
+		public void CheckIn(StructPointer pointer)
+		{
+			pointer.Reset(null);
+			_structs.Push(pointer);
+		}
 		public StructPointer CheckOutStruct()
 		{
 			if (_structs.IsEmpty) return new StructPointer();

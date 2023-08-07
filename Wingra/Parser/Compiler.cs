@@ -276,8 +276,8 @@ namespace Wingra.Parser
 					{"Line",  jb.MakeVariable(buffLine) },
 				};
 
-			jb.InjectLocal("code", jb.MakeVariable(vCode).DuplicateAsRef());
-			jb.InjectLocal("meta", jb.MakeVariable(vMeta).DuplicateAsRef());
+			jb.InjectLocal("code", jb.MakeVariable(vCode));
+			jb.InjectLocal("meta", jb.MakeVariable(vMeta));
 			var output = jb.RunGetReturn();
 			if (!output.IsStructLike)
 			{

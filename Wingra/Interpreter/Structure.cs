@@ -12,7 +12,12 @@ namespace Wingra.Interpreter
 		IStructure Contents;
 
 		public int Count => Contents.Count;
-		public void Reset(IStructure content) { Contents = content; }
+		public void Reset(IStructure content)
+		{
+			if (content == null && Contents == null)
+				throw new Exception("resetting a struct that was already reset - shouldn't happen");
+			Contents = content;
+		}
 
 		public int GenerationID { get; set; }
 		public void Release(Malloc memory)

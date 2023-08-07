@@ -298,7 +298,7 @@ namespace Wingra.Interpreter
 		protected virtual Variable? _FinalFindVariable(string name) => null;
 
 		public void InjectLocal(string name, Variable value)
-			=> CurrentScope.TrySaveVariable(name, value, Heap);
+			=> CurrentScope.TrySaveVariable(name, value.DuplicateAsRef(), Heap);
 		public void SaveNewLocal(int idx, Variable value)
 			=> CurrentScope.SaveNewLocal(idx, value);
 
