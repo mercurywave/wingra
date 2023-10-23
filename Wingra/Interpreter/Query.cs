@@ -44,5 +44,8 @@ namespace Wingra.Interpreter
 			_entryPoint = new CodeBlock(asm);
 			return _entryPoint;
 		}
+		// creates a variable that contains a function pointer to this code
+		public Variable GenerateLambda(ORuntime runtime)
+			=> new Variable(GetEntryPoint(runtime));
 	}
 }
