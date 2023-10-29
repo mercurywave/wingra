@@ -22,7 +22,26 @@ namespace Wingra.Parser
 			ContainsMacro = false;
 			Process(text, tabWidth);
 		}
-
+		struct MatchPair
+		{
+			public string Toke;
+			public string LookFor;
+			public eToken Begin;
+			public eToken End;
+			public MatchPair(string toke, string lookFor, eToken begin, eToken end)
+			{
+				Toke = toke;
+				LookFor = lookFor;
+				Begin = begin;
+				End = end;
+			}
+		}
+		static Dictionary<string, MatchPair> _matchPairs = new Dictionary<string, MatchPair>() {
+			{ "$\"", new MatchPair("$\"", "\"", eToken.BeginInterpString, eToken.EndString) },
+			{ "\"", new MatchPair("\"", "\"", eToken.BeginString, eToken.EndString) },
+			{ "{", new MatchPair("{", "}", eToken.LeftBrace, eToken.RightBrace) },
+			{ "(", new MatchPair("(", ")", eToken.LeftParen, eToken.RightParen) },
+		};
 		public LexLine Process(string text, int tabWidth)
 		{
 			Tokens.Clear();
@@ -43,13 +62,16 @@ namespace Wingra.Parser
 			// code
 			{
 				int i = leadingSpaceChars;
-				bool instring = false;
+				Stack<MatchPair> expectedPairs = new Stack<MatchPair>();
+
 				bool commentRemainder = false;
 				bool macroRemainder = false;
 				bool first = true;
 				while (i < text.Length && !commentRemainder && !macroRemainder)
 				{
-					string token = Scan(text, i, instring, out var whiteSpace);
+					bool instring = expectedPairs.Count > 0 && expectedPairs.Peek().End == eToken.EndString;
+					bool inInterpString = expectedPairs.Count > 0 && expectedPairs.Peek().Begin == eToken.BeginInterpString;
+					string token = Scan(text, i, instring, inInterpString, out var whiteSpace);
 					if (token.Length == 0)
 					{
 						i += 1 + whiteSpace;
@@ -57,14 +79,25 @@ namespace Wingra.Parser
 					}
 					i += whiteSpace;
 					eToken type = eToken.Unknown;
-					if (token == "\"")
+
+					void PushPair(string toke)
 					{
-						if (instring) type = eToken.EndString;
-						else type = eToken.BeginString;
-						instring = !instring;
+						var match = _matchPairs[toke];
+						type = match.Begin;
+						expectedPairs.Push(match);
+					}
+
+					if (inInterpString && token == "{")
+						PushPair(token);
+					else if (expectedPairs.Count > 0 && token == expectedPairs.Peek().LookFor)
+					{
+						type = expectedPairs.Peek().End;
+						expectedPairs.Pop();
 					}
 					else if (instring)
 						type = eToken.LiteralString;
+					else if (_matchPairs.ContainsKey(token))
+						PushPair(token);
 					else if (_tokenMap.ContainsKey(token))
 						type = _tokenMap[token];
 					else
@@ -103,14 +136,15 @@ namespace Wingra.Parser
 
 		bool IsStartOfIdentifier(char c) => char.IsLetter(c) || c == '_' || c == '#' || c == '$' || c == '^';
 
-		string Scan(string text, int begin, bool inString, out int whiteSpaceSkipped) // TODO: infix string stuff
+		string Scan(string text, int begin, bool inString, bool inInterpString, out int whiteSpaceSkipped) // TODO: infix string stuff
 		{
 			whiteSpaceSkipped = 0;
 			if (text.Length <= begin) return "";
 			char c = text[begin];
-			if (inString)
+			if (inString || inInterpString)
 			{
 				if (c == '"') return "\"";
+				if (inInterpString && c == '{') return "{";
 				int idx = begin;
 				bool escape = false;
 				while (idx < text.Length)
@@ -118,6 +152,8 @@ namespace Wingra.Parser
 					var readAhead = text[idx];
 
 					if (!escape && readAhead == '"')
+						return text.Substring(begin, idx - begin);
+					if (inInterpString && !escape && readAhead == '{')
 						return text.Substring(begin, idx - begin);
 
 					if (escape) escape = false;
@@ -154,6 +190,8 @@ namespace Wingra.Parser
 				{
 					char j = text[i];
 					if (char.IsLetterOrDigit(j) || j == '_') token += j;
+					else if (token == "$" && j == '"')
+						return "$\""; // special case to detect $" as a single token
 					else break;
 				}
 				return token;
@@ -175,6 +213,8 @@ namespace Wingra.Parser
 					return "::";
 				if (c == '!' && text[i] == '=')
 					return "!=";
+				if (c == '$' && text[i] == '"')
+					return "$\"";
 				if (c == '$' && !char.IsLetter(text[i]))
 					return "$";
 				if (c == '<' && text[i] == '=')
@@ -287,7 +327,7 @@ namespace Wingra.Parser
 			{ "#requires", eToken.Require },
 		};
 		//public static Dictionary<eToken, string> _tokeToSymbol = _tokenMap.ToDictionary(p => p.Value, p => p.Key);
-		
+
 		static bool _validateTokensDummy = _validateDummyFunc();
 		static bool _validateDummyFunc()
 		{

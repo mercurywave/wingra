@@ -100,7 +100,7 @@ namespace Wingra.Parser
 				func.Add(asmStackLevel, eAsmCommand.PushString, "");
 			else
 			{
-				var encoded = _source.Value.Token.Token.Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\"", "\"");
+				var encoded = EncodeString(_source.Value.Token.Token);
 				func.Add(asmStackLevel, eAsmCommand.PushString, 0, encoded);
 			}
 		}
@@ -109,6 +109,50 @@ namespace Wingra.Parser
 		{
 			EmitAssembly(compiler, file, func, asmStackLevel, errors, parent);
 			return true;
+		}
+		public static string EncodeString(string source)
+			=> source.Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\"", "\"");
+	}
+
+	class SInterpString : SExpressionComponent
+	{
+		RelativeTokenReference? _source => _strings[0];
+		List<RelativeTokenReference?> _strings;
+		List<SExpressionComponent> _insertExpressions; // should be one less of these then there are _strings
+		public SInterpString(List<RelativeTokenReference?> strings, List<SExpressionComponent> insertExpressions)
+		{
+			_strings = strings;
+			_insertExpressions = insertExpressions;
+		}
+		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			string Encode(RelativeTokenReference? toke) => toke == null ? "" : SLiteralString.EncodeString(toke.Value.Token.Token);
+			if (_strings.Count == 0)
+				func.Add(asmStackLevel, eAsmCommand.PushString, "");
+			else if (_strings.Count == 1)
+				func.Add(asmStackLevel, eAsmCommand.PushString, 0, Encode(_strings[0]));
+			else
+			{
+				int added = 0;
+				for (int i = 0; i < _strings.Count; i++)
+				{
+					if (_strings[i].HasValue)
+					{
+						func.Add(asmStackLevel, eAsmCommand.PushString, 0, Encode(_strings[i]));
+						added++;
+					}
+					if (i < _insertExpressions.Count)
+					{
+						_insertExpressions[i].EmitAssembly(compiler, file, func, asmStackLevel, errors, parent);
+						// there's an argument for not inserting an auto-meh to the output, but it's really gross to add it to every number insert
+						// would probably make sense to make a dedicated op for compiling all the strings together which can handle this
+						func.Add(asmStackLevel, eAsmCommand.Meh);
+						added++;
+					}
+				}
+				for (int i = 0; i < added - 1; i++)
+					func.Add(asmStackLevel, eAsmCommand.Add);
+			}
 		}
 	}
 

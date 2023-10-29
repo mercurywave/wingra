@@ -111,6 +111,11 @@ namespace Wingra.Parser
 						node = new SLiteralString(currLine[1]);
 						return true;
 					}
+				case eToken.BeginInterpString:
+					{
+						node = ParseInterpString(context, currLine, out usedTokens);
+						return true;
+					}
 				case eToken.LeftParen:
 					{
 						if (currLine.Length < 3) return false;
@@ -418,7 +423,7 @@ namespace Wingra.Parser
 			components.Pop();
 			SExpressionComponent nextExact = null;
 			if (components.Count > 0) nextExact = components.Peek();
-			
+
 			var readAheadPri = BaseToken.OpPriority(op.Type);
 			if (BaseToken.OpChainsRight(op.Type))
 				readAheadPri--;
@@ -574,6 +579,62 @@ namespace Wingra.Parser
 					caps.Add(new SLambdaCaptureVariable(pc[2], SLambdaCaptureVariable.eType.Freeish));
 			}
 			return caps;
+		}
+
+		internal static SInterpString ParseInterpString(ParseContext context, RelativeTokenReference[] currLine, out int usedTokens)
+		{
+			if (currLine.Length < 2)
+				throw new ParserException("Missing string close", currLine[0]);
+			if (currLine[0].Token.Type != eToken.BeginInterpString)
+				throw new ParserException("attempting to parse an interpreted string that isn't an interpretted string", currLine[0]);
+			if (currLine.Length == 2)
+			{
+				if (currLine[1].Token.Type == eToken.EndString)
+				{
+					usedTokens = 2;
+					return new SInterpString(new List<RelativeTokenReference?>(), new List<SExpressionComponent>());
+				}
+				throw new ParserException("Missing interp string close(1)", currLine[0]);
+			}
+			List<RelativeTokenReference?> literals = new List<RelativeTokenReference?>();
+			List<SExpressionComponent> inserts = new List<SExpressionComponent>();
+			for (usedTokens = 1; usedTokens < currLine.Length; )
+			{
+				var startStep = usedTokens;
+				var next = currLine[usedTokens];
+				if (next.Token.Type == eToken.EndString)
+				{
+					usedTokens++;
+					break;
+				}
+				if (next.Token.Type == eToken.LiteralString)
+				{
+					literals.Add(next);
+					usedTokens++;
+					if (usedTokens >= currLine.Length)
+						throw new ParserException("Missing interp string close(2)", next);
+				}
+				else
+					literals.Add(null);
+				var preview = currLine[usedTokens];
+				if (preview.Token.Type == eToken.LeftBrace)
+				{
+					usedTokens++;
+					var ahead = util.RangeSubset(currLine, usedTokens, currLine.Length - usedTokens - 1);
+					if (!TryParseExpression(context, ahead, out var exp, out int skip, eToken.RightBrace))
+						throw new ParserException("Could not parse inserted expression", currLine[usedTokens]);
+					inserts.Add(exp);
+					usedTokens += skip;
+					if (usedTokens >= currLine.Length)
+						throw new ParserException("Missing interp string close(3)", preview);
+					if(currLine[usedTokens].Token.Type != eToken.RightBrace)
+						throw new ParserException("Missing interp brace close", currLine[usedTokens]);
+					usedTokens++;
+				}
+				if (usedTokens == startStep) // safety valve
+					throw new ParserException("Unexpected token in interp string", next);
+			}
+			return new SInterpString(literals, inserts);
 		}
 	}
 }

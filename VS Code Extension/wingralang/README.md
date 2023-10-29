@@ -20,7 +20,7 @@ None
 
 ## Release Notes
 
-The Wingra language is in an early alpha stage, and this extension is less stable
+The Wingra language is in an early alpha stage
 
 ### 0.0.10
 

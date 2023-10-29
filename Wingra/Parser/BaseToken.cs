@@ -8,7 +8,7 @@ namespace Wingra.Parser
 	public enum eToken
 	{
 		Unknown, // unexpected token
-		BeginString, EndString, TextData,  // "
+		BeginString, EndString, TextData, BeginInterpString,  // ", $"
 		LiteralNumber, LiteralString,
 		LeftParen, RightParen, // ( )
 		LeftBracket, RightBracket, // [ ]
@@ -156,6 +156,7 @@ namespace Wingra.Parser
 				case eToken.MacroDef:
 				case eToken.BootStrap:
 				case eToken.Unknown:
+				case eToken.BeginInterpString:
 					return false;
 			}
 			return true;
