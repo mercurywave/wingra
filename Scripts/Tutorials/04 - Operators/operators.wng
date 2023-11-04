@@ -48,3 +48,7 @@ n &: false // n = false
 // you should either use a function to perform the conversion explicitly, or you can use the ~ operator
 @q : "test" + ~2.2 // test2.2
 // this operator tells the program to attempt a lossy conversion on the value
+
+// you can interpolate strings with expressions by preceeding a string with $ and wrapping expressions with { }
+@r : $"test {2.2}" // test 2.2
+// an implicit conversion from the variable type to a string is automatically performed in this case
