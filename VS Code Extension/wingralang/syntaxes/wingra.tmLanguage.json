@@ -112,7 +112,7 @@
 		},
 		"interpolation": {
 			"name": "meta.interpolation.wingra",
-			"begin": "(?<=[^\\{]|^)((?:\\{\\{)*)(\\{)(?=[^\\{])",
+			"begin": "(?<=[^\\\\]|^)((?:\\{\\{)*)(\\{)(?=[^\\{])",
 			"beginCaptures": {
 				"1": {
 					"name": "string.quoted.double.wingra"
