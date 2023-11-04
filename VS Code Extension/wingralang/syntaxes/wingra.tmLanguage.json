@@ -6,6 +6,7 @@
 		{ "include": "#macros" },
 		{ "include": "#functions" },
 		{ "include": "#statements" },
+		{ "include": "#interpolated-string" },
 		{ "include": "#strings" }
 	],
 	"repository": {
@@ -85,11 +86,60 @@
 				}
 			]
 		},
+		"interpolated-string": {
+			"name": "string.quoted.double.wingra",
+			"begin": "\\$\"",
+			"beginCaptures": {
+				"0": {
+					"name": "punctuation.definition.string.begin.wingra"
+				}
+			},
+			"end": "(\")|((?:[^\\\\\\n])$)",
+			"endCaptures": {
+				"1": {
+					"name": "punctuation.definition.string.end.wingra"
+				},
+				"2": {
+					"name": "invalid.illegal.newline.wingra"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#string-character-escape"
+				},
+				{ "include": "#interpolation"}
+			]
+		},
+		"interpolation": {
+			"name": "meta.interpolation.wingra",
+			"begin": "(?<=[^\\{]|^)((?:\\{\\{)*)(\\{)(?=[^\\{])",
+			"beginCaptures": {
+				"1": {
+					"name": "string.quoted.double.wingra"
+				},
+				"2": {
+					"name": "punctuation.definition.interpolation.begin.wingra"
+				}
+			},
+			"end": "\\}",
+			"endCaptures": {
+				"0": {
+					"name": "punctuation.definition.interpolation.end.wingra"
+				}
+			},
+			"patterns": [
+				{ "include": "#expressions" }
+			]
+		},
 		"expressions":{
 			"name": "expression.wingra",
 			"patterns": [
+				{ "include": "#interpolated-string" },
+				{ "include": "#strings" },
 				{ "include": "#operators" },
-				{ "include": "#statics" }
+				{ "include": "#numeric-literal" },
+				{ "include": "#statics" },
+				{ "include": "#identifier" }
 			]
 		},
 		"statics": {
@@ -118,6 +168,22 @@
 				{
 					"name": "keyword.operator.separators.wingra",
 					"match": "(,|;|\\\\|_)+"
+				}
+			]
+		},
+		"identifier": {
+			"patterns": [
+				{
+					"name": "variable.other.readwrite.wingra",
+					"match": "@?[_[:alpha:]][_[:alnum:]]*"
+				}
+			]
+		},
+		"numeric-literal": {
+			"patterns": [
+				{
+					"name": "constant.numeric.decimal.wingra",
+					"match": "-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?"
 				}
 			]
 		}

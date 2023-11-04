@@ -604,6 +604,8 @@ namespace Wingra.Parser
 				var next = currLine[usedTokens];
 				if (next.Token.Type == eToken.EndString)
 				{
+					if (literals.Count == inserts.Count)
+						literals.Add(null);
 					usedTokens++;
 					break;
 				}

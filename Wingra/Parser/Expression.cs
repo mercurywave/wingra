@@ -124,6 +124,11 @@ namespace Wingra.Parser
 			_strings = strings;
 			_insertExpressions = insertExpressions;
 		}
+
+		public override IEnumerable<SExpressionComponent> IterExpChildren()
+		{
+			return _insertExpressions;
+		}
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
 			string Encode(RelativeTokenReference? toke) => toke == null ? "" : SLiteralString.EncodeString(toke.Value.Token.Token);
