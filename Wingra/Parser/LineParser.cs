@@ -139,7 +139,7 @@ namespace Wingra.Parser
 					ExpressionParser.ParseExpression(res.Context, res.GetTokens("value"))) ),
 			mp(Token(eToken.Throw),
 				res => new SThrowStatement(res.FileLine) ),
-			mp(SimpleExpression("ident", eToken.QuestionMark, eToken.Add, eToken.Subtract, eToken.Multiply, eToken.Divide, eToken.And, eToken.Or) 
+			mp(SimpleExpression("ident", eToken.QuestionMark, eToken.Add, eToken.Subtract, eToken.Multiply, eToken.Divide, eToken.And, eToken.Or)
 				+ AnyOf("op", eToken.QuestionMark, eToken.Add, eToken.Subtract, eToken.Multiply, eToken.Divide, eToken.And, eToken.Or)
 				+ Token(eToken.Colon) + SimpleExpression("value"),
 				res => new SOpAssign(res.FileLine,
@@ -178,7 +178,7 @@ namespace Wingra.Parser
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
 					return new SFileFunctionDef(res.Context.Comp, res.Buffer.Key, res.FileLine, res.GetToken("name")
-						, plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, exp);
+						, plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, false, exp);
 				}),
 			
 			// ::.name(namelist) {{ => func }}
@@ -189,7 +189,7 @@ namespace Wingra.Parser
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
 					return new SFileFunctionDef(res.Context.Comp, res.Buffer.Key, res.FileLine, res.GetToken("name")
-						, plist.Item1, plist.Item2, plist.Item3, true, plist.Item4, plist.Item5, exp);
+						, plist.Item1, plist.Item2, plist.Item3, true, plist.Item4, plist.Item5, false, exp);
 				}),
 
 			// {extern} global ::name(namelist) {{ => func }}
@@ -200,7 +200,22 @@ namespace Wingra.Parser
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
 					return new SGlobalFunctionDef(res.FileLine, res.GetToken("name")
-						, plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, res.KeyMatched("extern"), exp);
+						, plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, res.KeyMatched("extern"), false, exp);
+				}),
+
+			// ::%name
+			mp(Token(eToken.FunctionDef) + TypeIdentifier("name"),
+				res => {
+					return new SFileFunctionDef(res.Compiler, res.FileKey, res.FileLine, res.GetToken("name")
+						, new List<SParameter>(), new List<SIdentifier>(), false, true, false, true, true, null);
+				}),
+
+			// {extern} global ::%name
+			mp(OptionalToken(eToken.Extern, "extern") + Token(eToken.Global) + Token(eToken.FunctionDef) + TypeIdentifier("name"),
+				res => {
+					return new SGlobalFunctionDef(res.FileLine, res.GetToken("name")
+						, new List<SParameter>(), new List<SIdentifier>(), false, true, false
+						, true, res.KeyMatched("extern"), true, null);
 				}),
 
 			// global scratch Name : value
@@ -292,7 +307,7 @@ namespace Wingra.Parser
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
 					return new SLibFunctionDef(res.Context.Comp, res.FileLine
 						, new SStaticDeclaredPath(eStaticType.Function, res.GetTokens("name"), res.GetDeclaringNamespace())
-						, res.GetToken("name"), plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, res.KeyMatched("extern"), exp);
+						, res.GetToken("name"), plist.Item1, plist.Item2, plist.Item3, false, plist.Item4, plist.Item5, res.KeyMatched("extern"), false, exp);
 				}),
 			
 			// {extern} ::.name(namelist) {{ => func }}
@@ -304,7 +319,16 @@ namespace Wingra.Parser
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
 					return new SLibFunctionDef(res.Context.Comp, res.FileLine
 						, new SStaticDeclaredPath(eStaticType.Function, res.GetTokens("name"), res.GetDeclaringNamespace())
-						, res.GetToken("name"), plist.Item1, plist.Item2, plist.Item3, true, plist.Item4, plist.Item5, res.KeyMatched("extern"), exp);
+						, res.GetToken("name"), plist.Item1, plist.Item2, plist.Item3, true, plist.Item4, plist.Item5, res.KeyMatched("extern"), false, exp);
+				}),
+
+			// {extern} ::%name
+			mp(OptionalToken(eToken.Extern, "extern") + Token(eToken.FunctionDef) + TypeIdentifier("name"),
+				res => {
+					return new SLibFunctionDef(res.Compiler, res.FileLine
+						, new SStaticDeclaredPath(eStaticType.TypeDef, res.GetTokens("name"), res.GetDeclaringNamespace())
+						, res.GetToken("name"), new List<SParameter>(), new List<SIdentifier>()
+						, false, true, false, true, res.KeyMatched("extern"), true, null);
 				}),
 			
 			// data Path : value
@@ -469,6 +493,8 @@ namespace Wingra.Parser
 		}
 		static ChainList Identifier(string key = "ident")
 			=> Token(eToken.Identifier, key);
+		static ChainList TypeIdentifier(string key = "ident")
+			=> Token(eToken.TypeIdentifier, key);
 		static ChainList LiteralNumber(string key = "num")
 		{
 			return new SingleMatch((context, tokens, begin) =>
@@ -720,6 +746,22 @@ namespace Wingra.Parser
 				if (expectStatic && tokens[begin].Token.Type != eToken.StaticIdentifier)
 					return new MatchResult(false);
 				if (!expectStatic && tokens[begin].Token.Type != eToken.Identifier)
+					return new MatchResult(false);
+				var end = begin;
+				for (int i = begin + 1; i < tokens.Length - 1; i += 2)
+				{
+					if (tokens[i].Token.Type != eToken.Dot) break;
+					if (tokens[i + 1].Token.Type != eToken.Identifier) break;
+					end = i + 1;
+				}
+				return new MatchResult(true, begin, end, key);
+			});
+		}
+		static ChainList TypePath(string key = "path")
+		{
+			return new SingleMatch((context, tokens, begin) =>
+			{
+				if (tokens[begin].Token.Type != eToken.TypeIdentifier)
 					return new MatchResult(false);
 				var end = begin;
 				for (int i = begin + 1; i < tokens.Length - 1; i += 2)

@@ -239,7 +239,7 @@ class ORuntime {
 
 	InitByteCode(booter) {
 		booter(this);
-		for(this._initIdx = 0; this._initIdx < this._initFuncs.length - 1; ){
+		for(this._initIdx = 0; this._initIdx < this._initFuncs.length; ){
 			this.runNextInitFunc();
 		}
 		this._doneInit = true;
@@ -254,7 +254,7 @@ class ORuntime {
 	}
 	runNextInitFunc() {
 		var fn = this._initFuncs[this._initIdx++];
-		if (this._initIdx >= this._initFuncs.length)
+		if (this._initIdx > this._initFuncs.length)
 			throw 'encountered cyclical initialization loop';
 		fn(null);
 	}
@@ -465,6 +465,11 @@ class DU {
 			obj.owned = false;
 			obj.parent = null;
 		}
+	}
+
+	static IsWingraType(obj, type){
+		// function may throw, byte code expects it
+		type.func.apply(null, [{ __THIS: obj }]);
 	}
 }
 function* _makeIter(obj) // can't be static?

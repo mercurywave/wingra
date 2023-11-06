@@ -110,6 +110,7 @@ namespace Wingra.Parser
 							if (token[0] == '$') type = eToken.StaticIdentifier;
 							else if (token[0] == '^') type = eToken.GlobalIdentifier;
 							else if (token[0] == '#') type = eToken.Macro;
+							else if (token[0] == '%') type = eToken.TypeIdentifier;
 							else type = eToken.Identifier;
 						}
 					}
@@ -134,7 +135,7 @@ namespace Wingra.Parser
 			return this;
 		}
 
-		bool IsStartOfIdentifier(char c) => char.IsLetter(c) || c == '_' || c == '#' || c == '$' || c == '^';
+		bool IsStartOfIdentifier(char c) => char.IsLetter(c) || c == '_' || c == '#' || c == '$' || c == '^' || c == '%';
 
 		string Scan(string text, int begin, bool inString, bool inInterpString, out int whiteSpaceSkipped) // TODO: infix string stuff
 		{
@@ -217,6 +218,8 @@ namespace Wingra.Parser
 					return "$\"";
 				if (c == '$' && !char.IsLetter(text[i]))
 					return "$";
+				if (c == '%' && !char.IsLetter(text[i]))
+					return "%";
 				if (c == '<' && text[i] == '=')
 					return "<=";
 				if (c == '>' && text[i] == '=')
@@ -254,6 +257,8 @@ namespace Wingra.Parser
 			{ "has", eToken.Has },
 			{ "copy", eToken.Copy },
 			{ "free", eToken.Free },
+			{ "is", eToken.Is },
+			{ "isnt", eToken.Isnt },
 			{ "while", eToken.While },
 			{ "until", eToken.Until },
 			{ "break", eToken.Break },
@@ -310,6 +315,7 @@ namespace Wingra.Parser
 			{ "!", eToken.Not },
 			{ ":", eToken.Colon },
 			{ "$", eToken.Dollar },
+			{ "%", eToken.Percent },
 			{ ";", eToken.SemiColon },
 			{ "\\", eToken.BackSlash },
 			{ "::", eToken.FunctionDef},

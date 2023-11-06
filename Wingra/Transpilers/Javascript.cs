@@ -568,6 +568,10 @@ namespace Wingra.Transpilers
 					case eAsmCommand.Has:
 						Push(Pop() + ".inner!=null && (" + JsStr(line.Literal) + " in " + Pop() + ".inner)");
 						break;
+					case eAsmCommand.Is:
+						Push("true");
+						sb.AppendLine($"DU.IsWingraType({ Pop2() },{ Pop() })");
+						break;
 					case eAsmCommand.LoadFirstKey:
 						Push("OObj.getFirstKey(" + Pop() + ")");
 						break;

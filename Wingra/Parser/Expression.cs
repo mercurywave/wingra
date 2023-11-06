@@ -524,6 +524,38 @@ namespace Wingra.Parser
 			yield return _obj;
 		}
 	}
+	class SIsType : SExpressionComponent
+	{
+		SExpressionComponent _obj;
+		SExpressionComponent _type;
+		bool _isnt;
+		public SIsType(SExpressionComponent obj, SExpressionComponent type, bool isnt = false)
+		{
+			_obj = obj;
+			_type = type;
+			_isnt = isnt;
+		}
+		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			_obj.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+			_type.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+			var didErr = func.GetReserveUniqueTemp("didErr");
+			func.Add(asmStackLevel, eAsmCommand.CreateErrorTrap, asmStackLevel + 1);
+			func.DeclareVariable("error", asmStackLevel + 1);
+			func.Add(asmStackLevel + 2, eAsmCommand.Is);
+			func.Add(asmStackLevel + 2, eAsmCommand.PushBool, _isnt ? 0 : 1);
+			func.Add(asmStackLevel + 2, eAsmCommand.StoreLocal, didErr);
+			func.Add(asmStackLevel + 2, eAsmCommand.Jump, asmStackLevel);
+			func.Add(asmStackLevel + 1, eAsmCommand.PushBool, _isnt ? 1 : 0);
+			func.Add(asmStackLevel + 1, eAsmCommand.StoreLocal, didErr);
+			func.Add(asmStackLevel, eAsmCommand.Load, didErr);
+		}
+		public override IEnumerable<SExpressionComponent> IterExpChildren()
+		{
+			yield return _obj;
+			yield return _type;
+		}
+	}
 	class SOneLiner : SExpressionComponent
 	{
 		SExpressionComponent _exp;

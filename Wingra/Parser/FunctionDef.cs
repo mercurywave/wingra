@@ -17,8 +17,9 @@ namespace Wingra.Parser
 		internal bool _isAsync;
 		internal bool _isThrow;
 		internal bool _isExtern = false;
+		internal bool _isTypeDef = false;
 		bool _oneLiner = false;
-		public _SfunctionDef(int fileline, RelativeTokenReference identifier, List<SParameter> parameters, List<SIdentifier> returnParams, bool doesYield, bool isMethod, bool isAsync, bool isThrow, bool isExtern, SExpressionComponent oneLiner) : base(fileline)
+		public _SfunctionDef(int fileline, RelativeTokenReference identifier, List<SParameter> parameters, List<SIdentifier> returnParams, bool doesYield, bool isMethod, bool isAsync, bool isThrow, bool isExtern, bool isTypeDef, SExpressionComponent oneLiner) : base(fileline)
 		{
 			_identifier = identifier;
 			_parameters = parameters;
@@ -28,6 +29,7 @@ namespace Wingra.Parser
 			_isAsync = isAsync;
 			_isThrow = isThrow;
 			_isExtern = isExtern;
+			_isTypeDef = isTypeDef;
 			if (oneLiner != null)
 			{
 				if (returnParams.Count > 1)
@@ -65,7 +67,7 @@ namespace Wingra.Parser
 
 		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			if (_isExtern && compiler._hideExternalFuncs) 
+			if (_isExtern && compiler._hideExternalFuncs)
 				return;
 			var lamb = EmitBody(compiler, file, func, asmStackLevel, errors);
 			EmitRegister(compiler, file, func, lamb, asmStackLevel, errors, parent);
@@ -186,13 +188,15 @@ namespace Wingra.Parser
 			, bool isAsync
 			, bool isThrow
 			, bool isExtern
+			, bool isTypeDef
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, isExtern, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, isExtern, isTypeDef, oneLiner)
 		{ }
 
 		internal override void OnAddedToTree(ParseContext context)
 		{
-			context.Comp.StaticMap.AddStaticGlobal(Identifier, eStaticType.Function, context.FileKey, FileLine, this);
+			context.Comp.StaticMap.AddStaticGlobal(Identifier.Replace("%", "")
+				, _isTypeDef ? eStaticType.TypeDef : eStaticType.Function, context.FileKey, FileLine, this);
 			base.OnAddedToTree(context);
 		}
 
@@ -218,14 +222,16 @@ namespace Wingra.Parser
 			, bool isMethod
 			, bool isAsync
 			, bool isThrow
+			, bool isTypeDef
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, false, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, false, isTypeDef, oneLiner)
 		{
 		}
 
 		internal override void OnAddedToTree(ParseContext context)
 		{
-			context.Comp.StaticMap.AddFilePath(context.FileKey, Identifier, eStaticType.Function, FileLine, this);
+			context.Comp.StaticMap.AddFilePath(context.FileKey, Identifier.Replace("%", "")
+				, _isTypeDef ? eStaticType.TypeDef : eStaticType.Function, FileLine, this);
 			base.OnAddedToTree(context);
 		}
 
@@ -251,15 +257,16 @@ namespace Wingra.Parser
 			, bool isAsync
 			, bool isThrow
 			, bool isExtern
+			, bool isTypeDef
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, isExtern, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, isExtern, isTypeDef, oneLiner)
 		{
 			_declaredPath = declaredPath;
 		}
 
 		internal override void OnAddedToTree(ParseContext context)
 		{
-			_declaredPath.Reserve(context.Comp, context.FileKey, context.FileLine, this, _isMethod);
+			_declaredPath.Reserve(context.Comp, context.FileKey, context.FileLine, this);
 			base.OnAddedToTree(context);
 		}
 
@@ -281,7 +288,7 @@ namespace Wingra.Parser
 			, bool isAsync
 			, bool isThrow
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, false, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, isMethod, isAsync, isThrow, false, false, oneLiner)
 		{ }
 
 		protected override void EmitRegister(Compiler compiler, FileAssembler file, FunctionFactory func, FunctionFactory lamb, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
@@ -302,7 +309,7 @@ namespace Wingra.Parser
 			, bool isAsync
 			, bool isThrow
 			, SExpressionComponent oneLiner)
-				: base(fileline, identifier, parameters, returnParams, doesYield, true, isAsync, isThrow, false, oneLiner)
+				: base(fileline, identifier, parameters, returnParams, doesYield, true, isAsync, isThrow, false, false, oneLiner)
 		{ }
 
 		protected override void EmitRegister(Compiler compiler, FileAssembler file, FunctionFactory func, FunctionFactory lamb, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)

@@ -203,6 +203,20 @@ namespace Wingra.Parser
 							node = new SStaticPath(chain.ToArray(), context.Scope.GetUsingNamespaces());
 					}
 					return true;
+				case eToken.TypeIdentifier:
+					{
+						List<RelativeTokenReference> chain = new List<RelativeTokenReference>();
+						chain.Add(currLine[0]);
+						for (int i = 1; i < currLine.Length - 1; i += 2)
+						{
+							if (currLine[i].Token.Type != eToken.Dot) break;
+							if (currLine[i + 1].Token.Type != eToken.Identifier) break;
+							chain.Add(currLine[i + 1]);
+						}
+						usedTokens = chain.Count * 2 - 1;
+						node = new SStaticPath(chain.ToArray(), context.Scope.GetUsingNamespaces());
+					}
+					return true;
 				case eToken.GlobalIdentifier:
 					usedTokens = 1;
 					node = new SGlobalIdentifier(lead);
@@ -441,6 +455,10 @@ namespace Wingra.Parser
 				combine = new SKeyAccess(next, rightSide as SParamList);
 			else if (op.Type == eToken.Has)
 				combine = new SHasProperty(next, rightSide);
+			else if (op.Type == eToken.Is)
+				combine = new SIsType(next, rightSide);
+			else if (op.Type == eToken.Isnt)
+				combine = new SIsType(next, rightSide, true);
 			else if (op.Type == eToken.ExpAssignLeft)
 				combine = new SAssignExpression(rightSide, next);
 			else if (op.Type == eToken.ExpAssignRight)

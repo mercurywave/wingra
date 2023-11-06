@@ -998,6 +998,7 @@ namespace Wingra.Interpreter
 		CallFileMethod, CallPathMethod,
 		ARunCode,
 		DotAccess, Has, LoadFirstKey, LoadNextKey, LoadLastKey, Copy,
+		Is,
 		KeyAccess,
 		FreeProperty, FreeLocal, KeyFree, SoftFreeLocal, SoftFreeKey,
 		CreateStaticFuncPointer, CreateLambda, DeclareStaticFunction,
@@ -1114,6 +1115,7 @@ namespace Wingra.Interpreter
 				case eAsmCommand.CallPathMethod: return "cpm";
 				case eAsmCommand.DotAccess: return "dot";
 				case eAsmCommand.Has: return "has";
+				case eAsmCommand.Is: return "is";
 				case eAsmCommand.LoadFirstKey: return "lfk";
 				case eAsmCommand.LoadNextKey: return "lnk";
 				case eAsmCommand.LoadLastKey: return "llk";

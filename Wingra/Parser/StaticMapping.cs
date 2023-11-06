@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Wingra.Parser
 {
-	public enum eStaticType { Data, Function, Constant, External, Library, Root, EnumType, EnumValue }
+	public enum eStaticType { Data, Function, Constant, External, Library, Root, EnumType, EnumValue, TypeDef }
 	public class StaticMapping
 	{
 		TreeNode _root = new TreeNode(eStaticType.Root);
@@ -207,7 +207,7 @@ namespace Wingra.Parser
 
 		public void ResolveNamespace(string fileKey, int fileLine, RelativeTokenReference[] writtenPath, string declaringPath, out string prefix, out string path)
 		{
-			var direct = writtenPath.Select(t => t.Token.Token.Replace("$", "")).ToArray();
+			var direct = writtenPath.Select(t => t.Token.Token.Replace("$", "").Replace("%","")).ToArray();
 			path = util.Join(direct, ".");
 			if (declaringPath == null)
 			{
@@ -239,7 +239,7 @@ namespace Wingra.Parser
 		}
 		string ResolvePath(string fileKey, int fileLine, RelativeTokenReference[] writtenPath, List<string> usingPrefixes, out string[] dynamicPath)
 		{
-			var direct = writtenPath.Select(t => t.Token.Token.Replace("$", "")).ToArray();
+			var direct = writtenPath.Select(t => t.Token.Token.Replace("$", "").Replace("%", "")).ToArray();
 			if (TryResolveAbsolutePath(fileKey, usingPrefixes, direct, out var matches, out dynamicPath))
 				return matches[0];
 			else
@@ -292,6 +292,9 @@ namespace Wingra.Parser
 			return target;
 		}
 
+		public eStaticType GetTypeOfNode(string absPath)
+			=> GetAbsNode(absPath).Type;
+
 		public static string GetPathFromAbsPath(string abs) => util.Piece(abs, "|", 2);
 		public static string[] SplitPath(string path) => util.Split(path, ".").ToArray();
 		public static string[] SplitPath(string path, out string prefix)
@@ -331,7 +334,7 @@ namespace Wingra.Parser
 		}
 
 		public static string JoinPath(RelativeTokenReference[] path)
-			=> JoinPath(path.Select(t => t.Token.Token.Replace("$", "")).ToArray());
+			=> JoinPath(path.Select(t => t.Token.Token.Replace("$", "").Replace("%", "")).ToArray());
 		public static string JoinPath(string[] path)
 			=> util.Join(path, ".");
 

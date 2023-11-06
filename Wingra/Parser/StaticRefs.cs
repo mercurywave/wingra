@@ -39,6 +39,11 @@ namespace Wingra.Parser
 			fullPath = compiler.StaticMap.ResolvePath(_fileKey, _fileLine, _path, _usingPaths, out type, out path, out _, out dynamicPath);
 			if (type != StaticMapping.FILE_ABS && type != StaticMapping.DATA_ABS)
 				throw new CompilerException("absolute path is badly formatted", -1);
+			if(_path[0].Token.Type == eToken.TypeIdentifier)
+			{
+				if (compiler.StaticMap.GetTypeOfNode(fullPath) != eStaticType.TypeDef)
+					throw new CompilerException("function is not a typedef function", _fileLine, _path[0]);
+			}
 		}
 
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
@@ -121,12 +126,12 @@ namespace Wingra.Parser
 		{
 			compiler.StaticMap.ReserveNamespace(fileKey, fileLine, _path, _declaringPath, _type);
 		}
-		public void Reserve(Compiler compiler, string fileKey, int fileLine, _SfunctionDef funcDef, bool isMethod)
+		public void Reserve(Compiler compiler, string fileKey, int fileLine, _SfunctionDef funcDef)
 		{
 			if (_type == eStaticType.External)
 				Reserve(compiler, fileKey, fileLine);
 			else
-				compiler.StaticMap.ReserveNamespace(fileKey, fileLine, _path, _declaringPath, eStaticType.Function, funcDef);
+				compiler.StaticMap.ReserveNamespace(fileKey, fileLine, _path, _declaringPath, _type, funcDef);
 		}
 		public void Reserve(Compiler compiler, string fileKey, int fileLine, SExpressionComponent exp)
 		{

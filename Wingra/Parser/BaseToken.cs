@@ -20,10 +20,11 @@ namespace Wingra.Parser
 		And, Or, Not,
 		True, False,
 		Null,
-		Has, Copy, Free,
+		Has, Copy, Free, Is, Isnt,
 		Identifier, // name
 		StaticIdentifier, // $ident
 		GlobalIdentifier, // ^ident
+		TypeIdentifier, // %ident
 		CommentBegin, Comment, // for now, include in lex? - useful for syntax hilighting
 		If, Else, Switch, Select, Case,
 		For, While, Until,
@@ -34,7 +35,7 @@ namespace Wingra.Parser
 		Using,
 		Template, Data, Library, Enum,
 		Trap, Throw, Try, Catch, Avow,
-		Colon, SemiColon, BackSlash, Dollar,
+		Colon, SemiColon, BackSlash, Dollar, Percent,
 		FunctionDef,
 		Arrow, // =>
 		ExpAssignLeft, ExpAssignRight,
@@ -108,6 +109,8 @@ namespace Wingra.Parser
 				case eToken.Has:
 				case eToken.Copy:
 				case eToken.Free:
+				case eToken.Is:
+				case eToken.Isnt:
 				case eToken.This:
 				case eToken.Import:
 				case eToken.Global:
@@ -150,6 +153,7 @@ namespace Wingra.Parser
 				case eToken.Identifier:
 				case eToken.StaticIdentifier:
 				case eToken.GlobalIdentifier:
+				case eToken.TypeIdentifier:
 				case eToken.LiteralNumber:
 				case eToken.LiteralString:
 				case eToken.Macro:
@@ -324,6 +328,8 @@ namespace Wingra.Parser
 				case eToken.QuestionMark:
 					return 6;
 				case eToken.Has:
+				case eToken.Is:
+				case eToken.Isnt:
 					return 7;
 				case eToken.LeftBracket: // function / array access
 				case eToken.LeftParen:
@@ -376,6 +382,8 @@ namespace Wingra.Parser
 				case eToken.QuestionDot:
 				case eToken.QuestionMark:
 				case eToken.Has:
+				case eToken.Is:
+				case eToken.Isnt:
 					return true;
 				default: return false;
 			}

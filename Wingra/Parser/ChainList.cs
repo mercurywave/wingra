@@ -35,6 +35,8 @@ namespace Wingra.Parser
 		List<MatchResult> Results;
 		RelativeTokenReference[] Tokens;
 		public ParseContext Context;
+		public Compiler Compiler => Context.Comp;
+		public string FileKey => Context.FileKey;
 		public int FileLine => Context.FileLine;
 		public WingraBuffer Buffer => Context.Buffer;
 		public ErrorLogger Errors => Context.Errors;

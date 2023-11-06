@@ -1012,6 +1012,14 @@ namespace Wingra.Interpreter
 					j.CheckIn(obj);
 				};
 			});
+			Register(eAsmCommand.Is, i => 2, o => 1, asm => j =>
+			{
+				PopPop(j, out var obj, out var type);
+				j.Registers.Push(new Variable(true));
+				var lamb = type.GetLambdaInternal();
+				lamb.BeginExecute(j, obj);
+				j.CheckIn(obj, type);
+			});
 			Register(eAsmCommand.Copy, i => 1, o => 1, asm => j =>
 			{
 				var orig = j.Registers.Pop();
@@ -1051,37 +1059,37 @@ namespace Wingra.Interpreter
 			});
 
 			Register(eAsmCommand.KeyAssign, i => i.Param + 2, o => 0, asm =>
-		   {
-			   var depth = asm[0].Param;
-			   return j =>
-			   {
-				   var keys = j.Registers.PopReverse(depth);
-				   var obj = j.Registers.Pop();
-				   var value = j.Registers.Pop();
-				   var target = obj;
+			{
+				var depth = asm[0].Param;
+				return j =>
+				{
+					var keys = j.Registers.PopReverse(depth);
+					var obj = j.Registers.Pop();
+					var value = j.Registers.Pop();
+					var target = obj;
 
-				   // fill in intermediate keys
-				   for (int i = 0; i < keys.Count - 1; i++)
-				   {
-					   var kCurr = keys[i];
-					   var kNext = keys[i + 1];
-					   var temp = target.TryGetChild(kCurr);
-					   if (!temp.HasValue)
-					   {
-						   var list = j.Heap.CheckOutStructForKey(kNext);
-						   temp = new Variable(list, j.Heap);
-						   target.SetChild(kCurr, temp.Value, j.Heap);
-					   }
-					   target = temp.Value;
-				   }
+					// fill in intermediate keys
+					for (int i = 0; i < keys.Count - 1; i++)
+					{
+						var kCurr = keys[i];
+						var kNext = keys[i + 1];
+						var temp = target.TryGetChild(kCurr);
+						if (!temp.HasValue)
+						{
+							var list = j.Heap.CheckOutStructForKey(kNext);
+							temp = new Variable(list, j.Heap);
+							target.SetChild(kCurr, temp.Value, j.Heap);
+						}
+						target = temp.Value;
+					}
 
-				   var kFinal = keys[keys.Count - 1];
-				   target.SetChild(kFinal, value, j.Heap);
+					var kFinal = keys[keys.Count - 1];
+					target.SetChild(kFinal, value, j.Heap);
 
-				   j.CheckIn(keys.ToArray());
-				   j.CheckIn(obj);
-			   };
-		   });
+					j.CheckIn(keys.ToArray());
+					j.CheckIn(obj);
+				};
+			});
 
 			Register(eAsmCommand.KeyFree, i => i.Param + 1, o => 1, asm =>
 			{
