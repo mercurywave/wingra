@@ -207,7 +207,7 @@ namespace Wingra.Parser
 
 		public void ResolveNamespace(string fileKey, int fileLine, RelativeTokenReference[] writtenPath, string declaringPath, out string prefix, out string path)
 		{
-			var direct = writtenPath.Select(t => t.Token.Token.Replace("$", "").Replace("%","")).ToArray();
+			var direct = writtenPath.Select(t => t.Token.Token.Replace("$", "").Replace("%", "")).ToArray();
 			path = util.Join(direct, ".");
 			if (declaringPath == null)
 			{
@@ -448,7 +448,7 @@ namespace Wingra.Parser
 			return poss;
 		}
 
-		public List<string> SuggestAll(string fileKey, List<string> possiblePrefixes)
+		public List<string> SuggestAll(string fileKey, List<string> possiblePrefixes, bool justTypes = false)
 		{
 			var matches = new List<string>();
 
@@ -464,11 +464,13 @@ namespace Wingra.Parser
 					if (HasPath(node, arr, out var target))
 					{
 						foreach (var child in target.Children)
-							addTo.Add(child.Key);
+							if (!justTypes || child.Value.Type == eStaticType.TypeDef)
+								addTo.Add(child.Key);
 					}
 				}
 				foreach (var child in node.Children)
-					addTo.Add(child.Key);
+					if (!justTypes || child.Value.Type == eStaticType.TypeDef)
+						addTo.Add(child.Key);
 			}
 			return matches;
 		}

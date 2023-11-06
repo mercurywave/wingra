@@ -168,7 +168,7 @@ namespace WingraLanguageServer.Services
 			}
 
 			if (parenIdx <= 0) return "";
-			var startSearch = tokes.FindLastIndex(parenIdx, t => t.Type == eToken.StaticIdentifier);
+			var startSearch = tokes.FindLastIndex(parenIdx, t => t.Type == eToken.StaticIdentifier || t.Type == eToken.TypeIdentifier);
 			if (startSearch >= 0)
 			{
 				var possiblePath = tokes.GetRange(startSearch, tokes.Count - startSearch - 1).ToArray();
@@ -179,7 +179,7 @@ namespace WingraLanguageServer.Services
 					if (length % 2 == 0 && possiblePath[length].Type != eToken.Identifier) break;
 				}
 				var actualPath = tokes.GetRange(startSearch, length).ToArray();
-				return util.Join(actualPath.Select(t => t.Token), "").Replace("$", "");
+				return util.Join(actualPath.Select(t => t.Token), "").Replace("$", "").Replace("%", "");
 			}
 			return "";
 		}
@@ -395,7 +395,7 @@ namespace WingraLanguageServer.Services
 						string phraseWithCapitals = "";
 						void AddResult(string insert, CompletionItemKind kind, string subtext = "")
 						{
-							if (phrase != "$" &&
+							if ((phrase != "$" && phrase != "%") &&
 								(kind == CompletionItemKind.Property
 								|| kind == CompletionItemKind.Method
 								|| kind == CompletionItemKind.Function))
@@ -425,6 +425,17 @@ namespace WingraLanguageServer.Services
 								{
 									var text = StaticMapping.JoinPath(StaticMapping.SplitPath(match));
 									AddResult(match, CompletionItemKind.Module, "$" + text);
+								}
+							}
+
+							if (phrase == "%")
+							{
+								var close = staticMap.SuggestAll(buffer.Key, tracker.GetPossibleUsing(position.Line), true);
+
+								foreach (var match in close)
+								{
+									var text = StaticMapping.JoinPath(StaticMapping.SplitPath(match));
+									AddResult(match, CompletionItemKind.Interface, "%" + text);
 								}
 							}
 
@@ -466,12 +477,13 @@ namespace WingraLanguageServer.Services
 								if (match.Value == eStaticType.Data) kind = CompletionItemKind.Class;
 								if (match.Value == eStaticType.EnumValue) kind = CompletionItemKind.Enum;
 								if (match.Value == eStaticType.Function) kind = CompletionItemKind.Function;
+								if (match.Value == eStaticType.TypeDef) kind = CompletionItemKind.Interface;
 								AddResult(suggest, kind);
 							}
 						}
 						if (!separator.HasValue)
 						{
-							if (!inFunctionDeclaration && !phrase.StartsWith("$") && !phrase.StartsWith("#") && !phrase.StartsWith("^"))
+							if (!inFunctionDeclaration && !phrase.StartsWith("$") && !phrase.StartsWith("%") && !phrase.StartsWith("#") && !phrase.StartsWith("^"))
 								results.AddRange(Session.StaticSuggestions);
 							if (phrase.StartsWith("#"))
 							{
@@ -496,7 +508,7 @@ namespace WingraLanguageServer.Services
 								var colonSplit = lex.Tokens.FindIndex(t => t.Type == eToken.Colon);
 								if (colonSplit < 0) colonSplit = lex.Tokens.Count;
 								int lamb = ScanLex(lex, 0, eToken.Lambda, eToken.LeftParen);
-								if(lamb >= 0) // if we are in a defined lambda, the available scope is limited
+								if (lamb >= 0) // if we are in a defined lambda, the available scope is limited
 								{
 									int end = ScanLex(lex, lamb, eToken.RightParen);
 									for (int i = lamb; i < end; i++)
@@ -542,7 +554,7 @@ namespace WingraLanguageServer.Services
 							int currentIndent = currLineLex.PreceedingWhitespace;
 							int highWaterReadAhead = position.Line + 1;
 							// reads upwards till it hits file scope
-							if (!inFunctionDeclaration && !phrase.StartsWith("$") && !phrase.StartsWith("#") && !phrase.StartsWith("^"))
+							if (!inFunctionDeclaration && !phrase.StartsWith("$") && !phrase.StartsWith("%") && !phrase.StartsWith("#") && !phrase.StartsWith("^"))
 								for (int i = position.Line - 1; i >= 0; i--)
 								{
 									var lex = buffer.GetSyntaxMetadata(i);
@@ -598,7 +610,7 @@ namespace WingraLanguageServer.Services
 			bool IsBetween(eToken[] start, eToken ender)
 			{
 				int idx = 0;
-				while(idx >= 0)
+				while (idx >= 0)
 				{
 					idx = Scan(idx, start);
 					if (idx < 0 || currIdx < idx) return false; // passed the cursor
@@ -611,7 +623,7 @@ namespace WingraLanguageServer.Services
 
 			eToken[] tl(params eToken[] tokes) => tokes;
 
-			return IsBetween(tl(eToken.FunctionDef, eToken.Identifier, eToken.LeftParen),eToken.RightParen)
+			return IsBetween(tl(eToken.FunctionDef, eToken.Identifier, eToken.LeftParen), eToken.RightParen)
 				|| IsBetween(tl(eToken.FunctionDef), eToken.LeftParen)
 				|| IsBetween(tl(eToken.Lambda, eToken.LeftParen), eToken.RightParen);
 		}
@@ -653,7 +665,7 @@ namespace WingraLanguageServer.Services
 				curr = tok;
 			}
 
-			var startSearch = tokes.FindLastIndex(currIdx, t => t.Type == eToken.StaticIdentifier);
+			var startSearch = tokes.FindLastIndex(currIdx, t => t.Type == eToken.StaticIdentifier || t.Type == eToken.TypeIdentifier);
 
 			if (startSearch < 0)
 			{
@@ -675,7 +687,7 @@ namespace WingraLanguageServer.Services
 				}
 				if (startSearch + length <= currIdx) return "";
 				var actualPath = tokes.GetRange(startSearch, length).ToArray();
-				return util.Join(actualPath.Select(t => t.Token), "").Replace("$", "");
+				return util.Join(actualPath.Select(t => t.Token), "").Replace("$", "").Replace("%", "");
 			}
 			return "";
 		}
