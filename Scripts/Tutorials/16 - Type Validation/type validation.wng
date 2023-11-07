@@ -1,0 +1,57 @@
+
+// Wingra is a dynamically typed language. This allows for flexibility, but
+// when you have complex structures, it can be useful to validate that the 
+// data you are creating is well formatted.
+
+// To facilitate this, a light system of data validation is available.
+
+// "Types" are a special kind of static function denoted by the % symbol. 
+// A number of standard types are availabe. You can check whether an object
+// matches a specific type with the 'is' operator keyword.
+if 4 is %Type.Int
+    $IO.Log("true")
+
+// You can also conversely check whether a value does not match the type with
+// the isnt operator.
+if 3.7 isnt %Type.Int
+    $IO.Log("true")
+
+::ScopedFunc()
+    // types in a library can be shortcut with the 'using' keyword, similar to
+    // other static function calls.
+    using Type
+    $IO.Log(5 is %Int)
+
+// These types are a special type of function. They do not control how the data
+// is actually stored, but act as validation functions that test a given
+// variable. You can create custom type validation functions like this:
+::%MyNum
+    // These functions must start with ::% and have no parameters.
+    // Within these functions, the 'this' variable is the one being tested.
+    if this < 0 | this > 10
+        // within these functions, if the variable does not match,
+        // throw with a helpful message.
+        throw "outside range 0-10"
+    // These functions use standard file/global/library scoping rules.
+    // They return nothing. They either run to completion, or throw.
+
+// To invoke your custom type, you can reference it like the built in types.
+if 4 is %MyNum \ $IO.Log("true")
+
+
+// These types can also be used to validate the parameters to functions.
+::SaveScore(%MyNum score)
+    $IO.Log(score)
+// If this code was not commented out, you would get a runtime error
+// $SaveScore(66)
+// This tells you that the fault is with the calling code, instead of within
+// the function being called.
+
+
+// This type annotation does not impact how the data is stored.
+// It does not improve performance, and in fact is a bit slow.
+// Function parameter validation is automatically disabled if optimizations
+// are enabled within the compiler.
+
+// Due to the overhead, it is recommended that this be a tool for ensuring code
+// correctness during development, and not a common tool for core logic.
