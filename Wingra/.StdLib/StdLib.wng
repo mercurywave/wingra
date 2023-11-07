@@ -79,6 +79,16 @@ library Math
 	extern ::Sqrt(float => val)
 	extern ::Atan2(y, x => rad)
 
+library Type
+	extern ::%Num
+	extern ::%Int
+	extern ::%Str
+	extern ::%Bool
+	extern ::%Obj
+	extern ::%Lambda
+	extern ::%Iterator
+	extern ::%Enum
+
 library Scratch
 	extern ::Alloc(=> obj)
 	extern ::Free(obj)

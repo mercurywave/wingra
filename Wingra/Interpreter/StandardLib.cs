@@ -334,6 +334,27 @@ namespace Wingra.Interpreter
 			}, "Pause", "Job");
 
 
+			// throwing inside a Method.Invoke creates some garbage and causes the IDE to treat it like an unhandled exception
+			// so these are rolled manually to avoid the overhead, since these are more likely sources of exceptions
+			void RegTypeCheck(string name, Func<Variable, bool> test, string error)
+			{
+				runtime.InjectExternalCall((j, t) =>
+				{
+					if (!test(t.Value))
+						j.ThrowObject(new Variable(error));
+					j.CheckIn(t.Value);
+				}, name, "Type");
+			}
+			RegTypeCheck("Num", t => t.IsNumeric, "Not a number");
+			RegTypeCheck("Int", t => t.IsInt, "Not an integer");
+			RegTypeCheck("Str", t => t.IsString, "Not a string");
+			RegTypeCheck("Bool", t => t.IsBool, "Not a boolean");
+			RegTypeCheck("Obj", t => t.IsStructLike, "Not an object");
+			RegTypeCheck("Lamnbda", t => t.IsLambdaLike, "Not a lambda");
+			RegTypeCheck("Iterator", t => t.IsIteratorLike, "Not an iterator");
+			RegTypeCheck("Enum", t => t.IsEnum, "Not an enum");
+
+
 			runtime.InjectDynamicLibrary(new LDebug(runtime), "Debug");
 			runtime.InjectDynamicLibrary(new LScratch(runtime), "Scratch");
 			runtime.InjectDynamicLibrary(new LPromise(runtime), "Promise");

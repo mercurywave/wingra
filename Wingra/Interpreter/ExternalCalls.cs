@@ -89,9 +89,19 @@ namespace Wingra.Interpreter
 					var lamb = new ExternalAsyncFuncPointer(async (j, t) =>
 					{
 						// we have to wrap traps for this in a bunch of places because Method.Invoke seems to confuse it
+						// the IDE gets confused and thinks these are unhandled exceptions because .NET is acting as a middleman
+						// there's probably some extra overhead for these, even when the IDE doesn't intervene
+						//		TODO: find another way to raise/catch exceptions from integrated libraries
 						try
 						{
 							await RunParseMethodAsync(j, host, meth, _retConv, _convArr, isMethod, t);
+						}
+						catch (TargetInvocationException e)
+						{
+							// sometimes (always?), the exceptions get wrapped in this exception from reflection
+							var caught = e.InnerException as CatchableError;
+							if (caught == null) throw e;
+							j.ThrowObject(caught.Contents);
 						}
 						catch (CatchableError e)
 						{
