@@ -173,7 +173,7 @@ namespace Wingra.Parser
 			// ::name(namelist) {{ => func }}
 			mp( Token(eToken.FunctionDef) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
 				res => {
-					var plist = ParseParameterDefs(res.GetTokens("params"), out _);
+					var plist = ParseParameterDefs(res.Context, res.GetTokens("params"), out _);
 					SExpressionComponent exp = null;
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
@@ -184,7 +184,7 @@ namespace Wingra.Parser
 			// ::.name(namelist) {{ => func }}
 			mp( Token(eToken.FunctionDef) + Token(eToken.Dot) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
 				res => {
-					var plist = ParseParameterDefs(res.GetTokens("params"), out _);
+					var plist = ParseParameterDefs(res.Context, res.GetTokens("params"), out _);
 					SExpressionComponent exp = null;
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
@@ -195,7 +195,7 @@ namespace Wingra.Parser
 			// {extern} global ::name(namelist) {{ => func }}
 			mp( OptionalToken(eToken.Extern, "extern") + Token(eToken.Global) + Token(eToken.FunctionDef) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
 				res => {
-					var plist = ParseParameterDefs(res.GetTokens("params"), out _);
+					var plist = ParseParameterDefs(res.Context, res.GetTokens("params"), out _);
 					SExpressionComponent exp = null;
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
@@ -301,7 +301,7 @@ namespace Wingra.Parser
 			// {extern} ::name(namelist) {{ => func }}
 			mp(OptionalToken(eToken.Extern, "extern") + Token(eToken.FunctionDef) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
 				res => {
-					var plist = ParseParameterDefs(res.GetTokens("params"), out _);
+					var plist = ParseParameterDefs(res.Context, res.GetTokens("params"), out _);
 					SExpressionComponent exp = null;
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
@@ -313,7 +313,7 @@ namespace Wingra.Parser
 			// {extern} ::.name(namelist) {{ => func }}
 			mp(OptionalToken(eToken.Extern, "extern") + Token(eToken.FunctionDef) + Token(eToken.Dot) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
 				res => {
-					var plist = ParseParameterDefs(res.GetTokens("params"), out _);
+					var plist = ParseParameterDefs(res.Context, res.GetTokens("params"), out _);
 					SExpressionComponent exp = null;
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
@@ -424,7 +424,7 @@ namespace Wingra.Parser
 			// ::.name(params) {{ => func }}
 			mp( Token(eToken.FunctionDef) + Token(eToken.Dot) + Identifier("name") + ParameterDefList() + ArrowFuncReturn(),
 				res => {
-					var plist = ParseParameterDefs(res.GetTokens("params"), out _);
+					var plist = ParseParameterDefs(res.Context, res.GetTokens("params"), out _);
 					SExpressionComponent exp = null;
 					if(res.KeyMatched("exp"))
 						exp = ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("exp"));
@@ -652,7 +652,7 @@ namespace Wingra.Parser
 				for (int i = 0; i < inputs.Count; i++)
 				{
 					var curr = inputs[i];
-					if (!SplitParameter(curr, out _, out _, out _, out _, i == inputs.Count - 1))
+					if (!SplitParameter(curr, out _, out _, out _, out _, out _, i == inputs.Count - 1))
 						return null;
 				}
 			}
@@ -689,17 +689,35 @@ namespace Wingra.Parser
 			return new Tuple<List<RelativeTokenReference[]>, List<RelativeTokenReference[]>, bool, bool, bool>(inputs, outputs, isYield, isAsync, isThrow);
 		}
 
-		static bool SplitParameter(RelativeTokenReference[] par, out RelativeTokenReference ident, out bool isMulti, out bool isOptional, out bool isOwnedMemory, bool canBeMulti = true)
+		static bool SplitParameter(RelativeTokenReference[] par, out RelativeTokenReference[] typePath, out RelativeTokenReference ident, out bool isMulti, out bool isOptional, out bool isOwnedMemory, bool canBeMulti = true)
 		{
 			isMulti = false;
 			isOptional = false;
 			isOwnedMemory = false;
 			ident = new RelativeTokenReference();
+			typePath = null;
 
 			var idx = 0;
 			bool IsDone() => idx >= par.Length;
 			eToken Peek() => par[idx].Token.Type;
 			RelativeTokenReference Pop() => par[idx++];
+
+			if (IsDone()) return false;
+			if (Peek() == eToken.TypeIdentifier)
+			{
+				var path = new List<RelativeTokenReference>();
+				path.Add(Pop());
+				while(Peek() == eToken.Dot)
+				{
+					Pop(); // .
+					if (IsDone()) return false;
+					if (Peek() != eToken.Identifier)
+						return false;
+					path.Add(Pop()); // ident
+					if (IsDone()) return false;
+				}
+				typePath = path.ToArray();
+			}
 
 			if (IsDone()) return false;
 			if (Peek() == eToken.QuestionMark)
@@ -909,15 +927,18 @@ namespace Wingra.Parser
 		}
 
 
-		internal static Tuple<List<SParameter>, List<SIdentifier>, bool, bool, bool> ParseParameterDefs(RelativeTokenReference[] currLine, out int usedTokens)
+		internal static Tuple<List<SParameter>, List<SIdentifier>, bool, bool, bool> ParseParameterDefs(ParseContext context, RelativeTokenReference[] currLine, out int usedTokens)
 		{
 			var split = SplitParameterDefs(currLine, 0, out usedTokens);
 			List<SParameter> inputs = new List<SParameter>();
 			foreach (var arr in split.Item1)
 			{
-				SplitParameter(arr, out var token, out var isMulti, out var isOpt, out var isOwned);
-				if (isMulti) inputs.Add(new SMultiParameter(token.Token.Token, isOpt, isOwned));
-				else inputs.Add(new SParameter(token.Token.Token, isOpt, isOwned));
+				SplitParameter(arr, out var typePath, out var token, out var isMulti, out var isOpt, out var isOwned);
+				SStaticPath typeDef = null;
+				if (typePath != null)
+					typeDef = new SStaticPath(typePath, context.Scope.GetUsingNamespaces());
+				if (isMulti) inputs.Add(new SMultiParameter(token.Token.Token, isOpt, isOwned, typeDef));
+				else inputs.Add(new SParameter(token.Token.Token, isOpt, isOwned, typeDef));
 			}
 			List<SIdentifier> outputs = new List<SIdentifier>();
 			foreach (var arr in split.Item2)

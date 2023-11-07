@@ -45,6 +45,8 @@ namespace Wingra.Parser
 		}
 		internal override void OnAddedToTree(ParseContext context)
 		{
+			foreach (var p in Parameters)
+				p.OnAddedToTree(context);
 			if (_oneLiner)
 				foreach (var child in Children)
 					child.OnAddedToTree(context);
@@ -126,6 +128,8 @@ namespace Wingra.Parser
 				}
 				return false;
 			}
+			// type def checks *would* be problematic, but are only emmitted when optimizations are off
+			//if (_parameters.Any(p => p.HasTypeInfo)) return false;
 			return false;
 		}
 
@@ -239,7 +243,7 @@ namespace Wingra.Parser
 		{
 			if (_identifier.Token.Token == "Main")
 				errors.LogError("Main function must be global to be run automatically", ePhase.Emit, FileLine, _identifier, eErrorType.Warning);
-			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.PushString, 0, Identifier);
+			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.PushString, 0, Identifier.Replace("%", ""));
 			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.DeclareFunction, 0, lamb.UniqNameInFile);
 		}
 	}
@@ -320,19 +324,22 @@ namespace Wingra.Parser
 		}
 	}
 
-	public class SParameter : SyntaxNode
+	internal class SParameter : SyntaxNode
 	{
 		string _identifier;
 		bool _optional, _ownedOnly;
-		public SParameter(string identifier, bool optional, bool ownedOnly) : base()
+		SStaticPath _typeCheck;
+		public SParameter(string identifier, bool optional, bool ownedOnly, SStaticPath typeCheck) : base()
 		{
 			_identifier = identifier;
 			_optional = optional;
 			_ownedOnly = ownedOnly;
+			_typeCheck = typeCheck;
 		}
 		public string Identifier => _identifier;
 		public bool IsOptional => _optional;
 		public bool OwnedOnly => _ownedOnly;
+		public bool HasTypeInfo => _typeCheck != null;
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
 			func.Add(asmStackLevel, eAsmCommand.ReadParam, Identifier);
@@ -341,13 +348,28 @@ namespace Wingra.Parser
 		{
 			if (_ownedOnly)
 				func.Add(asmStackLevel, eAsmCommand.AssertOwnedVar, Identifier);
+			if(_typeCheck != null && !compiler.Optimizations && compiler.SanityChecks)
+			{
+				func.Add(asmStackLevel, eAsmCommand.Load, Identifier);
+				_typeCheck.EmitAssembly(compiler, file, func, asmStackLevel, errors, parent);
+				func.Add(asmStackLevel, eAsmCommand.CreateErrorTrap, asmStackLevel + 1);
+				func.DeclareVariable(STrapStatement.ERROR_VAR, asmStackLevel + 1);
+				func.Add(asmStackLevel + 2, eAsmCommand.Is);
+				func.Add(asmStackLevel + 2, eAsmCommand.Jump, asmStackLevel);
+				func.Add(asmStackLevel + 1, eAsmCommand.ThrowParameterError, Identifier);
+			}
 		}
 		public virtual string GetDisplayString() => (_optional ? "?" : "") + (_ownedOnly ? "&" : "") + _identifier;
+		internal override void OnAddedToTree(ParseContext context)
+		{
+			_typeCheck?.OnAddedToTree(context);
+			base.OnAddedToTree(context);
+		}
 	}
 
-	public class SMultiParameter : SParameter
+	internal class SMultiParameter : SParameter
 	{
-		public SMultiParameter(string identifier, bool optional, bool ownedOnly) : base(identifier, optional, ownedOnly) { }
+		public SMultiParameter(string identifier, bool optional, bool ownedOnly, SStaticPath typeCheck) : base(identifier, optional, ownedOnly, typeCheck) { }
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
 			func.Add(asmStackLevel, eAsmCommand.ReadMultiParam, Identifier);

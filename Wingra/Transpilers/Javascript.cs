@@ -749,6 +749,9 @@ namespace Wingra.Transpilers
 					case eAsmCommand.FatalError:
 						sb.AppendLine("fatalError();");
 						break;
+					case eAsmCommand.ThrowParameterError:
+						sb.AppendLine($"fatalError('parameter type error - {line.Literal}');");
+						break;
 					case eAsmCommand.ThrowError:
 						sb.AppendLine("throw " + (line.Param == 1 ? Pop() : "null") + ";");
 						break;

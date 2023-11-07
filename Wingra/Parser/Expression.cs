@@ -541,7 +541,7 @@ namespace Wingra.Parser
 			_type.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 			var didErr = func.GetReserveUniqueTemp("didErr");
 			func.Add(asmStackLevel, eAsmCommand.CreateErrorTrap, asmStackLevel + 1);
-			func.DeclareVariable("error", asmStackLevel + 1);
+			func.DeclareVariable(STrapStatement.ERROR_VAR, asmStackLevel + 1);
 			func.Add(asmStackLevel + 2, eAsmCommand.Is);
 			func.Add(asmStackLevel + 2, eAsmCommand.PushBool, _isnt ? 0 : 1);
 			func.Add(asmStackLevel + 2, eAsmCommand.StoreLocal, didErr);

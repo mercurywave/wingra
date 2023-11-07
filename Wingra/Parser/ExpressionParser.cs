@@ -248,7 +248,7 @@ namespace Wingra.Parser
 					{
 						if (currLine.Length > 2 && currLine[1].Token.Type == eToken.LeftParen)
 						{
-							var split = LineParser.ParseParameterDefs(util.RangeRemainder(currLine, 1), out usedTokens);
+							var split = LineParser.ParseParameterDefs(context, util.RangeRemainder(currLine, 1), out usedTokens);
 							usedTokens += 2;
 							if (currLine.Length > usedTokens + 2 && currLine[usedTokens].Token.Type == eToken.LeftBracket)
 							{

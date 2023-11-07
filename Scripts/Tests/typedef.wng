@@ -1,0 +1,28 @@
+
+using Type
+::Foo(%Int a => b)
+    b : a
+
+::%Bar
+    if !this has prop
+        throw "no prop"
+
+::Car(%Bar a => b)
+    b : a
+
+#test
+    $assert($Foo(1) = 1)
+
+#test
+    @a : dim
+        prop : true
+    $assert(a is %Bar)
+
+#test
+    @a : dim()
+    $assert(a isnt %Bar)
+
+#test
+    @a : dim
+        prop : true
+    $assert($Car(a) = a)

@@ -6,8 +6,9 @@ using System.Text;
 
 namespace Wingra.Parser
 {
-	class STrapStatement : SScopeStatement, IDeclareVariablesAtScope
+	internal class STrapStatement : SScopeStatement, IDeclareVariablesAtScope
 	{
+		public const string ERROR_VAR = "error";
 		List<SStatement> _attempt;
 		public STrapStatement(int fileLine, List<SStatement> attempt) : base(fileLine)
 		{
@@ -28,7 +29,7 @@ namespace Wingra.Parser
 			// any vars declared at that level need to be hoisted to the current level so they can persist onward
 			func.HoistDeclaredVars(asmStackLevel + 2, asmStackLevel);
 			func.Add(asmStackLevel + 2, eAsmCommand.Jump, asmStackLevel);
-			func.DeclareVariable("error", asmStackLevel + 1);
+			func.DeclareVariable(ERROR_VAR, asmStackLevel + 1);
 			func.Add(asmStackLevel + 1, eAsmCommand.ClearErrorTrap, func.FindParentErrorTrap());
 			EmitChildren(compiler, file, func, asmStackLevel + 1, errors);
 		}
@@ -74,7 +75,7 @@ namespace Wingra.Parser
 			_try.EmitAssembly(compiler, file, func, asmStackLevel + 2, errors, this);
 			func.Add(asmStackLevel + 2, eAsmCommand.StoreLocal, saveToTemp);
 			func.Add(asmStackLevel + 2, eAsmCommand.Jump, asmStackLevel);
-			func.DeclareVariable("error", asmStackLevel + 1);
+			func.DeclareVariable(STrapStatement.ERROR_VAR, asmStackLevel + 1);
 			func.Add(asmStackLevel + 1, eAsmCommand.ClearErrorTrap, func.FindParentErrorTrap());
 			if (_catch != null)
 			{
@@ -84,7 +85,7 @@ namespace Wingra.Parser
 			else
 			{
 				func.InjectDeferrals(asmStackLevel + 1);
-				func.Add(asmStackLevel + 1, eAsmCommand.Load, "error");
+				func.Add(asmStackLevel + 1, eAsmCommand.Load, STrapStatement.ERROR_VAR);
 				func.Add(asmStackLevel + 1, eAsmCommand.ThrowError, 1);
 			}
 			func.Add(asmStackLevel, eAsmCommand.Load, saveToTemp);
@@ -114,7 +115,7 @@ namespace Wingra.Parser
 		{
 			var saveToTemp = func.GetReserveUniqueTemp("opt");
 			func.Add(asmStackLevel, eAsmCommand.CreateErrorTrap, asmStackLevel + 1);
-			func.DeclareVariable("error", asmStackLevel + 1);
+			func.DeclareVariable(STrapStatement.ERROR_VAR, asmStackLevel + 1);
 			_try.EmitAssembly(compiler, file, func, asmStackLevel + 2, errors, this);
 			func.Add(asmStackLevel + 2, eAsmCommand.StoreLocal, saveToTemp);
 			func.Add(asmStackLevel + 2, eAsmCommand.Jump, asmStackLevel);

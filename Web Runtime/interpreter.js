@@ -232,6 +232,31 @@ class ORuntime {
 			return Math.atan2(y, x);
 		});
 
+		this.AddExternalMethod("Type.Num", function () {
+			if(typeof this !== 'number') throw "Not a number";
+		});
+		this.AddExternalMethod("Type.Int", function () {
+			if(typeof this !== 'number' || isNaN(this) || this % 1 !== 0) throw "Not an integer";
+		});
+		this.AddExternalMethod("Type.Str", function () {
+			if(typeof this !== 'string') throw "Not a string";
+		});
+		this.AddExternalMethod("Type.Bool", function () {
+			if(typeof this !== 'boolean') throw "Not a boolean";
+		});
+		this.AddExternalMethod("Type.Obj", function () {
+			if(!this || !this.hasOwnProperty("inner")) throw "Not an object";
+		});
+		this.AddExternalMethod("Type.Lambda", function () {
+			if(!this || !this.hasOwnProperty("func")) throw "Not a lambda";
+		});
+		this.AddExternalMethod("Type.Iterator", function () {
+			if(!this || !this.hasOwnProperty("iter")) throw "Not an iterator";
+		});
+		this.AddExternalMethod("Type.Enum", function () {
+			if(!this || !this.hasOwnProperty("enum")) throw "Not an enum";
+		});
+
 		this.AddExternalFunction("Debug.Break", function () { debugger; });
 		this.AddExternalFunction("Debug.ObjDebug", function (val) { return "" + val; });
 		this.AddExternalFunction("Debug.TypeName", function (val) { return typeof val; });
@@ -817,7 +842,7 @@ function mkObj(inner) {return new OObj(RT, inner);}
 function gtInner(obj) {return (obj instanceof OObj) ? obj.inner : obj; }
 
 function log(...p) { console.log(...p); }
-function fatalError() { trace("Fatal Error!"); }
+function fatalError(msg) { trace("Fatal Error! " + (msg || "")); }
 function trace(message) { 
 	if (message) log(message);
 	console.trace(); 

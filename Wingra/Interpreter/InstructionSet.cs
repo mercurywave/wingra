@@ -1012,10 +1012,9 @@ namespace Wingra.Interpreter
 					j.CheckIn(obj);
 				};
 			});
-			Register(eAsmCommand.Is, i => 2, o => 1, asm => j =>
+			Register(eAsmCommand.Is, i => 2, o => 0, asm => j =>
 			{
 				PopPop(j, out var obj, out var type);
-				j.Registers.Push(new Variable(true));
 				var lamb = type.GetLambdaInternal();
 				lamb.BeginExecute(j, obj);
 				j.CheckIn(obj, type);
@@ -1195,6 +1194,19 @@ namespace Wingra.Interpreter
 			Register(eAsmCommand.FatalError, i => 0, o => 0, asm => j =>
 			{
 				j.ThrowFatalError();
+			});
+			Register(eAsmCommand.ThrowParameterError, i => 0, o => 0, asm => {
+				var name = asm[0].Literal;
+				var idx = asm.Function.IndexOfLocal(name);
+				var eIndex = asm.Function.IndexOfLocal(STrapStatement.ERROR_VAR);
+				return j =>
+				{
+					var obj = j.CurrentScope.GetLocalByIndex(idx);
+					var err = j.CurrentScope.GetLocalByIndex(eIndex);
+					var eStr = err.IsString ? (" (" + err.AsString() + ")") : "";
+					var source = j.CallStack.Pop(); // there's probably a better way to get to the call site
+					throw new RuntimeException($"Param Type Fail: {name}{eStr} - {obj.ToString()}", j);
+				};
 			});
 			#endregion
 

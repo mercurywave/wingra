@@ -683,6 +683,8 @@ namespace Wingra.Interpreter
 				// PERF: it would be nice if we could detect that scenario earlier, so we don't waste time like this
 				//Debug.Assert(cmd != eAsmCommand.CreateLambda);
 				if (cmd == eAsmCommand.CreateLambda) return false;
+				if (cmd == eAsmCommand.ThrowParameterError) 
+					return false; // SHOULDN't BE HIT - this should have been handled much earlier
 				string literal = line.Literal;
 				if (CommandLoadsSymbol(cmd))
 				{
@@ -832,7 +834,8 @@ namespace Wingra.Interpreter
 				|| cmd == eAsmCommand.CallFunc
 				|| cmd == eAsmCommand.TestIfUninitialized
 				|| cmd == eAsmCommand.AssertOwnedVar
-				|| cmd == eAsmCommand.ExceedInDirection;
+				|| cmd == eAsmCommand.ExceedInDirection
+				|| cmd == eAsmCommand.ThrowParameterError;
 
 		internal List<string> FindLocals()
 		{
@@ -1011,7 +1014,7 @@ namespace Wingra.Interpreter
 		LoopBegin, LoopIfTest,
 		TestIfUninitialized, // pushes bool if local is reserved, used for ?:
 		AssertOwnedVar, // just used to assert owned parameters
-		CreateErrorTrap, ThrowError, ClearErrorTrap, FatalError,
+		CreateErrorTrap, ThrowError, ClearErrorTrap, FatalError, ThrowParameterError,
 		FlagDefer, RunDeferIfSet,
 	}
 
@@ -1151,6 +1154,7 @@ namespace Wingra.Interpreter
 				case eAsmCommand.ThrowError: return "trhw";
 				case eAsmCommand.ClearErrorTrap: return "cerr";
 				case eAsmCommand.FatalError: return "fat";
+				case eAsmCommand.ThrowParameterError: return "perr";
 				case eAsmCommand.FlagDefer: return "fdef";
 				case eAsmCommand.RunDeferIfSet: return "ddef";
 				default: throw new NotImplementedException();

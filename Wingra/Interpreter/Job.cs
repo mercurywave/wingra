@@ -444,7 +444,7 @@ namespace Wingra.Interpreter
 			CurrentScope._nextLinePointer = CurrentScope._errorTrapJump;
 			CurrentScope._errorTrapJump = -1;
 			if (obj.HasValue)
-				CurrentScope.SaveNewLocal("error", obj.Value);
+				CurrentScope.SaveNewLocal(Parser.STrapStatement.ERROR_VAR, obj.Value);
 		}
 
 		public void ThrowFatalError() => throw new RuntimeException("Fatal error");
