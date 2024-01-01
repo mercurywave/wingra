@@ -523,10 +523,10 @@ namespace Wingra.Parser
 				return "";
 			return matches[0];
 		}
-		public bool TryGetFunctionInfo(string asbPath, out string name, out bool isMethod, out string[] inputs, out string[] outputs, out bool doesYield, out bool isAsync)
+		public bool TryGetFunctionInfo(string asbPath, out string name, out bool isMethod, out string[] inputs, out string[] outputs, out bool doesYield, out bool isAsync, out bool doesThrow, out bool isTypeDef)
 		{
 			var node = GetAbsNode(asbPath);
-			name = ""; isMethod = false; inputs = null; outputs = null; isMethod = false; doesYield = false; isAsync = false;
+			name = ""; isMethod = false; inputs = null; outputs = null; isMethod = false; doesYield = false; isAsync = false; doesThrow = false; isTypeDef = false;
 			if (node == null) return false;
 			var func = node.FuncDef;
 			if (func == null) return false;
@@ -536,6 +536,8 @@ namespace Wingra.Parser
 			inputs = func.Parameters.Select(p => p.GetDisplayString()).ToArray();
 			outputs = func._returnParams.Select(r => r.Symbol).ToArray();
 			isAsync = func._isAsync;
+			doesThrow = func._isThrow;
+			isTypeDef = func._isTypeDef;
 			return true;
 		}
 		internal _SfunctionDef TryGetFunction(string absPath)

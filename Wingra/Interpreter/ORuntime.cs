@@ -27,6 +27,7 @@ namespace Wingra.Interpreter
 		List<List<FileCodeInstance>> _initOrderChunks = new List<List<FileCodeInstance>>();
 		Dictionary<string, FileCodeInstance> AllFiles = new Dictionary<string, FileCodeInstance>();
 		HashSet<string> _mappedExternFunctions = new HashSet<string>();
+		Dictionary<ILambda, string> _typeDefs = new Dictionary<ILambda, string>();
 
 		public ORuntime()
 		{
@@ -256,7 +257,7 @@ namespace Wingra.Interpreter
 			=> TryLoadConstantFromFile(path, file).Value;
 		internal Variable? TryLoadConstantFromFile(string path, string file)
 		{
-			var fci= AllFiles[file];
+			var fci = AllFiles[file];
 			return fci.Constants.GetPathOrNull(path);
 		}
 		public Variable LoadStaticFromFile(string path, string fileKey)
@@ -266,7 +267,7 @@ namespace Wingra.Interpreter
 			if (string.IsNullOrEmpty(fileKey)) throw new Exception("file not found?");
 			var file = AllFiles[fileKey];
 			var name = StaticMapping.JoinPath(split);
-			var lamb = new Variable(file.NamedFunctions[name], Heap);
+			var lamb = new Variable(file.Constants.Get(name).GetLambdaInternal());
 			return lamb;
 		}
 
@@ -357,10 +358,27 @@ namespace Wingra.Interpreter
 			var lamb = new ExternalFuncPointer(act);
 			InjectStaticVar(ExternalCalls.MakeFuncPath(path, name), new Variable(lamb), eStaticType.External, "", -1);
 		}
+		public void InjectExternalTypeDef(Action<Job, Variable?> act, string name, string path = "")
+		{
+			var lamb = new ExternalFuncPointer(act);
+			_typeDefs.Add(lamb, "%" + (path != "" ? (path + ".") : "") + name);
+			InjectStaticVar(ExternalCalls.MakeFuncPath(path, name), new Variable(lamb), eStaticType.External, "", -1);
+		}
 		public void InjectExternalAsyncCall(Func<Job, Variable?, Task> act, string name, string path = "")
 		{
 			var lamb = new ExternalAsyncFuncPointer(act);
 			InjectStaticVar(ExternalCalls.MakeFuncPath(path, name), new Variable(lamb), eStaticType.External, "", -1);
+		}
+
+		public bool IsTypeDef(Variable obj)
+			=> _typeDefs.ContainsKey(obj.GetLambdaInternal());
+		public string GetTypeName(Variable obj)
+			=> _typeDefs[obj.GetLambdaInternal()];
+		internal void RegisterTypeDef(Variable obj, string name)
+		{
+			if (obj.GetLambdaInternal() == null)
+				throw new Exception("RegisterTypeDef expected a lambda, at least");
+			_typeDefs.Add(obj.GetLambdaInternal(), name);
 		}
 
 		public Variable MakeExternalVar(object obj)
@@ -608,7 +626,6 @@ namespace Wingra.Interpreter
 	{
 		public string Name;
 		public string Key;
-		internal Dictionary<string, CodeBlock> NamedFunctions = new Dictionary<string, CodeBlock>(); // populated during initialize
 		internal VariableTable Constants;
 		internal CodeBlock FuncDefFunc = null;
 		internal CodeBlock DataGloFunc = null;

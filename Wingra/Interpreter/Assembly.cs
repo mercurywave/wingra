@@ -1006,6 +1006,7 @@ namespace Wingra.Interpreter
 		FreeProperty, FreeLocal, KeyFree, SoftFreeLocal, SoftFreeKey,
 		CreateStaticFuncPointer, CreateLambda, DeclareStaticFunction,
 		CreateManualLambda, CaptureVar, CaptureCopy, CaptureFree, CaptureFreeish,
+		MarkFuncAsTypeDef,
 		ReserveLocal, ReserveScratch,
 		DimArray, DimDictionary,
 		DimSetInt, DimSetString, DimSetExpr, SetupMixin,
@@ -1132,6 +1133,7 @@ namespace Wingra.Interpreter
 				case eAsmCommand.CreateStaticFuncPointer: return "csfp";
 				case eAsmCommand.CreateLambda: return "lam";
 				case eAsmCommand.DeclareStaticFunction: return "dsf";
+				case eAsmCommand.MarkFuncAsTypeDef: return "mftd";
 				case eAsmCommand.ReserveLocal: return "rloc";
 				case eAsmCommand.ReserveScratch: return "rscr";
 				case eAsmCommand.DimArray: return "darr";

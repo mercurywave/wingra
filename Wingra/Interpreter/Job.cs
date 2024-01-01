@@ -501,6 +501,53 @@ namespace Wingra.Interpreter
 			return _paramStack[0];
 		}
 
+		internal Variable? RunTypeCheck(Variable typeDef, Variable obj)
+		{
+			// this is very fragile. it needs to insert an error trap into the current stack
+			// and then execute the typedef function, so it raises an error back to here
+			// there isn't a way to insert a fake stack, so we fiddle with the current one
+			// this also means the error value is inserted into a scope that may not be expecting it
+			// that could cause some real headaches later, but I'm not sure there are great alternatives
+			if (!typeDef.IsExecutable) throw new RuntimeException("expected lambda", this);
+			if (!Runtime.IsTypeDef(typeDef)) throw new RuntimeException("expected type def", this);
+			var topOtheStack = CallStack.Depth;
+			var targetLine = topOtheStack == 0 ? 0 : CallStack.Peek(0)._nextLinePointer;
+			int trapRollback = CurrentScope._errorTrapJump;
+			CurrentScope._errorTrapJump = int.MaxValue;
+			_paramStack.Clear();
+			var exec = typeDef.GetLambdaInternal();
+
+			Variable? error = null;
+			try
+			{
+				exec.BeginExecute(this, obj);
+				if (CallStack.Depth <= topOtheStack)
+					return null;
+				while (CallStack.Depth > topOtheStack)
+				{
+					var line = CurrentScope.AdvanceLinePointer();
+					var act = Code.Instructions[line];
+					act(this);
+					if (CurrentScope._nextLinePointer == int.MaxValue)
+					{
+						error = CurrentScope.TryFindVar(Parser.STrapStatement.ERROR_VAR);
+						break;
+					}
+				}
+			}
+			catch (CatchableError ex) { error = ex.Contents; }
+			catch (Exception ex) { HandleError(ex); }
+
+			while (CallStack.Depth > topOtheStack)
+				UnwindStack();
+			if (CurrentScope != null)
+			{
+				CurrentScope._nextLinePointer = targetLine;
+				CurrentScope._errorTrapJump = trapRollback;
+			}
+			return error;
+		}
+
 		#endregion
 
 		#region public helpers

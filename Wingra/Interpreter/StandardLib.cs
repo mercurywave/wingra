@@ -336,23 +336,48 @@ namespace Wingra.Interpreter
 
 			// throwing inside a Method.Invoke creates some garbage and causes the IDE to treat it like an unhandled exception
 			// so these are rolled manually to avoid the overhead, since these are more likely sources of exceptions
-			void RegTypeCheck(string name, Func<Variable, bool> test, string error)
+			void RegTypeCheck(string name, Func<Job, Variable, bool> test, string error)
 			{
-				runtime.InjectExternalCall((j, t) =>
+				runtime.InjectExternalTypeDef((j, t) =>
 				{
-					if (!test(t.Value))
+					if (!test(j, t.Value))
 						j.ThrowObject(new Variable(error));
 					j.CheckIn(t.Value);
 				}, name, "Type");
 			}
-			RegTypeCheck("Num", t => t.IsNumeric, "Not a number");
-			RegTypeCheck("Int", t => t.IsInt, "Not an integer");
-			RegTypeCheck("Str", t => t.IsString, "Not a string");
-			RegTypeCheck("Bool", t => t.IsBool, "Not a boolean");
-			RegTypeCheck("Obj", t => t.IsStructLike, "Not an object");
-			RegTypeCheck("Lamnbda", t => t.IsLambdaLike, "Not a lambda");
-			RegTypeCheck("Iterator", t => t.IsIteratorLike, "Not an iterator");
-			RegTypeCheck("Enum", t => t.IsEnum, "Not an enum");
+			RegTypeCheck("Num", (j, t) => t.IsNumeric, "Not a number");
+			RegTypeCheck("Int", (j, t) => t.IsInt, "Not an integer");
+			RegTypeCheck("Str", (j, t) => t.IsString, "Not a string");
+			RegTypeCheck("Bool", (j, t) => t.IsBool, "Not a boolean");
+			RegTypeCheck("Obj", (j, t) => t.IsStructLike, "Not an object");
+			RegTypeCheck("Lamnbda", (j, t) => t.IsLambdaLike, "Not a lambda");
+			RegTypeCheck("Iterator", (j, t) => t.IsIteratorLike, "Not an iterator");
+			RegTypeCheck("Enum", (j, t) => t.IsEnum, "Not an enum");
+			RegTypeCheck("TypeDef", (j, t) => j.Runtime.IsTypeDef(t), "Not a typedef");
+
+			runtime.InjectExternalCall((j, t) =>
+			{
+				j.AssertPassingParams(1);
+				var type = j.GetPassingParam(0);
+				if (!j.Runtime.IsTypeDef(type))
+					throw new RuntimeException("GetNameOf expected a typedef");
+				j.PassReturn(new Variable(j.Runtime.GetTypeName(type)));
+				j.CheckIn(type);
+			}, "GetNameOf", "Type");
+
+			runtime.InjectExternalCall((j, t) =>
+			{
+				j.AssertPassingParams(2);
+				var type = j.GetPassingParam(0);
+				var obj = j.GetPassingParam(1);
+				if (!j.Runtime.IsTypeDef(type))
+					throw new RuntimeException("GetCheckError expected a typedef");
+
+				var result = j.RunTypeCheck(type, obj);
+
+				j.PassReturn(result ?? Variable.NULL);
+				j.CheckIn(type, obj);
+			}, "GetCheckError", "Type");
 
 
 			runtime.InjectDynamicLibrary(new LDebug(runtime), "Debug");

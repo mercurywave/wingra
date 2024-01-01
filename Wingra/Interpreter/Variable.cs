@@ -314,7 +314,7 @@ namespace Wingra.Interpreter
 
 		public object GetExternalContents()
 		{
-			if(_ref is ExternalWrapper)
+			if (_ref is ExternalWrapper)
 				return (_ref as ExternalWrapper).Internal;
 			return _ref;
 		}

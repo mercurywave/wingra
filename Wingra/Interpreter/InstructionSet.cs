@@ -730,15 +730,13 @@ namespace Wingra.Interpreter
 				};
 			});
 
-			Register(eAsmCommand.DeclareFunction, i => 1, o => 0, asm =>
+			Register(eAsmCommand.DeclareFunction, i => 0, o => 1, asm =>
 			{
 				var label = asm[0].Literal;
 				return j =>
 				{
-					var name = j.Registers.Pop().AsString();
 					var code = j.Code.FileCode[label];
-					j.Code.FileCode.NamedFunctions.Add(name, code);
-					j.Code.FileCode.SaveConstant(name, new Variable(code), j.Heap);
+					j.Registers.Push(new Variable(code));
 				};
 			});
 
@@ -751,6 +749,16 @@ namespace Wingra.Interpreter
 					var func = new Variable(code);
 					func.FlagAsData();
 					j.Registers.Push(func);
+				};
+			});
+
+			Register(eAsmCommand.MarkFuncAsTypeDef, i => 1, o => 1, asm =>
+			{
+				var label = asm[0].Literal;
+				return j =>
+				{
+					var lamb = j.Registers.Peek();
+					j.Runtime.RegisterTypeDef(lamb, label);
 				};
 			});
 
@@ -1195,7 +1203,8 @@ namespace Wingra.Interpreter
 			{
 				j.ThrowFatalError();
 			});
-			Register(eAsmCommand.ThrowParameterError, i => 0, o => 0, asm => {
+			Register(eAsmCommand.ThrowParameterError, i => 0, o => 0, asm =>
+			{
 				var name = asm[0].Literal;
 				var idx = asm.Function.IndexOfLocal(name);
 				var eIndex = asm.Function.IndexOfLocal(STrapStatement.ERROR_VAR);

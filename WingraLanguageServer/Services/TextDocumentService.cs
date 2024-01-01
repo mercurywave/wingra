@@ -109,11 +109,13 @@ namespace WingraLanguageServer.Services
 		{
 			sig = "";
 			pars = new List<ParameterInformation>();
-			if (absPath != "" && Session._staticMap.TryGetFunctionInfo(absPath, out var fnName, out var isMethod, out var inputs, out var outputs, out var doesYield, out var isAsync))
+			if (absPath != "" && Session._staticMap.TryGetFunctionInfo(absPath, out var fnName, out var isMethod, out var inputs, out var outputs, out var doesYield, out var isAsync, out var doesThrow, out var isTypeDef))
 			{
 				sig += "::";
-				if (isMethod) sig += ".";
+				if (isTypeDef) sig += "%";
+				else if (isMethod) sig += ".";
 				sig += StaticMapping.GetPathFromAbsPath(absPath);
+				if (isTypeDef) return true;
 				sig += "(";
 				var ins = new List<string>();
 				for (int i = 0; i < inputs.Length; i++)
@@ -124,8 +126,12 @@ namespace WingraLanguageServer.Services
 				sig += util.Join(ins, ",");
 				if (outputs.Length > 0 || isAsync)
 					sig += " => ";
-				if (isAsync) sig += " async ";
-				if (doesYield) sig += " yield ";
+				var retmods = new List<string>();
+				if (isAsync) retmods.Add("async");
+				if (doesYield) retmods.Add("yield");
+				if (doesThrow) retmods.Add("throw");
+				if (retmods.Count > 0)
+					sig += util.Join(retmods, " ");
 				sig += util.Join(outputs, ", ");
 				sig += ")";
 				return true;

@@ -481,12 +481,6 @@ namespace Wingra.Transpilers
 						Math("/");
 						break;
 					case eAsmCommand.ClearRegisters: break;
-					case eAsmCommand.DeclareFunction:
-						{
-							var fk = GetShortFileKey(code.FileKey);
-							sb.AppendLine(RUNTIME + ".setStaticFile(" + fk + "," + Pop() + ",OObj.MakeFunc(" + FUNCS + "[" + fk + "][" + JsStr(line.Literal) + "]));");
-						}
-						break;
 					case eAsmCommand.StoreToPathData:
 						sb.AppendLine(RUNTIME + ".setStaticGlo(" + JsStr(line.Literal) + "," + Pop() + ");");
 						break;
@@ -617,6 +611,7 @@ namespace Wingra.Transpilers
 					case eAsmCommand.CreateStaticFuncPointer:
 						Push(RUNTIME + ".getStaticGlo(" + JsStr(line.Literal) + ")");
 						break;
+					case eAsmCommand.DeclareFunction:
 					case eAsmCommand.CreateLambda:
 						{
 							var lCode = file[line.Literal];
@@ -628,6 +623,9 @@ namespace Wingra.Transpilers
 							Push("OObj.MakeFunc(" + FUNCS + "[" + fk + "][" + JsStr(line.Literal) + "]," + capture + ")");
 							break;
 						}
+					case eAsmCommand.MarkFuncAsTypeDef:
+						Push($"{RUNTIME}.regTypeDef({Peek()},{JsStr(line.Literal)})");
+						break;
 					case eAsmCommand.CreateManualLambda:
 						{
 							var fk = GetShortFileKey(code.FileKey);

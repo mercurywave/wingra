@@ -33,7 +33,7 @@
             "action": { "indent": "outdent" }
         },
         {
-            "beforeText": "^((?!\\/\\/).)*(?![^\"]*\")((\\b(if|else|switch|for|while|library|enum|trap|#def|lambda|textdata|case)\\b[^\\\\]*)|(::.*\\(.*\\)(?!.*=>)[^\\\\]*)|(\\bdim(\\s)*(?!\\()[^\\\\]*))$",
+            "beforeText": "^((?!\\/\\/).)*(?![^\"]*\")((\\b(if|else|switch|for|while|library|enum|trap|#def|lambda|textdata|case)\\b[^\\\\]*)|(::.*\\(.*\\)(?!.*=>)[^\\\\]*)|(::%.*(?!.*=>)[^\\\\]*)|(\\bdim(\\s)*(?!\\()[^\\\\]*))$",
             "action": { "indent": "indent" }
         }
     ]

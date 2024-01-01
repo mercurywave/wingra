@@ -27,7 +27,7 @@ namespace Wingra.Parser
 			_doesYield = doesYield;
 			_isMethod = isMethod;
 			_isAsync = isAsync;
-			_isThrow = isThrow;
+			_isThrow = isThrow || isTypeDef;
 			_isExtern = isExtern;
 			_isTypeDef = isTypeDef;
 			if (oneLiner != null)
@@ -212,6 +212,8 @@ namespace Wingra.Parser
 		protected override void EmitRegister(Compiler compiler, FileAssembler file, FunctionFactory func, FunctionFactory lamb, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
 			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.DeclareStaticFunction, 0, lamb.UniqNameInFile);
+			if (_isTypeDef)
+				file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.MarkFuncAsTypeDef, Identifier);
 			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.StoreToPathData, Identifier);
 		}
 	}
@@ -243,8 +245,10 @@ namespace Wingra.Parser
 		{
 			if (_identifier.Token.Token == "Main")
 				errors.LogError("Main function must be global to be run automatically", ePhase.Emit, FileLine, _identifier, eErrorType.Warning);
-			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.PushString, 0, Identifier.Replace("%", ""));
 			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.DeclareFunction, 0, lamb.UniqNameInFile);
+			if (_isTypeDef)
+				file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.MarkFuncAsTypeDef, file.Name + "::" + Identifier);
+			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.StoreToFileConst, Identifier.Replace("%", ""));
 		}
 	}
 
@@ -278,6 +282,8 @@ namespace Wingra.Parser
 		{
 			var header = file.FuncDefRoutine;
 			header.Add(asmStackLevel, eAsmCommand.DeclareStaticFunction, 0, lamb.UniqNameInFile);
+			if (_isTypeDef)
+				header.Add(asmStackLevel, eAsmCommand.MarkFuncAsTypeDef, _declaredPath.ResolvedToText() + "::" + Identifier);
 			_declaredPath.EmitSave(compiler, file, header, 0, errors, this);
 		}
 	}
@@ -299,6 +305,8 @@ namespace Wingra.Parser
 		{
 			// I haven't really thought about this very hard, this is just ported from Kilt...
 			func.Add(asmStackLevel, eAsmCommand.CreateLambda, 0, lamb.UniqNameInFile);
+			if (_isTypeDef)
+				func.Add(asmStackLevel, eAsmCommand.MarkFuncAsTypeDef, Identifier);
 			func.Add(asmStackLevel, eAsmCommand.StoreNewLocal, 0, Identifier);
 		}
 	}
@@ -320,6 +328,8 @@ namespace Wingra.Parser
 		{
 			// I haven't really thought about this very hard, this is just ported from Kilt...
 			func.Add(asmStackLevel, eAsmCommand.CreateLambda, 0, lamb.UniqNameInFile);
+			if (_isTypeDef)
+				func.Add(asmStackLevel, eAsmCommand.MarkFuncAsTypeDef, Identifier);
 			func.Add(asmStackLevel, eAsmCommand.DimSetString, Identifier);
 		}
 	}
@@ -348,7 +358,7 @@ namespace Wingra.Parser
 		{
 			if (_ownedOnly)
 				func.Add(asmStackLevel, eAsmCommand.AssertOwnedVar, Identifier);
-			if(_typeCheck != null && !compiler.Optimizations && compiler.SanityChecks)
+			if (_typeCheck != null && !compiler.Optimizations && compiler.SanityChecks)
 			{
 				func.Add(asmStackLevel, eAsmCommand.Load, Identifier);
 				_typeCheck.EmitAssembly(compiler, file, func, asmStackLevel, errors, parent);

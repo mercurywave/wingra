@@ -88,6 +88,9 @@ library Type
 	extern ::%Lambda
 	extern ::%Iterator
 	extern ::%Enum
+	extern ::%TypeDef
+	extern ::GetNameOf(type => str) // the name of a type def object
+	extern ::GetCheckError(type, val => error)
 
 library Scratch
 	extern ::Alloc(=> obj)

@@ -232,30 +232,43 @@ class ORuntime {
 			return Math.atan2(y, x);
 		});
 
-		this.AddExternalMethod("Type.Num", function () {
+		this.AddExternalType("Type.Num", function () {
 			if(typeof this !== 'number') throw "Not a number";
 		});
-		this.AddExternalMethod("Type.Int", function () {
+		this.AddExternalType("Type.Int", function () {
 			if(typeof this !== 'number' || isNaN(this) || this % 1 !== 0) throw "Not an integer";
 		});
-		this.AddExternalMethod("Type.Str", function () {
+		this.AddExternalType("Type.Str", function () {
 			if(typeof this !== 'string') throw "Not a string";
 		});
-		this.AddExternalMethod("Type.Bool", function () {
+		this.AddExternalType("Type.Bool", function () {
 			if(typeof this !== 'boolean') throw "Not a boolean";
 		});
-		this.AddExternalMethod("Type.Obj", function () {
+		this.AddExternalType("Type.Obj", function () {
 			if(!this || !this.hasOwnProperty("inner")) throw "Not an object";
 		});
-		this.AddExternalMethod("Type.Lambda", function () {
+		this.AddExternalType("Type.Lambda", function () {
 			if(!this || !this.hasOwnProperty("func")) throw "Not a lambda";
 		});
-		this.AddExternalMethod("Type.Iterator", function () {
+		this.AddExternalType("Type.Iterator", function () {
 			if(!this || !this.hasOwnProperty("iter")) throw "Not an iterator";
 		});
-		this.AddExternalMethod("Type.Enum", function () {
+		this.AddExternalType("Type.Enum", function () {
 			if(!this || !this.hasOwnProperty("enum")) throw "Not an enum";
 		});
+		this.AddExternalType("Type.TypeDef", function () {
+			log(this);
+			if(!this || !this.hasOwnProperty("__typeDef")) throw "Not a typedef";
+		});
+		this.AddExternalFunction("Type.GetNameOf", function (type) {
+			return type.__typeDef 
+		});
+		this.AddExternalFunction("Type.GetCheckError", function (type, obj) { 
+			try{
+				DU.IsWingraType(obj, type);
+			} catch (e){ return e; }
+			return null;
+		 });
 
 		this.AddExternalFunction("Debug.Break", function () { debugger; });
 		this.AddExternalFunction("Debug.ObjDebug", function (val) { return "" + val; });
@@ -292,6 +305,13 @@ class ORuntime {
 			return [lamb.apply(scope.__THIS, args)];
 		}), true);
 	}
+	AddExternalType(path, lamb) {
+		var obj = OObj.MakeFunc(function (scope, ...args) {
+			return [lamb.apply(scope.__THIS, args)];
+		});
+		obj.__typeDef = path;
+		this.setStaticGlo(path, obj, true);
+	}
 
 	AddExternalMultiMethod(path, lamb) // ::Foo(=> x,y) // need to return array
 	{
@@ -327,6 +347,11 @@ class ORuntime {
 			value.parent = this;
 		if (!this.StaticFile[file]) { this.StaticFile[file] = {}; }
 		this.StaticFile[file][path] = value;
+	}
+	regTypeDef(type, name) {
+		log(type);
+		type.__typeDef = name;
+		return type;
 	}
 	__prepEnum(path, value) {
 		if (!(value instanceof OObj))
@@ -576,8 +601,12 @@ class OObj {
 		obj.owned = false;
 		obj.keyMap = this.keyMap;
 		obj.uniqId = this.uniqId;
-		if (this.hasOwnProperty("enum"))
+		if (this.hasOwnProperty("enum")){
 			obj.enum = this.enum;
+		}
+		if(this.hasOwnProperty("__typeDef")){
+			obj.__typeDef = this.__typeDef;
+		}
 		return obj;
 	}
 
