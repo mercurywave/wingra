@@ -347,9 +347,9 @@ namespace Wingra.Interpreter
 			}
 			RegTypeCheck("Num", (j, t) => t.IsNumeric, "Not a number");
 			RegTypeCheck("Int", (j, t) => t.IsInt, "Not an integer");
-			RegTypeCheck("String", (j, t) => t.IsString, "Not a string");
+			RegTypeCheck("Str", (j, t) => t.IsString, "Not a string");
 			RegTypeCheck("Bool", (j, t) => t.IsBool, "Not a boolean");
-			RegTypeCheck("Object", (j, t) => t.IsStructLike, "Not an object");
+			RegTypeCheck("Obj", (j, t) => t.IsStructLike, "Not an object");
 			RegTypeCheck("Lambda", (j, t) => t.IsLambdaLike, "Not a lambda");
 			RegTypeCheck("Iterator", (j, t) => t.IsIteratorLike, "Not an iterator");
 			RegTypeCheck("Enum", (j, t) => t.IsEnum, "Not an enum");
