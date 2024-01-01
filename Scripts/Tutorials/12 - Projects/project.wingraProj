@@ -30,3 +30,24 @@ extension Console
 ; enabling this will run the global $TestMain() function
 ; see the Test Harness script folder to see how this can be used to generate unit tests
 ;runTests = true
+
+
+; this flag indicates that parameter type checking should be performed
+; this is always enabled in debug builds, and disabled by default in release builds
+;typeCheckParams = true
+
+
+;       ---=== Compiler Debugging Flags ===---
+
+; this flag disables default optimizations (to debug potential compiler issues)
+;disableOptimizations = true
+
+
+; this flag indicates whether the compiler should output placeholder functions
+; for extern function calls. It is defaulted true when exporting js
+;hideExternalFuncs = true
+
+
+; when run as a console program, this folder is where intermediate assembly debug output will
+; be written to upon a successful compile.
+;asmDebugExport = asm\

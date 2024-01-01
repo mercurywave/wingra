@@ -82,9 +82,9 @@ library Math
 library Type
 	extern ::%Num
 	extern ::%Int
-	extern ::%Str
+	extern ::%String
 	extern ::%Bool
-	extern ::%Obj
+	extern ::%Object
 	extern ::%Lambda
 	extern ::%Iterator
 	extern ::%Enum

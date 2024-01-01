@@ -10,6 +10,7 @@ namespace Wingra.Parser
 	{
 		internal bool _isDebug, _isTest, _isSuggestion, _isIDE, _isBootstrap, _isAsmDebug;
 		internal bool _hideExternalFuncs;
+		internal bool _alwaysTypeCheckParams;
 		public bool Optimizations = true;
 		public bool SanityChecks => _isDebug || _isIDE || _isTest; // additional compile-time checks
 		Dictionary<string, Tuple<string, CodeBlock>> _macros = new Dictionary<string, Tuple<string, CodeBlock>>();
@@ -35,6 +36,8 @@ namespace Wingra.Parser
 				Optimizations = false;
 			if (proj.CheckConfigFlag("hideExternalFuncs") || proj.IsJsExport)
 				_hideExternalFuncs = true;
+			if (proj.CheckConfigFlag("typeCheckParams"))
+				_alwaysTypeCheckParams = true;
 		}
 		public Compiler(WingraProject proj, StaticMapping mapping) : this(proj, mapping, false) { }
 		public Compiler(WingraProject proj) : this(proj, new StaticMapping()) { }

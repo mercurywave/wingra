@@ -358,7 +358,7 @@ namespace Wingra.Parser
 		{
 			if (_ownedOnly)
 				func.Add(asmStackLevel, eAsmCommand.AssertOwnedVar, Identifier);
-			if (_typeCheck != null && !compiler.Optimizations && compiler.SanityChecks)
+			if (_typeCheck != null && ((!compiler.Optimizations && compiler.SanityChecks) || compiler._alwaysTypeCheckParams))
 			{
 				func.Add(asmStackLevel, eAsmCommand.Load, Identifier);
 				_typeCheck.EmitAssembly(compiler, file, func, asmStackLevel, errors, parent);
