@@ -174,7 +174,7 @@ namespace Wingra.Parser
 		}
 		public string ToText() => StaticMapping.JoinPath(_path);
 		public string ResolvedToText() => util.AppendPiece(_declaringPath, ".", StaticMapping.JoinPath(_path));
-
+		public string ResolvedToDisplayText() => util.Piece(ResolvedToText(), ".", 2, 999);
 	}
 
 	class SStaticFunctionCall : SExpressionComponent, ICanBeProperty, ICanAwait, IDecompose

@@ -286,7 +286,7 @@ namespace Wingra.Parser
 			var header = file.FuncDefRoutine;
 			header.Add(asmStackLevel, eAsmCommand.DeclareStaticFunction, 0, lamb.UniqNameInFile);
 			if (_isTypeDef)
-				header.Add(asmStackLevel, eAsmCommand.MarkFuncAsTypeDef, _declaredPath.ResolvedToText() + "::" + Identifier);
+				header.Add(asmStackLevel, eAsmCommand.MarkFuncAsTypeDef, "%" + _declaredPath.ResolvedToDisplayText());
 			_declaredPath.EmitSave(compiler, file, header, 0, errors, this);
 		}
 	}
