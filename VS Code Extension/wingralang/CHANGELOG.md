@@ -2,13 +2,9 @@
 
 All notable changes to the "wingralang" extension will be documented in this file.
 
-### 0.0.13
+### 0.0.14
 
-type checking fix
-
-### 0.0.12
-
-type checking updates
+Type checking fixes and enhancements
 
 ### 0.0.11
 

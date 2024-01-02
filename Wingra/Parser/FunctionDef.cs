@@ -89,7 +89,7 @@ namespace Wingra.Parser
 			var lamb = file.GenFunction(Identifier);
 			foreach (var p in _parameters)
 				p.EmitAssembly(compiler, file, lamb, asmStackLevel, errors, this);
-			if (compiler.SanityChecks)
+			if (compiler.CheckParamTypes)
 				foreach (var p in _parameters)
 					p.EmitChecks(compiler, file, lamb, asmStackLevel, errors, this);
 			lamb.AddReturnParam(_returnParams.Select(r => r.Symbol).ToArray());
@@ -151,6 +151,9 @@ namespace Wingra.Parser
 			var inner = Children.First() as ICanEmitInline; // assumes you already checked CanBeInlined
 			if (inner == null) throw new NotImplementedException();
 			if (compiler.InlineDepth > 5) return null;
+
+			// param checks are like half implemented. might be possible, but probably not worth it
+			if (compiler.CheckParamTypes && _parameters.Any(p => p.HasTypeInfo)) return null;
 			using (new ODisposable(() => compiler.InlineDepth++, () => compiler.InlineDepth--))
 				try
 				{
@@ -358,7 +361,7 @@ namespace Wingra.Parser
 		{
 			if (_ownedOnly)
 				func.Add(asmStackLevel, eAsmCommand.AssertOwnedVar, Identifier);
-			if (_typeCheck != null && ((!compiler.Optimizations && compiler.SanityChecks) || compiler._alwaysTypeCheckParams))
+			if (HasTypeInfo && compiler.CheckParamTypes)
 			{
 				func.Add(asmStackLevel, eAsmCommand.Load, Identifier);
 				_typeCheck.EmitAssembly(compiler, file, func, asmStackLevel, errors, parent);

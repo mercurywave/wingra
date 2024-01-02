@@ -13,6 +13,7 @@ namespace Wingra.Parser
 		internal bool _alwaysTypeCheckParams;
 		public bool Optimizations = true;
 		public bool SanityChecks => _isDebug || _isIDE || _isTest; // additional compile-time checks
+		internal bool CheckParamTypes => _alwaysTypeCheckParams || (SanityChecks && !Optimizations);
 		Dictionary<string, Tuple<string, CodeBlock>> _macros = new Dictionary<string, Tuple<string, CodeBlock>>();
 		ORuntime _macroRuntime;
 		Compiler _macroCompiler;
