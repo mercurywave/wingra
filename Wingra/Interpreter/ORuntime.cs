@@ -279,7 +279,7 @@ namespace Wingra.Interpreter
 			var runPath = (type == eStaticType.TypeDef ? "%." : "") + path;
 			LoadStaticVar(runPath, var, true);
 			if (var.IsLambdaLike)
-				_mappedExternFunctions.Add(path);
+				_mappedExternFunctions.Add(runPath);
 		}
 
 		internal void LoadStaticVar(string path, Variable var, bool allowOverwrite = false)
@@ -367,11 +367,12 @@ namespace Wingra.Interpreter
 			=> _typeDefs.ContainsKey(obj.GetLambdaInternal());
 		public string GetTypeName(Variable obj)
 			=> _typeDefs[obj.GetLambdaInternal()];
-		internal void RegisterTypeDef(Variable obj, string name)
+		internal void RegisterTypeDef(Variable obj, string name, bool allowOverwrite)
 		{
 			if (obj.GetLambdaInternal() == null)
 				throw new Exception("RegisterTypeDef expected a lambda, at least");
-			_typeDefs.Add(obj.GetLambdaInternal(), name);
+			if (allowOverwrite || !_typeDefs.ContainsKey(obj.GetLambdaInternal()))
+				_typeDefs.Add(obj.GetLambdaInternal(), name);
 		}
 
 		public Variable MakeExternalVar(object obj)

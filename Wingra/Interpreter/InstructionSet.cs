@@ -747,7 +747,7 @@ namespace Wingra.Interpreter
 				return j =>
 				{
 					var lamb = j.Registers.Peek();
-					j.Runtime.RegisterTypeDef(lamb, label);
+					j.Runtime.RegisterTypeDef(lamb, label, false);
 				};
 			});
 
