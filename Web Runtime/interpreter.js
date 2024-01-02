@@ -257,7 +257,6 @@ class ORuntime {
 			if(!this || !this.hasOwnProperty("enum")) throw "Not an enum";
 		});
 		this.AddExternalType("Type.TypeDef", function () {
-			log(this);
 			if(!this || !this.hasOwnProperty("__typeDef")) throw "Not a typedef";
 		});
 		this.AddExternalFunction("Type.GetNameOf", function (type) {
@@ -349,7 +348,6 @@ class ORuntime {
 		this.StaticFile[file][path] = value;
 	}
 	regTypeDef(type, name) {
-		log(type);
 		type.__typeDef = name;
 		return type;
 	}
