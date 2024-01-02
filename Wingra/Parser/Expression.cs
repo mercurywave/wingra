@@ -548,6 +548,7 @@ namespace Wingra.Parser
 			func.Add(asmStackLevel + 2, eAsmCommand.Jump, asmStackLevel);
 			func.Add(asmStackLevel + 1, eAsmCommand.PushBool, _isnt ? 1 : 0);
 			func.Add(asmStackLevel + 1, eAsmCommand.StoreLocal, didErr);
+			func.Add(asmStackLevel, eAsmCommand.ClearErrorTrap, func.FindParentErrorTrap());
 			func.Add(asmStackLevel, eAsmCommand.Load, didErr);
 		}
 		public override IEnumerable<SExpressionComponent> IterExpChildren()
