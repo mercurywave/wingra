@@ -14,7 +14,7 @@ namespace Wingra.Interpreter
 		internal Dictionary<string, VariableTable> ScratchScopes = new Dictionary<string, VariableTable>();
 		// temporary scratches are stored in LScratch
 		public Action<RuntimeException> hookException = null;
-		public StaticMapping StaticMap = new StaticMapping(); // used for queries to resolve static references
+		public StaticMapping StaticMap = new StaticMapping(); // TODO: this seems like it could be removed - it isn't accurate for some things (type defs)
 		internal Malloc Heap = new Malloc();
 		FastStack<Job> _jobPool = new FastStack<Job>();
 		FastStack<AsyncJob> _bgJobPool = new FastStack<AsyncJob>(4);
@@ -270,21 +270,14 @@ namespace Wingra.Interpreter
 			var lamb = new Variable(file.Constants.Get(name).GetLambdaInternal());
 			return lamb;
 		}
-
-		public Variable LoadStatic(string absPath)
-		{
-			var split = StaticMapping.SplitAbsPath(absPath, out var type, out var fileKey);
-			if (type == StaticMapping.FILE_ABS) LoadStaticFromFile(split, fileKey);
-			else if (type == StaticMapping.DATA_ABS) return LoadStaticGlobal(split);
-			throw new Exception("invalid path");
-		}
 		public void InjectStaticVar(string path, Variable var, eStaticType type, string fileKey, int fileLine)
 		{
 			SExpressionComponent exp = null;
 			if (var.IsBool || var.IsString || var.IsInt || var.IsFloat || var.IsNull)
 				exp = new SCompileConst(var);
 			StaticMap.AddStaticGlobal(path, type, fileKey, fileLine, null, exp);
-			LoadStaticVar(path, var, true);
+			var runPath = (type == eStaticType.TypeDef ? "%." : "") + path;
+			LoadStaticVar(runPath, var, true);
 			if (var.IsLambdaLike)
 				_mappedExternFunctions.Add(path);
 		}
@@ -362,7 +355,7 @@ namespace Wingra.Interpreter
 		{
 			var lamb = new ExternalFuncPointer(act);
 			_typeDefs.Add(lamb, "%" + (path != "" ? (path + ".") : "") + name);
-			InjectStaticVar(ExternalCalls.MakeFuncPath(path, name), new Variable(lamb), eStaticType.External, "", -1);
+			InjectStaticVar(ExternalCalls.MakeFuncPath(path, name), new Variable(lamb), eStaticType.TypeDef, "", -1);
 		}
 		public void InjectExternalAsyncCall(Func<Job, Variable?, Task> act, string name, string path = "")
 		{

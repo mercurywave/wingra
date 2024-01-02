@@ -1004,7 +1004,7 @@ namespace Wingra.Interpreter
 		Is,
 		KeyAccess,
 		FreeProperty, FreeLocal, KeyFree, SoftFreeLocal, SoftFreeKey,
-		CreateStaticFuncPointer, CreateLambda, DeclareStaticFunction,
+		CreateLambda, DeclareStaticFunction,
 		CreateManualLambda, CaptureVar, CaptureCopy, CaptureFree, CaptureFreeish,
 		MarkFuncAsTypeDef,
 		ReserveLocal, ReserveScratch,
@@ -1130,7 +1130,6 @@ namespace Wingra.Interpreter
 				case eAsmCommand.FreeLocal: return "floc";
 				case eAsmCommand.KeyFree: return "fkey";
 				case eAsmCommand.SoftFreeKey: return "sfkey";
-				case eAsmCommand.CreateStaticFuncPointer: return "csfp";
 				case eAsmCommand.CreateLambda: return "lam";
 				case eAsmCommand.DeclareStaticFunction: return "dsf";
 				case eAsmCommand.MarkFuncAsTypeDef: return "mftd";

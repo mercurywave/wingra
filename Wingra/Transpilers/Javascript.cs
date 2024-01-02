@@ -530,7 +530,7 @@ namespace Wingra.Transpilers
 						}
 					case eAsmCommand.CallFileFunc:
 						{
-							var arr = StaticMapping.SplitAbsPath(line.Literal, out _, out var fk);
+							var arr = StaticMapping.SplitAbsPath(line.Literal, out _, out var fk, out _);
 							var path = StaticMapping.JoinPath(arr);
 							Push(ExpAwait() + RUNTIME + ".getStaticFile(" + GetShortFileKey(fk) + "," + JsStr(path) + ").func" + GenPassParams());
 							break;
@@ -543,7 +543,7 @@ namespace Wingra.Transpilers
 						}
 					case eAsmCommand.CallFileMethod:
 						{
-							var arr = StaticMapping.SplitAbsPath(line.Literal, out _, out var fk);
+							var arr = StaticMapping.SplitAbsPath(line.Literal, out _, out var fk, out _);
 							var path = StaticMapping.JoinPath(arr);
 							var thisVar = Pop();
 							Push(ExpAwait() + RUNTIME + ".getStaticFile(" + GetShortFileKey(fk) + "," + JsStr(path) + ").func" + GenPassParams("{" + THIS + ":" + thisVar + "}"));
@@ -608,9 +608,6 @@ namespace Wingra.Transpilers
 							Push("OObj.FreePath(" + PopX(line.Param + 1) + ", [" + util.Join(list, ",") + "])");
 							break;
 						}
-					case eAsmCommand.CreateStaticFuncPointer:
-						Push(RUNTIME + ".getStaticGlo(" + JsStr(line.Literal) + ")");
-						break;
 					case eAsmCommand.DeclareFunction:
 					case eAsmCommand.CreateLambda:
 						{

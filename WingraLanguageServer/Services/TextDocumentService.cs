@@ -37,16 +37,16 @@ namespace WingraLanguageServer.Services
 
 						// I can't think of a good use case for this other than function signatures
 						// maybe scratch locations?
-						var staticPath = GetPathUnderCursor(position, buffer, out _);
+						var staticPath = GetPathUnderCursor(position, buffer, out _, out var isType);
 						if (staticPath != "" && scopeTracker.ContainsKey(buffer))
 						{
 							var tracker = scopeTracker[buffer];
 
 							var prefixes = tracker.GetPossibleUsing(position.Line);
-							var result = staticMap.GetJumpToTarget(buffer.Key, staticPath, prefixes);
+							var result = staticMap.GetJumpToTarget(buffer.Key, staticPath, prefixes, isType);
 							if (result != null)
 							{
-								var absPath = staticMap.GetAbsPath(buffer.Key, staticPath, prefixes, out _);
+								var absPath = staticMap.GetAbsPath(buffer.Key, staticPath, prefixes, isType, out _);
 								TryGetFunctionSig(absPath, out var sig, out _);
 								string path;
 								if (fileUtils.IsFileInPath(result.Item1, Loader.StdLibPath))
@@ -85,12 +85,12 @@ namespace WingraLanguageServer.Services
 						var scopeTracker = Session._scopeTracker;
 						var staticMap = Session._staticMap;
 
-						var funcCall = GetFunctionCall(position, buffer, out var paramIdx);
+						var funcCall = GetFunctionCall(position, buffer, out var paramIdx, out var isType);
 						if (funcCall != "" && scopeTracker.ContainsKey(buffer))
 						{
 							var tracker = scopeTracker[buffer];
 							var prefixes = tracker.GetPossibleUsing(position.Line);
-							var absPath = staticMap.GetAbsPath(buffer.Key, funcCall, prefixes, out _);
+							var absPath = staticMap.GetAbsPath(buffer.Key, funcCall, prefixes, isType, out _);
 
 							if (TryGetFunctionSig(absPath, out var sig, out var pars))
 							{
@@ -139,12 +139,13 @@ namespace WingraLanguageServer.Services
 			return false;
 		}
 
-		string GetFunctionCall(Position cursor, WingraBuffer buffer, out int currParam)
+		string GetFunctionCall(Position cursor, WingraBuffer buffer, out int currParam, out bool isType)
 		{
 			var currLineLex = buffer.GetSyntaxMetadata(cursor.Line);
 			BaseToken? curr = null;
 			var tokes = currLineLex.Tokens;
 			int currIdx = currLineLex.Tokens.Count - 1;
+			isType = false;
 
 			for (int i = 0; i < currLineLex.Tokens.Count; i++)
 			{
@@ -185,6 +186,8 @@ namespace WingraLanguageServer.Services
 					if (length % 2 == 0 && possiblePath[length].Type != eToken.Identifier) break;
 				}
 				var actualPath = tokes.GetRange(startSearch, length).ToArray();
+				if (actualPath.Length > 0 && actualPath[0].Type == eToken.TypeIdentifier)
+					isType = true;
 				return util.Join(actualPath.Select(t => t.Token), "").Replace("$", "").Replace("%", "");
 			}
 			return "";
@@ -352,7 +355,7 @@ namespace WingraLanguageServer.Services
 						}
 						// we are in either the function name, parameters, or outputs
 						bool inFunctionDeclaration = IsDeclaringFunction(currLineLex, currIdx);
-						staticPath = GetPathUnderCursor(position, buffer, out var expectDollar);
+						staticPath = GetPathUnderCursor(position, buffer, out var expectDollar, out var isType);
 						if (curr.HasValue && curr.Value.LineOffset + curr.Value.Length < position.Character)
 						{
 							separator = curr;
@@ -463,7 +466,7 @@ namespace WingraLanguageServer.Services
 						{
 							var tracker = scopeTracker[buffer];
 
-							var close = staticMap.SuggestToken(buffer.Key, staticPath, tracker.GetPossibleUsing(position.Line));
+							var close = staticMap.SuggestToken(buffer.Key, staticPath, tracker.GetPossibleUsing(position.Line), isType);
 
 							foreach (var match in close)
 							{
@@ -653,13 +656,14 @@ namespace WingraLanguageServer.Services
 
 
 
-		string GetPathUnderCursor(Position cursor, WingraBuffer buffer, out bool shouldUseDollar)
+		string GetPathUnderCursor(Position cursor, WingraBuffer buffer, out bool shouldUseDollar, out bool isType)
 		{
 			var currLineLex = buffer.GetSyntaxMetadata(cursor.Line);
 			BaseToken? curr = null;
 			var tokes = currLineLex.Tokens;
 			int currIdx = tokes.Count - 1;
 			shouldUseDollar = true;
+			isType = false;
 			for (int i = 0; i < currLineLex.Tokens.Count; i++)
 			{
 				var tok = tokes[i];
@@ -693,6 +697,8 @@ namespace WingraLanguageServer.Services
 				}
 				if (startSearch + length <= currIdx) return "";
 				var actualPath = tokes.GetRange(startSearch, length).ToArray();
+				if (actualPath.Length > 0 && actualPath[0].Type == eToken.TypeIdentifier)
+					isType = true;
 				return util.Join(actualPath.Select(t => t.Token), "").Replace("$", "").Replace("%", "");
 			}
 			return "";
@@ -712,13 +718,13 @@ namespace WingraLanguageServer.Services
 						var scopeTracker = Session._scopeTracker;
 						var staticMap = Session._staticMap;
 
-						var staticPath = GetPathUnderCursor(position, buffer, out _);
+						var staticPath = GetPathUnderCursor(position, buffer, out _, out var isType);
 						if (staticPath != "" && scopeTracker.ContainsKey(buffer))
 						{
 							var tracker = scopeTracker[buffer];
 
 							var prefixes = tracker.GetPossibleUsing(position.Line);
-							var result = staticMap.GetJumpToTarget(buffer.Key, staticPath, prefixes);
+							var result = staticMap.GetJumpToTarget(buffer.Key, staticPath, prefixes, isType);
 							if (result != null)
 							{
 								int cPos = 0;

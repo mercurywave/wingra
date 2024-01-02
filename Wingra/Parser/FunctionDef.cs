@@ -248,7 +248,7 @@ namespace Wingra.Parser
 			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.DeclareFunction, 0, lamb.UniqNameInFile);
 			if (_isTypeDef)
 				file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.MarkFuncAsTypeDef, file.Name + "::" + Identifier);
-			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.StoreToFileConst, Identifier.Replace("%", ""));
+			file.FuncDefRoutine.Add(asmStackLevel, eAsmCommand.StoreToFileConst, Identifier.Replace("%", "%."));
 		}
 	}
 

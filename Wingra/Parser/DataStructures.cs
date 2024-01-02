@@ -260,7 +260,7 @@ namespace Wingra.Parser
 			func.Add(asmStackLevel, eAsmCommand.SetupMixin);
 			EmitParams(compiler, _params, file, func, asmStackLevel, errors, parent);
 
-			var path = compiler.StaticMap.ResolvePath(_fileKey, func.CurrentFileLine, _path, _usingPaths, out var type, out _, out _, out var dynamicPath);
+			var path = compiler.StaticMap.ResolvePath(_fileKey, func.CurrentFileLine, _path, _usingPaths, false, out var type, out _, out _, out var dynamicPath);
 			if (dynamicPath.Length > 0)
 				// implementing this is possible, but probably requires a chunk of code changes
 				// I don't see a strong use case currently

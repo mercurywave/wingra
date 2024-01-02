@@ -9,7 +9,9 @@ namespace Wingra.Parser
 	public class StaticMapping
 	{
 		TreeNode _root = new TreeNode(eStaticType.Root);
+		TreeNode _typeDefs = new TreeNode(eStaticType.Root);
 		Dictionary<string, TreeNode> _fileRefs = new Dictionary<string, TreeNode>(); // uses file keys
+		Dictionary<string, TreeNode> _locTypes = new Dictionary<string, TreeNode>(); // uses file keys
 		Dictionary<string, string> _globals = new Dictionary<string, string>(); // glo => fileKey
 		Map<string, string> _scratches = new Map<string, string>(); // glo => fileKeys
 		class TreeNode
@@ -66,27 +68,33 @@ namespace Wingra.Parser
 			var copy = new StaticMapping();
 			foreach (var pair in _fileRefs)
 				copy._fileRefs.Add(pair.Key, pair.Value.MockCopy());
+			foreach (var pair in _locTypes)
+				copy._locTypes.Add(pair.Key, pair.Value.MockCopy());
 			copy._root = _root.MockCopy();
+			copy._typeDefs = _typeDefs.MockCopy();
 			return copy;
 		}
 
-		TreeNode GetForFile(string key)
+		TreeNode GetForFile(string key, bool isType)
 		{
-			if (!_fileRefs.ContainsKey(key))
-				_fileRefs.Add(key, new TreeNode(eStaticType.Root, key));
-			return _fileRefs[key];
+			var dict = isType ? _locTypes : _fileRefs;
+			if (!dict.ContainsKey(key))
+				dict.Add(key, new TreeNode(eStaticType.Root, key));
+			return dict[key];
 		}
+
+		TreeNode GetRoot(bool isType) => isType ? _typeDefs : _root;
 
 		internal void AddStaticGlobal(string path, eStaticType type, string sourceFile, int fileLine, _SfunctionDef funcDef = null, SExpressionComponent value = null)
 		{
 			var arr = util.Split(path, ".");
-			var node = _root;
+			var node = GetRoot(type == eStaticType.TypeDef);
 			MakeBranch(sourceFile, node, arr, fileLine, type, funcDef, value);
 		}
 		internal void AddFilePath(string fileKey, string path, eStaticType type, int fileLine, _SfunctionDef funcDef = null, SExpressionComponent value = null)
 		{
 			var arr = util.Split(path, ".");
-			var node = GetForFile(fileKey);
+			var node = GetForFile(fileKey, type == eStaticType.TypeDef);
 			MakeBranch(fileKey, node, arr, fileLine, type, funcDef, value);
 		}
 		// helper for adding end points
@@ -103,19 +111,19 @@ namespace Wingra.Parser
 		public const string DATA_ABS = "D";
 		public const string FILE_ABS = "F";
 		// fileKey is blank for things like on-demand compilation where there is no file
-		public bool TryResolveAbsolutePath(string fileKey, List<string> possiblePrefixes, string[] path, out List<string> matches, out string[] dynamicPath)
+		public bool TryResolveAbsolutePath(string fileKey, List<string> possiblePrefixes, string[] path, bool isType, out List<string> matches, out string[] dynamicPath)
 		{
 			matches = new List<string>();
-			var success = _TryResolveAbsolutePath(fileKey, possiblePrefixes, path, out var hash, out dynamicPath);
+			var success = _TryResolveAbsolutePath(fileKey, possiblePrefixes, path, isType, out var hash, out dynamicPath);
 			if (!success) return false;
 			foreach (var node in hash)
 				matches.Add(node.Key);
 			return true;
 		}
-		List<string> ExpandPrefixes(string fileKey, List<string> prefixes)
+		List<string> ExpandPrefixes(string fileKey, List<string> prefixes, bool isType)
 		{
-			var file = GetForFile(fileKey);
-			var data = _root;
+			var file = GetForFile(fileKey, isType);
+			var gloData = GetRoot(isType);
 			Map<string, TreeNode> nodes = new Map<string, TreeNode>();
 			var chained = new List<string>();
 
@@ -143,13 +151,13 @@ namespace Wingra.Parser
 				TreeNode target;
 				if (HasPath(file, split, out target))
 					AddNode(path, target);
-				if (HasPath(data, split, out target))
+				if (HasPath(gloData, split, out target))
 					AddNode(path, target);
 
 			}
 			return chained;
 		}
-		bool _TryResolveAbsolutePath(string fileKey, List<string> possiblePrefixes, string[] path, out Dictionary<string, TreeNode> matches, out string[] dynamicPath)
+		bool _TryResolveAbsolutePath(string fileKey, List<string> possiblePrefixes, string[] path, bool isType, out Dictionary<string, TreeNode> matches, out string[] dynamicPath)
 		{
 			matches = new Dictionary<string, TreeNode>();
 			if (path.Length == 0) { dynamicPath = new string[0]; return false; }
@@ -164,15 +172,15 @@ namespace Wingra.Parser
 			{
 				file.Add(path);
 				if (possiblePrefixes != null && possiblePrefixes.Count > 0)
-					foreach (var poss in ExpandPrefixes(fileKey, possiblePrefixes))
+					foreach (var poss in ExpandPrefixes(fileKey, possiblePrefixes, isType))
 						file.Add(CombinePaths(poss, path));
 				data = file; // we'll check all against both global and file.
 							 // PERF: ExpandPrefixes knows what the path is, we could optimize this
 			}
 
 			if (fileKey != "")
-				CheckTree(FILE_ABS, GetForFile(fileKey), file, matches, fileKey);
-			CheckTree(DATA_ABS, _root, data, matches, "");
+				CheckTree(FILE_ABS, GetForFile(fileKey, isType), file, matches, fileKey);
+			CheckTree(DATA_ABS, GetRoot(isType), data, matches, "");
 
 			void CheckTree(string type, TreeNode node, List<string[]> toCheck, Dictionary<string, TreeNode> addTo, string fkey)
 			{
@@ -180,7 +188,7 @@ namespace Wingra.Parser
 				{
 					if (HasPath(node, poss, out var target, out var staticPath, out var dPath))
 					{
-						var key = type + "|" + util.Join(staticPath, ".") + "|" + fkey;
+						var key = FormatAbsPath(type, util.Join(staticPath, "."), fkey, isType);
 						if (!addTo.ContainsKey(key))
 							addTo.Add(key, target);
 						dynPath = dPath;
@@ -228,19 +236,20 @@ namespace Wingra.Parser
 			}
 		}
 
-		public string ResolvePath(string fileKey, int fileLine, RelativeTokenReference[] writtenPath, List<string> usingPrefixes, out string prefix, out string path, out string resolvedFile, out string[] dynamicPath)
+		public string ResolvePath(string fileKey, int fileLine, RelativeTokenReference[] writtenPath, List<string> usingPrefixes, bool isType, out string prefix, out string path, out string resolvedFile, out string[] dynamicPath)
 		{
-			var fullPath = ResolvePath(fileKey, fileLine, writtenPath, usingPrefixes, out dynamicPath);
+			var fullPath = ResolvePath(fileKey, fileLine, writtenPath, usingPrefixes, isType, out dynamicPath);
 			var arr = util.Split(fullPath, "|");
 			prefix = arr[0];
 			path = arr[1];
 			resolvedFile = arr[2];
+			// istype (arr[4]) was an input
 			return fullPath;
 		}
-		string ResolvePath(string fileKey, int fileLine, RelativeTokenReference[] writtenPath, List<string> usingPrefixes, out string[] dynamicPath)
+		string ResolvePath(string fileKey, int fileLine, RelativeTokenReference[] writtenPath, List<string> usingPrefixes, bool isType, out string[] dynamicPath)
 		{
 			var direct = writtenPath.Select(t => t.Token.Token.Replace("$", "").Replace("%", "")).ToArray();
-			if (TryResolveAbsolutePath(fileKey, usingPrefixes, direct, out var matches, out dynamicPath))
+			if (TryResolveAbsolutePath(fileKey, usingPrefixes, direct, isType, out var matches, out dynamicPath))
 				return matches[0];
 			else
 			{
@@ -286,13 +295,17 @@ namespace Wingra.Parser
 		}
 		TreeNode GetAbsNode(string absPath)
 		{
-			var path = SplitAbsPath(absPath, out var prefix, out var fileKey);
-			var node = (prefix == DATA_ABS) ? _root : GetForFile(fileKey);
+			var path = SplitAbsPath(absPath, out var prefix, out var fileKey, out bool isType);
+			TreeNode node;
+			if (prefix == DATA_ABS)
+				node = GetRoot(isType);
+			else
+				node = GetForFile(fileKey, isType);
 			if (!HasPath(node, path, out var target)) return null;
 			return target;
 		}
 
-		public eStaticType GetTypeOfNode(string absPath)
+		public eStaticType GetTypeOfNode(string absPath, bool isType)
 			=> GetAbsNode(absPath).Type;
 
 		public static string GetPathFromAbsPath(string abs) => util.Piece(abs, "|", 2);
@@ -300,12 +313,26 @@ namespace Wingra.Parser
 		public static string[] SplitPath(string path, out string prefix)
 			=> SplitAbsPath(SplitPath(path), out prefix);
 		public static string[] SplitAbsPath(string path) => util.Split(path, "|").ToArray();
-		public static string[] SplitAbsPath(string path, out string prefix, out string fileKey)
+		public static string[] SplitAbsPath(string path, out string prefix, out string fileKey, out bool isType)
 		{
 			var arr = util.Split(path, "|");
 			prefix = arr[0];
 			fileKey = arr[2];
+			isType = arr[3] == "1";
 			return util.Split(arr[1], ".");
+		}
+		static string FormatAbsPath(string type, string resolvedPath, string fileKey, bool isType)
+			=> type + "|" + resolvedPath + "|" + fileKey + "|" + (isType ? "1" : "");
+		public static string AbsPathToRuntimePath(string path)
+		{
+			var output = "";
+			var arr = util.Split(path, "|");
+			if (arr[3] == "1")
+				output = "%.";
+			output += arr[1]; // the path as the user expects
+			if(arr[2] != "")
+				output += "|" + arr[2];
+			return output;
 		}
 		public static string[] SplitAbsPath(string[] path, out string prefix)
 		{
@@ -389,13 +416,13 @@ namespace Wingra.Parser
 
 		#region completion match and editor stuff
 
-		public Dictionary<string, eStaticType> SuggestToken(string fileKey, string path, List<string> usingPrefixes)
+		public Dictionary<string, eStaticType> SuggestToken(string fileKey, string path, List<string> usingPrefixes, bool isType)
 		{
 			var arr = SplitPath(path);
-			TrySuggest(fileKey, usingPrefixes, arr, out var matches);
+			TrySuggest(fileKey, usingPrefixes, arr, isType, out var matches);
 			return matches;
 		}
-		bool TrySuggest(string fileKey, List<string> possiblePrefixes, string[] path, out Dictionary<string, eStaticType> matches)
+		bool TrySuggest(string fileKey, List<string> possiblePrefixes, string[] path, bool isType, out Dictionary<string, eStaticType> matches)
 		{
 			matches = new Dictionary<string, eStaticType>();
 			if (path.Length == 0) return false;
@@ -404,13 +431,13 @@ namespace Wingra.Parser
 
 			file.Add(path);
 			if (possiblePrefixes != null && possiblePrefixes.Count > 0)
-				foreach (var poss in ExpandPrefixes(fileKey, possiblePrefixes))
+				foreach (var poss in ExpandPrefixes(fileKey, possiblePrefixes, isType))
 					file.Add(CombinePaths(poss, path));
 			data = file; // we'll check all against both global and file
 
 			if (fileKey != "")
-				CheckTree(FILE, GetForFile(fileKey), file, matches);
-			CheckTree(DATA, _root, data, matches);
+				CheckTree(FILE, GetForFile(fileKey, isType), file, matches);
+			CheckTree(DATA, GetRoot(isType), data, matches);
 
 			void CheckTree(string type, TreeNode node, List<string[]> toCheck, Dictionary<string, eStaticType> addTo)
 			{
@@ -453,8 +480,8 @@ namespace Wingra.Parser
 			var matches = new List<string>();
 
 			if (fileKey != "")
-				CheckTree(FILE, GetForFile(fileKey), matches);
-			CheckTree(DATA, _root, matches);
+				CheckTree(FILE, GetForFile(fileKey, justTypes), matches);
+			CheckTree(DATA, GetRoot(justTypes), matches);
 
 			void CheckTree(string type, TreeNode node, List<string> addTo)
 			{
@@ -464,8 +491,7 @@ namespace Wingra.Parser
 					if (HasPath(node, arr, out var target))
 					{
 						foreach (var child in target.Children)
-							if (!justTypes || child.Value.Type == eStaticType.TypeDef)
-								addTo.Add(child.Key);
+							addTo.Add(child.Key);
 					}
 				}
 				foreach (var child in node.Children)
@@ -475,10 +501,10 @@ namespace Wingra.Parser
 			return matches;
 		}
 
-		public Tuple<string, int> GetJumpToTarget(string fileKey, string path, List<string> usingPrefixes)
+		public Tuple<string, int> GetJumpToTarget(string fileKey, string path, List<string> usingPrefixes, bool isType)
 		{
 			var arr = SplitPath(path);
-			var success = _TryResolveAbsolutePath(fileKey, usingPrefixes, arr, out var hash, out _);
+			var success = _TryResolveAbsolutePath(fileKey, usingPrefixes, arr, isType, out var hash, out _);
 			if (!success) return null;
 			var node = hash.First().Value;
 			if (node.SourceFileKey == "") return null;
@@ -487,9 +513,12 @@ namespace Wingra.Parser
 
 		public void FlushFile(string key)
 		{
-			var file = GetForFile(key);
+			var file = GetForFile(key, false);
 			file.Children.Clear();
+			var types = GetForFile(key, true);
+			types.Children.Clear();
 			FlushFileRec(_root, key);
+			FlushFileRec(_typeDefs, key);
 			foreach (var pair in _globals.ToArray())
 				if (pair.Value == key)
 					_globals.Remove(key);
@@ -514,10 +543,10 @@ namespace Wingra.Parser
 			return leavesRemain;
 		}
 
-		public string GetAbsPath(string fileKey, string path, List<string> possiblePrefixes, out string[] dynamicPath)
+		public string GetAbsPath(string fileKey, string path, List<string> possiblePrefixes, bool isType, out string[] dynamicPath)
 		{
 			var arr = SplitPath(path);
-			if (!TryResolveAbsolutePath(fileKey, possiblePrefixes, arr, out var matches, out dynamicPath))
+			if (!TryResolveAbsolutePath(fileKey, possiblePrefixes, arr, isType, out var matches, out dynamicPath))
 				return "";
 			if (matches.Count != 1)
 				return "";

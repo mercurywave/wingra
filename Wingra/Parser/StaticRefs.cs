@@ -34,27 +34,29 @@ namespace Wingra.Parser
 			base.OnAddedToTree(context);
 		}
 
-		void Resolve(Compiler compiler, out string type, out string path, out string fullPath, out string[] dynamicPath)
+		void Resolve(Compiler compiler, out string type, out string path, out string fullPath, out string[] dynamicPath, out bool isType)
 		{
-			fullPath = compiler.StaticMap.ResolvePath(_fileKey, _fileLine, _path, _usingPaths, out type, out path, out _, out dynamicPath);
+			isType = _path[0].Token.Type == eToken.TypeIdentifier;
+			fullPath = compiler.StaticMap.ResolvePath(_fileKey, _fileLine, _path, _usingPaths, isType, out type, out path, out _, out dynamicPath);
 			if (type != StaticMapping.FILE_ABS && type != StaticMapping.DATA_ABS)
 				throw new CompilerException("absolute path is badly formatted", -1);
-			if(_path[0].Token.Type == eToken.TypeIdentifier)
+			if (isType)
 			{
-				if (compiler.StaticMap.GetTypeOfNode(fullPath) != eStaticType.TypeDef)
+				if (compiler.StaticMap.GetTypeOfNode(fullPath, isType) != eStaticType.TypeDef)
 					throw new CompilerException("function is not a typedef function", _fileLine, _path[0]);
 			}
 		}
 
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			Resolve(compiler, out var type, out var path, out var fullPath, out var dynamicPath);
+			Resolve(compiler, out var type, out var path, out var fullPath, out var dynamicPath, out var isType);
 			if (!TryEmitInline(compiler, file, func, asmStackLevel, errors, parent, type, fullPath, dynamicPath))
 			{
+				var runPath = StaticMapping.AbsPathToRuntimePath(fullPath);
 				if (type == StaticMapping.DATA_ABS)
-					func.Add(asmStackLevel, eAsmCommand.LoadPathData, path);
-				if (type == StaticMapping.FILE_ABS)
-					func.Add(asmStackLevel, eAsmCommand.LoadPathFile, util.Piece(fullPath, "|", 2, 3));
+					func.Add(asmStackLevel, eAsmCommand.LoadPathData, runPath);
+				else if (type == StaticMapping.FILE_ABS)
+					func.Add(asmStackLevel, eAsmCommand.LoadPathFile, runPath);
 				foreach (var dyn in dynamicPath)
 					func.Add(asmStackLevel, eAsmCommand.DotAccess, dyn);
 			}
@@ -62,7 +64,8 @@ namespace Wingra.Parser
 
 		public bool TryEmitInline(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
-			Resolve(compiler, out var type, out var path, out var fullPath, out var dynamicPath);
+			Resolve(compiler, out var type, out var path, out var fullPath, out var dynamicPath, out var isType);
+			if (isType) return false;
 			return TryEmitInline(compiler, file, func, asmStackLevel, errors, parent, type, fullPath, dynamicPath);
 		}
 		bool TryEmitInline(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent, string type, string path, string[] dynamicPath)
@@ -153,10 +156,11 @@ namespace Wingra.Parser
 		internal void EmitSave(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
 			Resolve(compiler, file, func.CurrentFileLine, out var type, out var path);
+			var runPath = (_type == eStaticType.TypeDef ? "%." : "") + path;
 			if (type == StaticMapping.DATA)
-				func.Add(asmStackLevel, eAsmCommand.StoreToPathData, path);
+				func.Add(asmStackLevel, eAsmCommand.StoreToPathData, runPath);
 			else if (type == StaticMapping.FILE)
-				func.Add(asmStackLevel, eAsmCommand.StoreToFileConst, path);
+				func.Add(asmStackLevel, eAsmCommand.StoreToFileConst, runPath);
 			else throw new CompilerException("could not resolve path " + path, func.CurrentFileLine);
 		}
 		internal void EmitSaveEnum(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel)
@@ -208,7 +212,7 @@ namespace Wingra.Parser
 
 		void EmitInternal(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent, bool asMethod, bool asAsync)
 		{
-			var path = compiler.StaticMap.ResolvePath(_fileKey, _fileLine, _path, _usingPaths, out var type, out var shortPath, out var targetFKey, out var dynamicPath);
+			var path = compiler.StaticMap.ResolvePath(_fileKey, _fileLine, _path, _usingPaths, false, out var type, out var shortPath, out var targetFKey, out var dynamicPath);
 
 			var fn = compiler.StaticMap.TryGetFunction(path);
 			if (fn != null && compiler.SanityChecks)

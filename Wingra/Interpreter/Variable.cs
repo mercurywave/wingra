@@ -506,6 +506,22 @@ namespace Wingra.Interpreter
 			var inner = GetStruct();
 			return inner.GetLastKey(heap);
 		}
+		internal List<Variable> _debugList => _dbgToList();
+		List<Variable> _dbgToList()
+		{
+			List<Variable> list = new List<Variable>();
+			foreach(var key in ChildKeys())
+				list[key.AsInt()] = GetChild(key);
+			return list;
+		}
+		internal Dictionary<Variable, Variable> _debugDict => _dbgToDcit();
+		Dictionary<Variable, Variable> _dbgToDcit()
+		{
+			var dict = new Dictionary<Variable, Variable>();
+			foreach (var key in ChildKeys())
+				dict[key] = GetChild(key);
+			return dict;
+		}
 		#endregion
 
 		#region Iterator

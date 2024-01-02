@@ -529,17 +529,6 @@ namespace Wingra.Interpreter
 
 
 			#region lambdas
-			Register(eAsmCommand.CreateStaticFuncPointer, i => 0, o => 1, asm =>
-			{
-				var path = asm[0].Literal;
-				return j =>
-				{
-					var resolve = j.Runtime.LoadStatic(path);
-					j.Registers.Push(resolve);
-				};
-				//TODO: bake
-			});
-
 			Register(eAsmCommand.CreateLambda, i => 0, o => 1, asm =>
 			{
 				var label = asm[0].Literal;
@@ -639,7 +628,7 @@ namespace Wingra.Interpreter
 			Register(eAsmCommand.CallFileFunc, i => 0, o => 0, asm =>
 			{
 				var abs = asm[0].Literal;
-				var arr = StaticMapping.SplitAbsPath(abs, out _, out var file);
+				var arr = StaticMapping.SplitAbsPath(abs, out _, out var file, out _);
 				var path = StaticMapping.JoinPath(arr);
 				return j =>
 				{
@@ -669,7 +658,7 @@ namespace Wingra.Interpreter
 			Register(eAsmCommand.CallFileMethod, i => 1, o => 0, asm =>
 			{
 				var abs = asm[0].Literal;
-				var arr = StaticMapping.SplitAbsPath(abs, out _, out var file);
+				var arr = StaticMapping.SplitAbsPath(abs, out _, out var file, out _);
 				var path = StaticMapping.JoinPath(arr);
 				return j =>
 				{
