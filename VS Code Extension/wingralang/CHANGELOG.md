@@ -2,8 +2,14 @@
 
 All notable changes to the "wingralang" extension will be documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+### 0.0.12
 
-## [Unreleased]
+type checking updates
 
-- Initial release
+### 0.0.11
+
+Type checking, string interpolation
+
+### 0.0.10
+
+Expression assignment operators

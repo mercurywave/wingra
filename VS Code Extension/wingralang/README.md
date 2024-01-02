@@ -20,12 +20,4 @@ None
 
 ## Release Notes
 
-The Wingra language is in an early alpha stage
-
-### 0.0.11
-
-Type checking, string interpolation
-
-### 0.0.10
-
-Expression assignment operators
+The Wingra language is in an early alpha stage, and not ready for general production
