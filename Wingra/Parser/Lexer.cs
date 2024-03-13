@@ -135,6 +135,20 @@ namespace Wingra.Parser
 			return this;
 		}
 
+		public bool ContainsNewDimScope()
+		{
+			for (int i = 0; i < Tokens.Count; i++)
+			{
+				var curr = Tokens[i];
+				if (i == Tokens.Count - 1)
+					return curr.Type == eToken.Dim;
+				var next = Tokens[i + 1];
+				if (curr.Type == eToken.Dim && next.Type != eToken.LeftParen)
+					return true;
+			}
+			return false;
+		}
+
 		bool IsStartOfIdentifier(char c) => char.IsLetter(c) || c == '_' || c == '#' || c == '$' || c == '^' || c == '%';
 
 		string Scan(string text, int begin, bool inString, bool inInterpString, out int whiteSpaceSkipped) // TODO: infix string stuff

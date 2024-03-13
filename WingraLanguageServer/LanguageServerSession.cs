@@ -32,6 +32,7 @@ namespace WingraLanguageServer
 		bool _needRecompile = true;
 
 		internal List<CompletionItem> StaticSuggestions = new List<CompletionItem>();
+		internal List<CompletionItem> SoftStaticSuggestions = new List<CompletionItem>();
 
 		Task _loadTask = null;
 		internal Task LoadTask => _loadTask ?? Task.CompletedTask;
@@ -76,10 +77,13 @@ namespace WingraLanguageServer
 				foreach (var sug in Suggestion.GetBuiltIns(_staticMap))
 				{
 					if (sug.Type == eSuggestionType.Keyword)
+					{
 						StaticSuggestions.Add(new CompletionItem(sug.Function, CompletionItemKind.Keyword, null)
 						{
 							CommitCharacters = new List<char>() { ' ', '(', ';' }
 						});
+						SoftStaticSuggestions.Add(new CompletionItem(sug.Function, CompletionItemKind.Keyword, null));
+					}
 				}
 				_ = Task.Delay(200).ContinueWith(t => Task.Run(SlowlyLint), TaskScheduler.Current);
 			}

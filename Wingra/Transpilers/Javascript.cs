@@ -11,11 +11,13 @@ namespace Wingra.Transpilers
 	{
 		WingraCompile _compile;
 		WingraSymbols _symbols;
+		WingraProject _prj;
 
-		public Javascript(WingraCompile compile, WingraSymbols symbols)
+		public Javascript(WingraCompile compile, WingraSymbols symbols, WingraProject prj)
 		{
 			_compile = compile;
 			_symbols = symbols;
+			_prj = prj;
 		}
 		public StringBuilder Output(string funcName)
 		{
@@ -26,18 +28,22 @@ namespace Wingra.Transpilers
 			{
 				sb.AppendLine("var " + FUNCS + " = {};");
 				foreach (var key in AssemblyFile.LoadKeys())
-					foreach (var file in _compile.Assemblies)
+					foreach (var chunk in _compile.AssemblyLoadChunks)
 					{
-						var func = file.GetByName(key);
-						if (func != null)
-							EmitLoadFunction(sb, file, func);
+						foreach (var file in chunk)
+						{
+							var func = file.GetByName(key);
+							if (func != null)
+								EmitLoadFunction(sb, file, func);
+						}
 					}
 				sb.AppendLine();
 				foreach (var file in _compile.Assemblies)
 				{
 					if (file.Count == 0) continue;
 					sb.AppendLine(); sb.AppendLine();
-					sb.AppendLine("// " + file.Key);
+					if (_prj.JsIncludeWingraCodeInJs)
+						sb.AppendLine("// " + file.Key);
 					sb.Append(FUNCS + "[" + GetShortFileKey(file) + "] = ");
 					using (Braces(sb))
 						foreach (var pair in file)
@@ -272,7 +278,7 @@ namespace Wingra.Transpilers
 					if (fileLine >= 0 && (idx == 0 || code[idx - 1].FileLine != fileLine))
 					{
 						var text = buffer.TextAtLine(fileLine).Trim();
-						if (text != "")
+						if (text != "" && _prj.JsIncludeWingraCodeInJs)
 							sb.AppendLine("//  " + text);
 					}
 				}
@@ -564,7 +570,7 @@ namespace Wingra.Transpilers
 						break;
 					case eAsmCommand.Is:
 						Push("true");
-						sb.AppendLine($"DU.IsWingraType({ Pop2() },{ Pop() })");
+						sb.AppendLine($"DU.IsWingraType({Pop2()},{Pop()})");
 						break;
 					case eAsmCommand.LoadFirstKey:
 						Push("OObj.getFirstKey(" + Pop() + ")");
@@ -579,7 +585,7 @@ namespace Wingra.Transpilers
 						Push("DU.Copy(" + Pop() + ")");
 						break;
 					case eAsmCommand.PushPeekDup:
-						Push("DU.Ref(" + Peek() + ")");	
+						Push("DU.Ref(" + Peek() + ")");
 						break;
 					case eAsmCommand.KeyAccess:
 						{

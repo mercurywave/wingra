@@ -132,5 +132,10 @@ namespace WingraLanguageServer
 			if(_logger != null)
 			lock (_logger) _logger.WriteLine("{0} < {1}", GetTimeStamp(), obj);
 		}
+		public static string AppendPiece(string original, string delim, string append)
+		{
+			if (string.IsNullOrEmpty(original)) return append;
+			return original + delim + append;
+		}
 	}
 }

@@ -73,7 +73,7 @@ namespace WingraConsole
 			{
 				var file = prj.CheckConfigString("jsExport");
 				var fnName = prj.CheckConfigString("jsFunc", "SETUP");
-				var trans = new Wingra.Transpilers.Javascript(result, symbols);
+				var trans = new Wingra.Transpilers.Javascript(result, symbols, prj);
 				var sb = trans.Output(fnName);
 				if (file == "")
 					Console.Write(sb);

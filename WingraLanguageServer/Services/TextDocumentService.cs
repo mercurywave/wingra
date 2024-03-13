@@ -123,17 +123,18 @@ namespace WingraLanguageServer.Services
 					ins.Add(inputs[i]);
 					pars.Add(new ParameterInformation("", new MarkupContent(MarkupKind.Markdown, inputs[i])));
 				}
-				sig += util.Join(ins, ",");
-				if (outputs.Length > 0 || isAsync)
-					sig += " => ";
+				var inner = util.Join(ins, ", ");
+				if (outputs.Length > 0 || isAsync || doesThrow || doesYield)
+					inner = util.AppendPiece(inner, " ", "=>");
 				var retmods = new List<string>();
 				if (isAsync) retmods.Add("async");
 				if (doesYield) retmods.Add("yield");
 				if (doesThrow) retmods.Add("throw");
 				if (retmods.Count > 0)
-					sig += util.Join(retmods, " ");
-				sig += util.Join(outputs, ", ");
-				sig += ")";
+					inner = util.AppendPiece(inner, " ", util.Join(retmods, " "));
+				if (outputs.Length > 0)
+					inner = util.AppendPiece(inner, " ", util.Join(outputs, ", "));
+				sig += inner + ")";
 				return true;
 			}
 			return false;
@@ -305,6 +306,20 @@ namespace WingraLanguageServer.Services
 			return false;
 		}
 
+		bool IsInDimBlock(WingraBuffer buffer, int line)
+		{
+			if (line <= 0) return false;
+			int indent = buffer.GetSyntaxMetadata(line).PreceedingWhitespace;
+			if (indent == 0) return false;
+			for (int i = line - 1; i >= 0; i--)
+			{
+				var lex = buffer.GetSyntaxMetadata(i);
+				if (lex.PreceedingWhitespace < indent)
+					return lex.ContainsNewDimScope();
+			}
+			return false;
+		}
+
 
 
 		[JsonRpcMethod]
@@ -320,6 +335,7 @@ namespace WingraLanguageServer.Services
 					{
 						if (IsInTextData(buffer, position.Line))
 							return new CompletionList();
+						var inDimBlock = IsInDimBlock(buffer, position.Line);
 						var scopeTracker = Session._scopeTracker;
 						var staticMap = Session._staticMap;
 						var compiler = Session.Cmplr;
@@ -493,7 +509,13 @@ namespace WingraLanguageServer.Services
 						if (!separator.HasValue)
 						{
 							if (!inFunctionDeclaration && !phrase.StartsWith("$") && !phrase.StartsWith("%") && !phrase.StartsWith("#") && !phrase.StartsWith("^"))
-								results.AddRange(Session.StaticSuggestions);
+							{
+								// on left side of the : of a dim, don't auto-commit
+								if (inDimBlock && !currLineLex.Tokens.Any(t => t.LineOffset < position.Character && t.Type == eToken.Colon)) 
+									results.AddRange(Session.SoftStaticSuggestions);
+								else
+									results.AddRange(Session.StaticSuggestions);
+							}
 							if (phrase.StartsWith("#"))
 							{
 								//this only handles the 99% case

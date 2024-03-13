@@ -94,11 +94,12 @@ namespace Wingra
 
 		public bool DoRunTests => CheckConfigFlag("runTests");
 		public bool IsJsExport => CheckConfigString("jsExport") != "";
+		public bool JsIncludeWingraCodeInJs => CheckConfigFlag("jsDebug", true);
 		public bool DoAsmExport => CheckConfigString("asmDebugExport") != "";
-		public bool CheckConfigFlag(string key)
+		public bool CheckConfigFlag(string key, bool? dflt = null)
 		{
-			if (Config == null) return false;
-			if (!Config.ContainsKey(key)) return false;
+			if (Config == null) return dflt ?? false;
+			if (!Config.ContainsKey(key)) return dflt ?? false;
 			return Config[key] == "1" || Config[key].ToLower() == "true";
 		}
 		public string CheckConfigString(string key, string fallback = "")

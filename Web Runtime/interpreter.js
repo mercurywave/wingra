@@ -12,9 +12,6 @@ class ORuntime {
 		this._initFuncs = [];
 		this._initIdx = 0;
 		this._doneInit = false;
-		this._requiredSymbols = {};
-		this._exportedSymbols = {};
-		this._afterInitTasks = [];
 		this._jobs = [];
 		this._jobId = 1;
 		this._tasks = [];
@@ -105,7 +102,7 @@ class ORuntime {
 			if (start < 0) { len += start; start = 0; }
 			if (len == 0) { return ""; }
 			if (len < 0) { trace( 'SubStr length must be positive'); }
-			return this.substring(start, len);
+			return this.substring(start, start + len);
 		});
 		this.AddExternalMethod("Str.Len", function () { return this.length; });
 		this.AddExternalMethod("Str.Contains", function (search) { return this.includes(search); });
