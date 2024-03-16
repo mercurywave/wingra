@@ -169,7 +169,6 @@ class ORuntime {
 			if(!job || job.KILLED) throw "pipe is already closed";
 			job.data = data;
 			job.Complete();
-			delete _run._pipes[this];
 		});
 		this.AddExternalMethod("Pipe.Clear", function () {
 			var job = _run._pipes[this];
@@ -185,10 +184,12 @@ class ORuntime {
 			var job = _run._pipes[this];
 			if(!job || job.KILLED) return null;
 			await job;
+			delete _run._pipes[this];
 			return job.data;
 		});
 		this.AddExternalMultiMethod("Pipe.TryRead", function () {
 			var job = _run._pipes[this];
+			if (job.KILLED) delete _run._pipes[this];
 			if(!job || job.KILLED) return [null , false];
 			return [job.data, true];
 		});
