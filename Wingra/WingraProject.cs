@@ -158,9 +158,11 @@ namespace Wingra
 
 		internal async Task LoadAllFiles()
 		{
+			List<Task> tasks = new List<Task>();
 			foreach (var pair in _wingraFiles.ToArray())
 				if (pair.Value == null)
-					await LoadFile(pair.Key);
+					tasks.Add(LoadFile(pair.Key));
+			await Task.WhenAll(tasks);
 		}
 
 		public List<WingraProject> GetProjectLoadOrder()

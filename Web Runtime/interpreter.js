@@ -184,12 +184,10 @@ class ORuntime {
 			var job = _run._pipes[this];
 			if(!job || job.KILLED) return null;
 			await job;
-			delete _run._pipes[this];
 			return job.data;
 		});
 		this.AddExternalMultiMethod("Pipe.TryRead", function () {
 			var job = _run._pipes[this];
-			if (job.KILLED) delete _run._pipes[this];
 			if(!job || job.KILLED) return [null , false];
 			return [job.data, true];
 		});
@@ -682,7 +680,9 @@ class OObj {
 		var pop = obj.inner[key];
 		if(Array.isArray(obj.inner) && obj.inner.length && key == obj.inner.length - 1) {
 			// special cast - arrays will leave empty elements, which is annoying at the end of the array
-			obj.inner.pop();
+			do {
+				obj.inner.pop();
+			} while(obj.inner.length > 0 && obj.inner[obj.inner.length - 1] === undefined);
 		}
 		else {
 			delete obj.inner[key];
