@@ -107,8 +107,9 @@ namespace Wingra.Parser
 			mp(Token(eToken.For) + SimpleExpression(),
 				res => new SForIterate(res.FileLine, ExpressionParser.ParseExpression(res.Context, res.GetTokens("value"))) ),
 
-			mp(Token(eToken.Using) + Path(false),
-				res => new SUsing(res.FileLine, new SStaticPath(res.GetCleanedPath())) ),
+			mp(Token(eToken.Using) + CommaDelimitedChain(Path(false)),
+				res => new SUsing(res.FileLine,
+					ParseCommaSplit(res.Context, res.GetTokens("path"), (c,toks) => new SStaticPath(toks))) ),
 
 			mp(Token(eToken.Switch) + SimpleExpression(),
 				res => new SSwitchStatement(res.FileLine,
@@ -707,7 +708,7 @@ namespace Wingra.Parser
 			{
 				var path = new List<RelativeTokenReference>();
 				path.Add(Pop());
-				while(Peek() == eToken.Dot)
+				while (Peek() == eToken.Dot)
 				{
 					Pop(); // .
 					if (IsDone()) return false;
@@ -757,6 +758,30 @@ namespace Wingra.Parser
 				return new MatchResult(true, begin, tokens.Length - 1, "ANYTHING");
 			});
 		}
+		static ChainList CommaDelimitedChain(ChainList pieceMatch, string key = "path")
+		{
+			return new SingleMatch((context, tokens, begin) =>
+			{
+				var toks = util.RangeSubset(tokens, begin, tokens.Length - begin);
+				var split = util.SplitArr(toks, t => t.Token.Type == eToken.Comma);
+				var end = begin - 1;
+				for (int i = 0; i < split.Count; i++)
+				{
+					if (i > 0) end++; // count comma
+					var sec = split[i];
+					if (TestOneChain(context, sec, pieceMatch, out var used, out _))
+					{
+						end += used;
+						if (used < sec.Length)
+							return new MatchResult(true, begin, end, key);
+					}
+					else
+						return new MatchResult(false);
+
+				}
+				return new MatchResult(true, begin, end, key);
+			});
+		}
 		static ChainList Path(bool expectStatic, string key = "path")
 		{
 			return new SingleMatch((context, tokens, begin) =>
@@ -795,36 +820,13 @@ namespace Wingra.Parser
 
 		private static bool TryParse(ParseContext context, RelativeTokenReference[] tokens, out int usedTokens, List<SyntaxPattern> possible, out SyntaxNode node)
 		{
-			int lastToken = 0;
 			var pairs = possible.ToList();
 			for (int i = 0; i < pairs.Count; i++)
 			{
 				var pair = pairs[i];
-				usedTokens = 0;
 				ChainList list = pair.Match;
-				int chain = 0;
-				bool fail = false;
-				List<MatchResult> results = new List<MatchResult>();
-				for (chain = 0; chain < list.Count && usedTokens < tokens.Length; chain++)
-				{
-					var res = list[chain].Handle.Invoke(context, tokens, usedTokens);
-					if (!res.Match && !list[chain].Optional) { fail = true; break; }
-					results.Add(res);
-					if (res.Match)
-					{
-						if (res.End > lastToken) lastToken = res.End;
-						usedTokens = res.End + 1;
-					}
-				}
-				if (!fail)
-					for (; chain < list.Count; chain++)
-					{
-						if (list[chain].Optional)
-							results.Add(new MatchResult(false));
-						else
-							fail = true;
-					}
-				if (!fail)
+				List<MatchResult> results;
+				if (TestOneChain(context, tokens, list, out usedTokens, out results))
 				{
 					node = pair.Generator.Invoke(new Result(context, results, tokens));
 					return true;
@@ -833,6 +835,34 @@ namespace Wingra.Parser
 			usedTokens = tokens.Length;
 			node = null;
 			return false;
+		}
+
+		private static bool TestOneChain(ParseContext context, RelativeTokenReference[] tokens, ChainList list, out int usedTokens, out List<MatchResult> results)
+		{
+			int lastToken = 0;
+			int chain = 0;
+			usedTokens = 0;
+			results = new List<MatchResult>();
+			for (chain = 0; chain < list.Count && usedTokens < tokens.Length; chain++)
+			{
+				var res = list[chain].Handle.Invoke(context, tokens, usedTokens);
+				if (!res.Match && !list[chain].Optional)
+					return false;
+				results.Add(res);
+				if (res.Match)
+				{
+					if (res.End > lastToken) lastToken = res.End;
+					usedTokens = res.End + 1;
+				}
+			}
+			for (; chain < list.Count; chain++)
+			{
+				if (list[chain].Optional)
+					results.Add(new MatchResult(false));
+				else
+					return false;
+			}
+			return true;
 		}
 
 		#region structures
@@ -877,6 +907,12 @@ namespace Wingra.Parser
 		internal static bool TryParseStatement(ParseContext context, RelativeTokenReference[] currLine, out SyntaxNode node, out int usedTokens)
 		{
 			return TryParse(context, currLine, out usedTokens, StatementChains, out node);
+		}
+
+		internal static List<T> ParseCommaSplit<T>(ParseContext context, RelativeTokenReference[] currLine, Func<ParseContext, RelativeTokenReference[], T> generator)
+		{
+			var split = util.SplitArr(currLine, t => t.Token.Type == eToken.Comma);
+			return split.Select(sec => generator(context, sec)).ToList();
 		}
 
 		#region switches
