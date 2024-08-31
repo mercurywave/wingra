@@ -47,3 +47,16 @@ registry DimGlo
 #test
 	@a : dim(true: 1, false: 0)
 	$assert(a[true] > 0)
+
+#test
+	@a : 1
+	@b : 2
+	@c : dim(... a, b)
+	$assert(c.a > 0)
+	
+#test
+	@a : 1
+	@b : 2
+	@c : dim
+		... a; b
+	$assert(c.a > 0)
