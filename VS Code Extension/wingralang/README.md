@@ -20,4 +20,4 @@ None
 
 ## Release Notes
 
-The Wingra language is in an early alpha stage, and not ready for general production
+The Wingra language is in an early alpha stage, and not ready for general production. Updates may break backwards compatability.
