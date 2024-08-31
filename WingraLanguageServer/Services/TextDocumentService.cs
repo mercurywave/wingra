@@ -388,6 +388,8 @@ namespace WingraLanguageServer.Services
 						{
 							return null;
 						}
+						if(curr.HasValue && curr.Value.Type == eToken.Ellipsis)
+							return null;
 
 						// thing. => thing.?
 						if (curr.HasValue && curr.Value.Type == eToken.Dot)

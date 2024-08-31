@@ -443,6 +443,15 @@ namespace Wingra.Parser
 				res => new SKeyValuePair(res.FileLine,
 					ExpressionParser.ParseExpression(res.Context, res.GetTokens("key")),
 					ExpressionParser.ParseExpression(res.Context, res.GetTokens("value"))) ),
+			
+			// ... identifier
+			mp( Token(eToken.Ellipsis) + Identifier(),
+				res => new SDimEllipsis(res.FileLine,
+					new SDimAutoKey(res.FileLine, new SIdentifier(res.GetToken("ident")))) ),
+
+			// ...
+			mp( Token(eToken.Ellipsis),
+				res => new SDimEllipsis(res.FileLine, null)),
 
 			// value
 			mp( SimpleExpression("value"),

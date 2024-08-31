@@ -150,7 +150,7 @@
 				},
 				{
 				  "name": "keyword.operator.wingra",
-				  "match": "(@|~|!|\\?|\\.|:|=>|`)+"
+				  "match": "(@|~|!|\\?|\\.|:|=>|`|\\.\\.\\.)+"
 				},
 				{
 					"name": "keyword.operator.separators.wingra",

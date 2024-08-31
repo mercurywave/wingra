@@ -70,7 +70,7 @@ namespace Wingra.Parser
 				while (i < text.Length && !commentRemainder && !macroRemainder)
 				{
 
-					bool inInterpString = expectedPairs.Count > 0 
+					bool inInterpString = expectedPairs.Count > 0
 						&& (expectedPairs.Peek().Begin == eToken.BeginInterpString
 							|| expectedPairs.Peek().Begin == eToken.BeginString);
 					string token = Scan(text, i, inInterpString, out var whiteSpace);
@@ -247,6 +247,9 @@ namespace Wingra.Parser
 				if (c == '=' && text[i] == '>')
 					return "=>";
 			}
+			if (begin < text.Length - 2)
+				if (c == '.' && text[i] == '.' && text[i + 1] == '.')
+					return "...";
 
 			// else, return single char
 			return token;
@@ -342,6 +345,7 @@ namespace Wingra.Parser
 			{ "//", eToken.CommentBegin},
 			{ "`", eToken.OneLiner},
 			{ "~", eToken.Meh},
+			{ "...", eToken.Ellipsis },
 			{ "lambda", eToken.Lambda },
 			{ "#def", eToken.MacroDef },
 			{ "#bootstrap", eToken.BootStrap },

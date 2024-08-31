@@ -16,6 +16,7 @@ namespace Wingra.Parser
 		List<SDimElement> _children = new List<SDimElement>();
 		List<SMixin> _mixins = new List<SMixin>();
 		List<SDimMethod> _methods = new List<SDimMethod>();
+		SDimEllipsis _ellipsisAfter = null;
 		public bool TryParseChild(ParseContext context, RelativeTokenReference[] currLine, out SyntaxNode node, out int usedTokens)
 		{
 			return (LineParser.TryParseDimChild(context, currLine, out node, out usedTokens));
@@ -26,23 +27,47 @@ namespace Wingra.Parser
 			var dim = node as SDimElement;
 			var mix = node as SMixin;
 			var func = node as SDimMethod;
-			if (dim == null && mix == null && func == null)
+			var ellipsis = node as SDimEllipsis;
+			var value = node as SDimAutoArrayNode;
+			if (dim == null && mix == null && func == null && ellipsis == null)
 				throw new ParserException("expected mixin, value, function, or key:value");
 
-			if (node != null && _children.Count > 0)
+			bool alreadyArray = _children.Count > 0 && (_children[0] is SDimAutoArrayNode);
+			bool alreadyKeyValue = _children.Count > 0 && !(_children[0] is SDimAutoArrayNode);
+
+			if (node != null && _children.Count > 0 && _ellipsisAfter == null)
 			{
-				if (_children[0] is SDimAutoArrayNode && !(node is SDimAutoArrayNode))
+				if (alreadyArray && !(node is SDimAutoArrayNode))
 					throw new ParserException("expected array style style dim init to continue");
 
-				if (!(_children[0] is SDimAutoArrayNode) && node is SDimAutoArrayNode)
+				if (alreadyKeyValue && node is SDimAutoArrayNode)
 					throw new ParserException("expected key:value style dim init to continue");
 			}
-			if (mix != null)
+
+			if(ellipsis != null)
+			{
+				if (_ellipsisAfter != null)
+					throw new ParserException("Expected ... only once inside a dim");
+				if(alreadyArray)
+					throw new ParserException("... cannot be used after array-style dim");
+				_ellipsisAfter = ellipsis;
+				if (ellipsis._ident != null)
+					_children.Add(ellipsis._ident);
+			}
+			else if (_ellipsisAfter != null)
+			{
+				var ident = value?.TryConvertToAutoKey();
+				if (ident == null)
+					throw new ParserException("Expected only local identifiers after ...");
+				_children.Add(ident);
+			}
+			else if (mix != null)
 				_mixins.Add(mix);
 			else if (func != null)
 				_methods.Add(func);
-			else
-				_children.Add(node as SDimElement);
+			else if (dim != null)
+				_children.Add(dim);
+			else throw new ParserException("Unknown dim element error (missed scenario?)");
 		}
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
 		{
@@ -104,25 +129,38 @@ namespace Wingra.Parser
 		public SDimInline(ParseContext context, RelativeTokenReference[] content)
 		{
 			if (content.Length == 0) return;
+			bool inEllipsisMode = false;
 			while (content.Length > 0)
 			{
 				SExpressionComponent key, value;
-				if (!ExpressionParser.TryParseExpression(context, content, out key, out var used, eToken.Colon, eToken.Comma))
+				if (content[0].Token.Type == eToken.Ellipsis)
+				{
+					if (inEllipsisMode)
+						throw new ParserException("expected only single ...", content[0]);
+					inEllipsisMode = true;
+					content = content.RangeRemainder(1);
+					if (content.Length == 0) break;
+				}
+				if (!ExpressionParser.TryParseExpression(context, content, out key, out var used, eToken.Colon, eToken.Comma, eToken.Ellipsis))
 					throw new ParserException("expected expression for dim()", content[0]);
 				if (used >= content.Length)
 				{
-					_data.Add(new Tuple<SExpressionComponent, SExpressionComponent>(null, key));
+					var name = inEllipsisMode ? key : null;
+					_data.Add(new Tuple<SExpressionComponent, SExpressionComponent>(name, key));
 					break;
 				}
 				var splitter = content[used];
 				if (splitter.Token.Type == eToken.Colon)
 				{
 					var conRead = content.RangeRemainder(used + 1);
-					if (!ExpressionParser.TryParseExpression(context, conRead, out value, out var valUsed, eToken.Colon, eToken.Comma))
+					if (!ExpressionParser.TryParseExpression(context, conRead, out value, out var valUsed, eToken.Colon, eToken.Comma, eToken.Ellipsis))
 						throw new ParserException("expected expression for dim() value", content[0]);
 					used += valUsed + 1;
 				}
-				else { value = key; key = null; }
+				else { 
+					value = key; 
+					key = inEllipsisMode ? key : null; 
+				}
 				_data.Add(new Tuple<SExpressionComponent, SExpressionComponent>(key, value));
 				if (used + 1 >= content.Length) break;
 				content = content.RangeRemainder(used + 1);
@@ -195,6 +233,12 @@ namespace Wingra.Parser
 			_value.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
 			func.Add(asmStackLevel, eAsmCommand.DimSetInt, Idx);
 		}
+		internal SDimAutoKey TryConvertToAutoKey()
+		{
+			if (!(_value is SIdentifier))
+				return null;
+			return new SDimAutoKey(FileLine, _value as SIdentifier);
+		}
 	}
 
 	class SDimLiteralKeyIdent : SDimElement
@@ -233,6 +277,32 @@ namespace Wingra.Parser
 		{
 			yield return _left;
 			yield return _value;
+		}
+	}
+	class SDimEllipsis : SStatement
+	{
+		// ...
+		internal SDimAutoKey _ident;
+		public SDimEllipsis(int fileLine, SDimAutoKey ident = null) : base(fileLine)
+		{
+			_ident = ident;
+		}
+	}
+	class SDimAutoKey : SDimElement
+	{
+		SIdentifier _ident;
+		public SDimAutoKey(int fileLine, SIdentifier ident) : base(fileLine, ident)
+		{
+			_ident = ident;
+		}
+		internal override void _EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)
+		{
+			_ident.EmitAssembly(compiler, file, func, asmStackLevel, errors, this);
+			func.Add(asmStackLevel, eAsmCommand.DimSetString, _ident.Symbol);
+		}
+		public override IEnumerable<SExpressionComponent> IterExpressions()
+		{
+			yield return _ident;
 		}
 	}
 

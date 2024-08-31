@@ -32,6 +32,7 @@ namespace Wingra.Parser
 		Return, Yield, Quit,
 		To, By, In, At, Of, // for loop
 		Dot, This, New, Dim, AtSign,
+		Ellipsis, // ...
 		Using,
 		Template, Data, Library, Enum,
 		Trap, Throw, Try, Catch, Avow,

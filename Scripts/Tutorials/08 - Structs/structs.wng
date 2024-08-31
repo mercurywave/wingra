@@ -58,7 +58,7 @@ $IO.Write(f.key) // prints "value"
 
 // you can also pair the 'dim' keyword with a function call
 // this allows you to take a struct returned by the function and add additional data
-@i : dim $Monster("Wolf") // creates a Foo struct, and then adds a "HP" value
+@i : dim $Monster("Wolf") // creates a Monster struct, and then adds a "HP" value
     HP : 3
 
 ::Monster(name => obj)
@@ -101,3 +101,10 @@ $IO.Write(~k.$Set.Has(someVar)) // prints true
 @o : dim("a", "b", "c")
 o.$List.Add("d") // adds to the end, so o[3] : "d"
 $IO.Write(~o.$List.Contains("c")) // prints true
+
+
+// if you have a struct that you want to assign keys succinctly from local variables, you can use ...
+// local variables are saved into the struct at keys with the same name
+::Foo(a,b => obj)
+    obj : dim(... a,b)
+@p : $Foo(1,2) // creates a dim where p.a = 1, and p.b = 2
