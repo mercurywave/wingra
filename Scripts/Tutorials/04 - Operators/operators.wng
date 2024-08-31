@@ -50,5 +50,10 @@ n &: false // n = false
 // this operator tells the program to attempt a lossy conversion on the value
 
 // you can interpolate strings with expressions by preceeding a string with $ and wrapping expressions with { }
-@r : $"test {2.2}" // test 2.2
+@r : "test {2.2}" // test 2.2
 // an implicit conversion from the variable type to a string is automatically performed in this case
+
+// << and >> are special operators that let you save the results of an expression to a variable and continue
+@s // the variable must already be declared
+$IO.Write(1 + 2 >> s) // this outputs 3 to the screen, but also save the value of 3 to the variable s
+$IO.Write(s << 1 + 2) // this is equivilent. which direction you use is style preference

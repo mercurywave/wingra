@@ -21,6 +21,9 @@ d : "He said, \" you know what..."
 // you can similarly escape new lines with \n
 d : "I know. \n It is a duck."
 
+// strings can interpolate expressions on the fly
+d : "What's 1 + 2? Well, it's {1 + 2}." // the {1 + 2} is replaced with "3"
+
 
 ////// Bool //////
 @e : true
