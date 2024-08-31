@@ -64,6 +64,30 @@ namespace Wingra.Parser
 		}
 	}
 
+	class SLibraryMixin : SStatement
+	{
+		List<SStaticPath> _paths;
+		public SLibraryMixin(int fileLine, List<SStaticPath> paths) : base(fileLine)
+		{
+			_paths = paths;
+		}
+		internal override void OnAddedToTree(ParseContext context)
+		{
+			var file = context.FileKey;
+			var ln = context.FileLine;
+			var nSpace = util.Split(context.Scope.GetDeclaringNamespace(), ".");
+			context.StaticMap.TryResolveAbsolutePath(file, null, nSpace, false, out var matches, out _, out _);
+			foreach (var p in _paths)
+			{
+				p.OnAddedToTree(context);
+				var prefixes = context.Scope.GetUsingNamespaces();
+				var fullPath = context.StaticMap.ResolvePath(file, ln, p._path, prefixes, false, out _, out _, out _, out _);
+				context.StaticMap.RegisterInheritenceLink(matches[0], fullPath, file);
+			}
+			base.OnAddedToTree(context);
+		}
+	}
+
 	class SConst : SStatement
 	{
 		SExpressionComponent _exp;

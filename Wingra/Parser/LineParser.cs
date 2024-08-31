@@ -343,6 +343,11 @@ namespace Wingra.Parser
 				res => new SData(res.FileLine,
 					ExpressionParser.ParseExpressionComponent(res.Context, res.GetTokens("value"))) ),
 
+			// mixin OtherLib, LibB
+			mp( Token(eToken.Mixin) + CommaDelimitedChain(Path(false)),
+				res => new SLibraryMixin(res.FileLine,
+					ParseCommaSplit(res.Context, res.GetTokens("path"), (c,toks) => new SStaticPath(toks))) ),
+
 			// enum Path
 			mp( Token(eToken.Enum) + Path(false, "name"),
 				res => new SEnumType( res.FileLine,

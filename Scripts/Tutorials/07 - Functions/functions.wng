@@ -80,3 +80,24 @@ $MyLib.SubFunc()
 // when you use $ after 'using', the compiler will search for functions from the 'using' libraries
 using MyLib
 $SubFunc()
+
+
+// within a library, you can define another library as a mixin
+// effectively, this lets you share functions with similar operations across namespaces
+library Person
+    ::.GetName(=> name) => this.name
+library Student
+    mixin Person // you can delimit additional libraries with comma
+
+@kiddo : dim(name: "Alex")
+$IO.Write(kiddo.$Student.GetName())
+// prints the object's name property as though the Student library had a function to do so
+
+library Teacher
+    mixin Person
+    // mixins are a fallback, functions directly defined in the library are prefered
+    ::.GetName(=> name) => $"Professor {this.name}"
+
+@adult : dim(name: "Alex")
+$IO.Write(kiddo.$Teacher.GetName())
+// prints "Professor Alex"

@@ -8,7 +8,7 @@ namespace Wingra.Parser
 {
 	class SStaticPath : SExpressionComponent, ICanEmitInline//, IEmitSymbol
 	{
-		RelativeTokenReference[] _path;
+		internal RelativeTokenReference[] _path;
 		List<string> _usingPaths;
 		string _fileKey;
 		int _fileLine;

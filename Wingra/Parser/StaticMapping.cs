@@ -16,7 +16,8 @@ namespace Wingra.Parser
 		Map<string, string> _scratches = new Map<string, string>(); // glo => fileKeys
 		class TreeNode
 		{
-			public Dictionary<string, TreeNode> Children = new Dictionary<string, TreeNode>();
+			private Dictionary<string, TreeNode> _children = new Dictionary<string, TreeNode>();
+			List<TreeLink> _inheritence = null;
 			public eStaticType Type;
 			public string SourceFileKey;
 			public int FileLine = -1;
@@ -36,28 +37,108 @@ namespace Wingra.Parser
 			}
 			public TreeNode GetMakeChild(string child, eStaticType type, string sourceFile, int fileLine, _SfunctionDef funcDef = null, SExpressionComponent value = null)
 			{
-				if (!Children.ContainsKey(child))
-					Children.Add(child, new TreeNode(type, sourceFile, fileLine, funcDef, value));
+				if (!_children.ContainsKey(child))
+					_children.Add(child, new TreeNode(type, sourceFile, fileLine, funcDef, value));
 				else
-					Children[child].Replace(type, sourceFile, fileLine, funcDef, value);
-				return Children[child];
+					_children[child].Replace(type, sourceFile, fileLine, funcDef, value);
+				return _children[child];
 			}
-			public TreeNode TryGetChild(string child)
+			public TreeNode TryGetChild(string child) => TryGetChild(child, out _);
+			public TreeNode TryGetChild(string child, out bool isAmbiguous)
+				=> TryGetChild(child, new HashSet<TreeNode>(), out isAmbiguous);
+			TreeNode TryGetChild(string child, HashSet<TreeNode> visited, out bool isAmbiguous)
 			{
-				if (!Children.ContainsKey(child))
+				isAmbiguous = false;
+				if (!_children.ContainsKey(child))
+				{
+					if (_inheritence != null)
+					{
+						// while it makes no sense to have circular links, I should protect against it
+						if (visited.Contains(this)) return null;
+						visited.Add(this);
+						TreeNode node = null;
+						foreach (var link in _inheritence)
+						{
+							var check = link.Inherit.TryGetChild(child, visited, out var isChildAmbig);
+							isAmbiguous |= isChildAmbig;
+							if (check == null) continue;
+							else if (check != null && node != null) isAmbiguous = true;
+							else node = check;
+						}
+						return node;
+					}
 					return null;
-				return Children[child];
+				}
+				return _children[child];
 			}
-			public bool HasChild(string child)
-				=> Children.ContainsKey(child);
 
 			public TreeNode MockCopy()
 			{
 				TreeNode copy = new TreeNode(Type, SourceFileKey, FileLine);
-				foreach (var pair in Children)
-					copy.Children.Add(pair.Key, pair.Value.MockCopy());
+				foreach (var pair in _children)
+					copy._children.Add(pair.Key, pair.Value.MockCopy());
+				if (_inheritence != null) copy._inheritence = _inheritence.ToList();
 				return copy;
 			}
+			public void RegisterInheritence(TreeNode node, string sourceFile)
+			{
+				if (_inheritence == null) _inheritence = new List<TreeLink>();
+				_inheritence.Add(new TreeLink()
+				{
+					Inherit = node,
+					SourceFileKey = sourceFile
+				});
+			}
+			public Dictionary<string, TreeNode> GetDefinedChildren() => _children;
+			public Dictionary<string, TreeNode> GetAllChildren()
+			{
+				Dictionary<string, TreeNode> children = new Dictionary<string, TreeNode>(_children.Count);
+				addChildrenToDict(children);
+				return children;
+			}
+			void addChildrenToDict(Dictionary<string, TreeNode> dict)
+			{
+				foreach (var pair in _children)
+					if (!dict.ContainsKey(pair.Key))
+						dict[pair.Key] = pair.Value;
+				if (_inheritence != null)
+					foreach (var link in _inheritence)
+						link.Inherit.addChildrenToDict(dict);
+			}
+			public void ClearChildren()
+			{
+				_children.Clear();
+				_inheritence?.Clear();
+			}
+			internal bool FlushFileRec(string key)
+			{
+				// returns true if some leaves should remain behind
+				HashSet<string> tokill = new HashSet<string>();
+				bool leavesRemain = false;
+				foreach (var child in _children)
+				{
+					var branchStays = child.Value.FlushFileRec(key);
+					leavesRemain |= branchStays || child.Value.SourceFileKey != key;
+					if (child.Value.SourceFileKey != key) continue;
+					if (branchStays) continue;
+					tokill.Add(child.Key);
+				}
+				foreach (var dead in tokill)
+					_children.Remove(dead);
+				if (_inheritence != null)
+				{
+					_inheritence.RemoveAll(lk => lk.SourceFileKey == key);
+					leavesRemain |= _inheritence.Count > 0;
+					if (_inheritence.Count == 0) _inheritence = null;
+				}
+				return leavesRemain;
+			}
+		}
+
+		struct TreeLink
+		{
+			public TreeNode Inherit; // what we are inheriting
+			public string SourceFileKey; // where the link is defined (for cleanup)
 		}
 
 		public StaticMapping CloneForExport()
@@ -111,10 +192,10 @@ namespace Wingra.Parser
 		public const string DATA_ABS = "D";
 		public const string FILE_ABS = "F";
 		// fileKey is blank for things like on-demand compilation where there is no file
-		public bool TryResolveAbsolutePath(string fileKey, List<string> possiblePrefixes, string[] path, bool isType, out List<string> matches, out string[] dynamicPath)
+		public bool TryResolveAbsolutePath(string fileKey, List<string> possiblePrefixes, string[] path, bool isType, out List<string> matches, out string[] dynamicPath, out bool isAmbiguous)
 		{
 			matches = new List<string>();
-			var success = _TryResolveAbsolutePath(fileKey, possiblePrefixes, path, isType, out var hash, out dynamicPath);
+			var success = _TryResolveAbsolutePath(fileKey, possiblePrefixes, path, isType, out var hash, out dynamicPath, out isAmbiguous);
 			if (!success) return false;
 			foreach (var node in hash)
 				matches.Add(node.Key);
@@ -157,10 +238,10 @@ namespace Wingra.Parser
 			}
 			return chained;
 		}
-		bool _TryResolveAbsolutePath(string fileKey, List<string> possiblePrefixes, string[] path, bool isType, out Dictionary<string, TreeNode> matches, out string[] dynamicPath)
+		bool _TryResolveAbsolutePath(string fileKey, List<string> possiblePrefixes, string[] path, bool isType, out Dictionary<string, TreeNode> matches, out string[] dynamicPath, out bool isAmbiguous)
 		{
 			matches = new Dictionary<string, TreeNode>();
-			if (path.Length == 0) { dynamicPath = new string[0]; return false; }
+			if (path.Length == 0) { dynamicPath = new string[0]; isAmbiguous = false; return false; }
 			var file = new List<string[]>();
 			var data = new List<string[]>();
 			string[] dynPath = new string[0];
@@ -178,15 +259,19 @@ namespace Wingra.Parser
 							 // PERF: ExpandPrefixes knows what the path is, we could optimize this
 			}
 
+			bool notAmbiguous = true;
 			if (fileKey != "")
-				CheckTree(FILE_ABS, GetForFile(fileKey, isType), file, matches, fileKey);
-			CheckTree(DATA_ABS, GetRoot(isType), data, matches, "");
+				notAmbiguous = CheckTree(FILE_ABS, GetForFile(fileKey, isType), file, matches, fileKey);
+			if (notAmbiguous)
+				notAmbiguous = CheckTree(DATA_ABS, GetRoot(isType), data, matches, "");
 
-			void CheckTree(string type, TreeNode node, List<string[]> toCheck, Dictionary<string, TreeNode> addTo, string fkey)
+			bool CheckTree(string type, TreeNode node, List<string[]> toCheck, Dictionary<string, TreeNode> addTo, string fkey)
 			{
 				foreach (var poss in toCheck)
 				{
-					if (HasPath(node, poss, out var target, out var staticPath, out var dPath))
+					var res = SearchPath(node, poss, out var target, out var staticPath, out var dPath);
+					if (res == ePathResult.Ambiguous) return false;
+					if (res == ePathResult.HasPath)
 					{
 						var key = FormatAbsPath(type, util.Join(staticPath, "."), fkey, isType);
 						if (!addTo.ContainsKey(key))
@@ -194,9 +279,11 @@ namespace Wingra.Parser
 						dynPath = dPath;
 					}
 				}
+				return true;
 			}
 			dynamicPath = dynPath;
-			return (matches.Count == 1);
+			isAmbiguous = !notAmbiguous;
+			return (matches.Count == 1 && notAmbiguous);
 		}
 
 		internal void ReserveNamespace(string fileKey, string prefix, string path, eStaticType type, int fileLine, _SfunctionDef funcDef = null, SExpressionComponent value = null)
@@ -249,10 +336,12 @@ namespace Wingra.Parser
 		string ResolvePath(string fileKey, int fileLine, RelativeTokenReference[] writtenPath, List<string> usingPrefixes, bool isType, out string[] dynamicPath)
 		{
 			var direct = writtenPath.Select(t => t.Token.Token.Replace("$", "").Replace("%", "")).ToArray();
-			if (TryResolveAbsolutePath(fileKey, usingPrefixes, direct, isType, out var matches, out dynamicPath))
+			if (TryResolveAbsolutePath(fileKey, usingPrefixes, direct, isType, out var matches, out dynamicPath, out var isAmbiguous))
 				return matches[0];
 			else
 			{
+				if(isAmbiguous)
+					throw new CompilerException("Ambiguous static reference due to mixins.", fileLine, writtenPath[0]);
 				if (matches.Count == 0)
 					throw new CompilerException("Could not resolve static reference - " + JoinPath(writtenPath), fileLine, writtenPath[0]);
 				else
@@ -262,23 +351,23 @@ namespace Wingra.Parser
 
 		// these may return the closest node in the case we can't resolve the complete path now (data subnodes)
 		bool HasPath(TreeNode node, string[] path, string[] addPaths, out TreeNode target, out string[] staticPath, out string[] dynamicPath)
-			=> HasPath(node, CombinePaths(path, addPaths), out target, out staticPath, out dynamicPath);
+			=> SearchPath(node, CombinePaths(path, addPaths), out target, out staticPath, out dynamicPath) == ePathResult.HasPath;
 		bool HasPath(TreeNode node, string[] path, out TreeNode target)
-			=> HasPath(node, path, out target, out _, out _);
-		bool HasPath(TreeNode node, string[] path, out TreeNode target, out string[] staticPath, out string[] dynamicPath)
+			=> SearchPath(node, path, out target, out _, out _) == ePathResult.HasPath;
+		ePathResult SearchPath(TreeNode node, string[] path, out TreeNode target, out string[] staticPath, out string[] dynamicPath)
 		{
 			dynamicPath = new string[0];
 			staticPath = util.RangeRemainder(path, 0);
 			for (int i = 0; i < path.Length; i++)
 			{
 				var child = path[i];
-				node = node.TryGetChild(child);
-				if (node == null)
+				node = node.TryGetChild(child, out var isAmbiguous);
+				if (node == null || isAmbiguous)
 				{
 					staticPath = new string[0];
 					dynamicPath = new string[0];
 					target = null;
-					return false;
+					return isAmbiguous ? ePathResult.Ambiguous : ePathResult.NoPath;
 				}
 				if (node.Type == eStaticType.Data || node.Type == eStaticType.EnumValue)
 				{
@@ -291,8 +380,9 @@ namespace Wingra.Parser
 				}
 			}
 			target = node;
-			return true;
+			return ePathResult.HasPath;
 		}
+		enum ePathResult { NoPath, HasPath, Ambiguous }
 		TreeNode GetAbsNode(string absPath)
 		{
 			var path = SplitAbsPath(absPath, out var prefix, out var fileKey, out bool isType);
@@ -303,6 +393,13 @@ namespace Wingra.Parser
 				node = GetForFile(fileKey, isType);
 			if (!HasPath(node, path, out var target)) return null;
 			return target;
+		}
+
+		public void RegisterInheritenceLink(string declareSpace, string absLinkPath, string fileKey)
+		{
+			var source = GetAbsNode(declareSpace);
+			var target = GetAbsNode(absLinkPath);
+			source.RegisterInheritence(target, fileKey);
 		}
 
 		public eStaticType GetTypeOfNode(string absPath, bool isType)
@@ -330,7 +427,7 @@ namespace Wingra.Parser
 			if (arr[3] == "1")
 				output = "%.";
 			output += arr[1]; // the path as the user expects
-			if(arr[2] != "")
+			if (arr[2] != "")
 				output += "|" + arr[2];
 			return output;
 		}
@@ -462,7 +559,7 @@ namespace Wingra.Parser
 			var last = path[path.Length - 1];
 			var poss = new Dictionary<string, eStaticType>();
 			var partial = JoinPath(util.RangeFront(path, path.Length - 1));
-			foreach (var child in node.Children)
+			foreach (var child in node.GetAllChildren())
 			{
 				if (child.Key.ToLower().Contains(last.ToLower()))
 				{
@@ -490,11 +587,11 @@ namespace Wingra.Parser
 					var arr = util.Split(poss, ".");
 					if (HasPath(node, arr, out var target))
 					{
-						foreach (var child in target.Children)
+						foreach (var child in target.GetAllChildren())
 							addTo.Add(child.Key);
 					}
 				}
-				foreach (var child in node.Children)
+				foreach (var child in node.GetAllChildren())
 					if (!justTypes || child.Value.Type == eStaticType.TypeDef)
 						addTo.Add(child.Key);
 			}
@@ -504,7 +601,7 @@ namespace Wingra.Parser
 		public Tuple<string, int> GetJumpToTarget(string fileKey, string path, List<string> usingPrefixes, bool isType)
 		{
 			var arr = SplitPath(path);
-			var success = _TryResolveAbsolutePath(fileKey, usingPrefixes, arr, isType, out var hash, out _);
+			var success = _TryResolveAbsolutePath(fileKey, usingPrefixes, arr, isType, out var hash, out _, out _);
 			if (!success) return null;
 			var node = hash.First().Value;
 			if (node.SourceFileKey == "") return null;
@@ -514,11 +611,11 @@ namespace Wingra.Parser
 		public void FlushFile(string key)
 		{
 			var file = GetForFile(key, false);
-			file.Children.Clear();
+			file.ClearChildren();
 			var types = GetForFile(key, true);
-			types.Children.Clear();
-			FlushFileRec(_root, key);
-			FlushFileRec(_typeDefs, key);
+			types.ClearChildren();
+			_root.FlushFileRec(key);
+			_typeDefs.FlushFileRec(key);
 			foreach (var pair in _globals.ToArray())
 				if (pair.Value == key)
 					_globals.Remove(key);
@@ -526,27 +623,11 @@ namespace Wingra.Parser
 				if (pair.Value == key)
 					_scratches.Kill(pair.Key, pair.Value);
 		}
-		bool FlushFileRec(TreeNode node, string key)
-		{
-			HashSet<string> tokill = new HashSet<string>();
-			bool leavesRemain = false;
-			foreach (var child in node.Children)
-			{
-				var branchStays = FlushFileRec(child.Value, key);
-				leavesRemain = leavesRemain || branchStays || child.Value.SourceFileKey != key;
-				if (child.Value.SourceFileKey != key) continue;
-				if (branchStays) continue;
-				tokill.Add(child.Key);
-			}
-			foreach (var dead in tokill)
-				node.Children.Remove(dead);
-			return leavesRemain;
-		}
 
 		public string GetAbsPath(string fileKey, string path, List<string> possiblePrefixes, bool isType, out string[] dynamicPath)
 		{
 			var arr = SplitPath(path);
-			if (!TryResolveAbsolutePath(fileKey, possiblePrefixes, arr, isType, out var matches, out dynamicPath))
+			if (!TryResolveAbsolutePath(fileKey, possiblePrefixes, arr, isType, out var matches, out dynamicPath, out _))
 				return "";
 			if (matches.Count != 1)
 				return "";
