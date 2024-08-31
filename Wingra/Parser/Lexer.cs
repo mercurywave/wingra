@@ -69,9 +69,11 @@ namespace Wingra.Parser
 				bool first = true;
 				while (i < text.Length && !commentRemainder && !macroRemainder)
 				{
-					bool instring = expectedPairs.Count > 0 && expectedPairs.Peek().End == eToken.EndString;
-					bool inInterpString = expectedPairs.Count > 0 && expectedPairs.Peek().Begin == eToken.BeginInterpString;
-					string token = Scan(text, i, instring, inInterpString, out var whiteSpace);
+
+					bool inInterpString = expectedPairs.Count > 0 
+						&& (expectedPairs.Peek().Begin == eToken.BeginInterpString
+							|| expectedPairs.Peek().Begin == eToken.BeginString);
+					string token = Scan(text, i, inInterpString, out var whiteSpace);
 					if (token.Length == 0)
 					{
 						i += 1 + whiteSpace;
@@ -94,7 +96,7 @@ namespace Wingra.Parser
 						type = expectedPairs.Peek().End;
 						expectedPairs.Pop();
 					}
-					else if (instring)
+					else if (inInterpString)
 						type = eToken.LiteralString;
 					else if (_matchPairs.ContainsKey(token))
 						PushPair(token);
@@ -151,15 +153,15 @@ namespace Wingra.Parser
 
 		bool IsStartOfIdentifier(char c) => char.IsLetter(c) || c == '_' || c == '#' || c == '$' || c == '^' || c == '%';
 
-		string Scan(string text, int begin, bool inString, bool inInterpString, out int whiteSpaceSkipped) // TODO: infix string stuff
+		string Scan(string text, int begin, bool inInterpString, out int whiteSpaceSkipped) // TODO: infix string stuff
 		{
 			whiteSpaceSkipped = 0;
 			if (text.Length <= begin) return "";
 			char c = text[begin];
-			if (inString || inInterpString)
+			if (inInterpString)
 			{
 				if (c == '"') return "\"";
-				if (inInterpString && c == '{') return "{";
+				if (c == '{') return "{";
 				int idx = begin;
 				bool escape = false;
 				while (idx < text.Length)
@@ -168,7 +170,7 @@ namespace Wingra.Parser
 
 					if (!escape && readAhead == '"')
 						return text.Substring(begin, idx - begin);
-					if (inInterpString && !escape && readAhead == '{')
+					if (!escape && readAhead == '{')
 						return text.Substring(begin, idx - begin);
 
 					if (escape) escape = false;

@@ -6,7 +6,6 @@
 		{ "include": "#macros" },
 		{ "include": "#functions" },
 		{ "include": "#statements" },
-		{ "include": "#interpolated-string" },
 		{ "include": "#strings" }
 	],
 	"repository": {
@@ -77,24 +76,13 @@
 		},
 		"strings": {
 			"name": "string.quoted.double.wingra",
-			"begin": "\"",
-			"end": "\"",
-			"patterns": [
-				{
-					"name": "constant.character.escape.wingra",
-					"match": "\\\\."
-				}
-			]
-		},
-		"interpolated-string": {
-			"name": "string.quoted.double.wingra",
-			"begin": "\\$\"",
+			"begin": "(\")|(\\$\")",
 			"beginCaptures": {
 				"0": {
 					"name": "punctuation.definition.string.begin.wingra"
 				}
 			},
-			"end": "(\")|((?:[^\\\\\\n])$)",
+			"end": "((?<!\\\\)\")|((?:[^\\\\\\n])$)",
 			"endCaptures": {
 				"1": {
 					"name": "punctuation.definition.string.end.wingra"
@@ -134,7 +122,6 @@
 		"expressions":{
 			"name": "expression.wingra",
 			"patterns": [
-				{ "include": "#interpolated-string" },
 				{ "include": "#strings" },
 				{ "include": "#operators" },
 				{ "include": "#numeric-literal" },

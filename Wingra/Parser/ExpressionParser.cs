@@ -96,19 +96,7 @@ namespace Wingra.Parser
 					return true;
 				case eToken.BeginString:
 					{
-						if (currLine.Length >= 2 && currLine[1].Token.Type == eToken.EndString)
-						{
-							// empty string
-							usedTokens = 2;
-							node = new SLiteralString(null);
-							return true;
-						}
-						if (currLine.Length < 3
-							|| currLine[1].Token.Type != eToken.LiteralString
-							|| currLine[2].Token.Type != eToken.EndString)
-							throw new ParserException("missing \"", lead);
-						usedTokens = 3;
-						node = new SLiteralString(currLine[1]);
+						node = ParseInterpString(context, currLine, out usedTokens);
 						return true;
 					}
 				case eToken.BeginInterpString:
@@ -603,7 +591,7 @@ namespace Wingra.Parser
 		{
 			if (currLine.Length < 2)
 				throw new ParserException("Missing string close", currLine[0]);
-			if (currLine[0].Token.Type != eToken.BeginInterpString)
+			if (currLine[0].Token.Type != eToken.BeginInterpString && currLine[0].Token.Type != eToken.BeginString)
 				throw new ParserException("attempting to parse an interpreted string that isn't an interpretted string", currLine[0]);
 			if (currLine.Length == 2)
 			{
