@@ -125,6 +125,9 @@ namespace Wingra.Parser
 			_insertExpressions = insertExpressions;
 		}
 
+		public bool IsLiteral => _insertExpressions.Count() == 0;
+		public string GetLiteral() => _source.Value.Token.Token; // only use if IsLiteral!
+
 		public override IEnumerable<SExpressionComponent> IterExpChildren()
 		{
 			return _insertExpressions;
@@ -512,6 +515,8 @@ namespace Wingra.Parser
 				_prop = (prop as SIdentifier).Symbol;
 			else if (prop is SLiteralString)
 				_prop = (prop as SLiteralString).Content;
+			else if (prop is SInterpString && (prop as SInterpString).IsLiteral)
+				_prop = (prop as SInterpString).GetLiteral();
 			else throw new ParserException("'has' expects identifier or string on right side");
 		}
 		internal override void EmitAssembly(Compiler compiler, FileAssembler file, FunctionFactory func, int asmStackLevel, ErrorLogger errors, SyntaxNode parent)

@@ -328,7 +328,7 @@ namespace Wingra.Parser
 						return true;
 					});
 				}
-				else if (GetUses(target.Identifier) == 1 || source is SLiteralString || source is SLiteralNumber || source is SLiteralNull || source is SLiteralBool)
+				else if (GetUses(target.Identifier) == 1 || source is SLiteralString || source is SLiteralNumber || source is SLiteralNull || source is SLiteralBool || (source is SInterpString && (source as SInterpString).IsLiteral))
 				{
 					// if we're only using this input once or it's simple, we can just generate it on the fly when needed
 					mapper.Add(target.Identifier, (ff, cmd, sl) =>
