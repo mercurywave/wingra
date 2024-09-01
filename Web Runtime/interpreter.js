@@ -30,7 +30,7 @@ class ORuntime {
 		this.AddExternalMethod("Obj.NextKey", function (val) { return OObj.getNextKey(this, val); });
 		this.AddExternalMethod("Obj.PrevKey", function (val) { return OObj.getPrevKey(this, val); });
 		this.AddExternalMethod("Obj.Count", function () { return OObj.ChildCount(this) });
-		this.AddExternalMethod("Obj.Keys", function () { return new OObj(null, OObj.getKeys(this)); });
+		this.AddExternalMethod("Obj.Keys", function () { return new OObj(null, OObj.getKeysClean(this)); });
 		this.AddExternalMethod("Obj.HasChildren", function () { return OObj.ChildCount(this) > 0; });
 		this.AddExternalMethod("Obj.ShallowCopy", function () { return new OObj(null, { ...this.inner }) });
 		this.AddExternalMethod("Obj.Owns", function(key) { return OObj.Owns(this, key); });
@@ -712,6 +712,11 @@ class OObj {
 		return obj.inner[key];
 	}
 
+	static getKeysClean(obj) {
+		let keys = this.getKeys(obj);
+		return keys.map(k => OObj._exportKey(k, obj));
+	}
+
 	static getKeys(obj) {
 		var inner = gtInner(obj);
 		if (Array.isArray(inner)) {
@@ -724,7 +729,19 @@ class OObj {
 			}
 			return list;
 		}
-		return Object.keys(inner);
+		let keys = Object.keys(inner);
+		keys.sort((a, b) => {
+			const aIsNum = typeof a === "number" || !isNaN(parseFloat(a));
+			const bIsNum = typeof b === "number" || !isNaN(parseFloat(b));
+			if(aIsNum && bIsNum)
+				return parseFloat(a) - parseFloat(b);
+			if(aIsNum)
+				return 1;
+			if(bIsNum)
+				return -1;
+			return a.localeCompare(b);
+		});
+		return keys;
 	}
 
 	static getFirstKey(obj) {
