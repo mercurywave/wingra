@@ -111,7 +111,41 @@ namespace Wingra.Parser
 			return true;
 		}
 		public static string EncodeString(string source)
-			=> source.Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\"", "\"");
+		{
+			var str = "";
+			var begin = 0;
+			var idx = source.IndexOf('\\');
+			while (idx >= 0)
+			{
+				str += util.BoundedSubstr(source, begin, idx - begin);
+				if (idx == source.Length - 1)
+				{
+					str += "\\";
+					begin = idx + 1;
+				}
+				else
+				{
+					var next = source[idx + 1];
+					string add;
+					switch (next)
+					{
+						case '"': add = "\""; break;
+						case 'n': add = "\n"; break;
+						case 't': add = "\t"; break;
+						case '{': add = "{"; break;
+						case '}': add = "}"; break;
+						case '\\': add = "\\"; break;
+						default: add = "\\" + next; break;
+					}
+					str += add;
+					begin = idx + 2;
+				}
+
+				idx = source.IndexOf('\\', begin);
+			}
+			str += util.BoundedSubstr(source, begin, source.Length);
+			return str;
+		}
 	}
 
 	class SInterpString : SExpressionComponent

@@ -17,7 +17,7 @@
 	global ::TestMain(=> async)
 		for ^TESTS
 			await $Run(it)
-		$IO.Log(~^ASSERTS + " of " + ~(^ASSERTS + ^FAILS) + " tests passed")
+		$IO.Log("{^ASSERTS} of {^ASSERTS + ^FAILS} tests passed")
 			
 	::Run(test => async)
 		@asserts : ^ASSERTS
@@ -26,13 +26,14 @@
 		await $(test.Lambda)
 		
 		if asserts = ^ASSERTS & fail = ^FAILS
-			$IO.Log("Test did not assert: " + ~test.Name)
+			$IO.Log("Test did not assert: {test.Name}")
 		else if fail != ^FAILS
-			$IO.Log("FAIL: " + ~test.Name)
+			$IO.Log("FAIL: {test.Name}")
 				
 
 #suggest
 	global ::assert(test)
+	global ::REGTEST(name,lamb)
 	registry TESTS
 	scratch ASSERTS
 	scratch FAILS
@@ -42,8 +43,8 @@
 		return dim
 	@name : $MacroHelp.Escape(code[0])
 	if name = ""
-		name : meta.File + " line " + ~meta.Line
-	code[0] : "data: $REGTEST(\"" + name + "\", lambda)"
+		name : "{meta.File} line {meta.Line}"
+	code[0] : "data: $REGTEST(\"{name}\", lambda)"
 	return code
 
 #test asdf

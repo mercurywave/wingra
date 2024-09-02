@@ -704,7 +704,14 @@ namespace WingraLanguageServer.Services
 			if (startSearch < 0)
 			{
 				startSearch = tokes.FindLastIndex(currIdx, t => t.Type == eToken.Using);
-				if (startSearch >= 0 && currIdx != startSearch) startSearch++;
+				if (startSearch >= 0 && currIdx != startSearch)
+				{
+					var comma = tokes.FindLastIndex(currIdx, t => t.Type == eToken.Comma);
+					if (comma > startSearch)
+						startSearch = comma + 1;
+					else
+						startSearch++;
+				}
 			}
 
 			if (startSearch >= 0)

@@ -109,7 +109,8 @@ namespace Wingra.Parser
 
 			mp(Token(eToken.Using) + CommaDelimitedChain(Path(false)),
 				res => new SUsing(res.FileLine,
-					ParseCommaSplit(res.Context, res.GetTokens("path"), (c,toks) => new SStaticPath(toks))) ),
+					ParseCommaSplit(res.Context, res.GetTokens("path"), 
+						(c,toks) => new SStaticPath(SStaticPath.CleanPath(toks)))) ),
 
 			mp(Token(eToken.Switch) + SimpleExpression(),
 				res => new SSwitchStatement(res.FileLine,
