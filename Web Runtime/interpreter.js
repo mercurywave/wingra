@@ -90,7 +90,7 @@ class ORuntime {
 
 
 		this.AddExternalMethod("Str.Replace", function (search, replace) { 
-			return this.replace(new RegExp(escapeRegEx("" + search), 'g'), escapeRegEx("" + replace)); 
+			return this.replace(new RegExp(escapeRegEx("" + search), 'g'), escapeRegEx(replace || ""));
 		});
 		this.AddExternalMethod("Str.Piece", function (delim, piece) {
 			const split = this.split(delim);
